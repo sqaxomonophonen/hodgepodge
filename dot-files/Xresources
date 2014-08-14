@@ -1,0 +1,20 @@
+Shell*saveLines:        3000
+XTerm*saveLines:        3000
+XTerm*foreground: rgb:ef/ef/ef
+!XTerm*background: rgb:09/09/1f
+XTerm*background: rgb:00/08/10
+XTerm*color4: rgb:08/40/ff
+XTerm*color6: rgb:00/e0/e0
+XTerm*color12: rgb:10/60/ff
+XTerm*color14: rgb:40/e0/e0
+!XTerm*background: rgb:0c/23/2a
+!XTerm*foreground: rg:fc/ef/db
+!XTerm*background: rgb:25/44/41
+XTerm*scrollBar: False
+XTerm*font: -xos4-terminus-medium-r-normal--18-180-72-72-c-100-iso10646-1
+XTerm*visualBell: true
+XTerm*eightBitInput: true
+!XTerm*cursorColor: white
+XTerm*charClass: 33:48,37:48,43:48,45-47:48,64:48,126:48,95:48
+!XTerm*locale: false
+

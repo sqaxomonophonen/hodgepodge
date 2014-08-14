@@ -1,0 +1,30 @@
+    #
+    # foreground colors:
+    #
+    BLACK="%{[30m%}"
+    RED="%{[31m%}"
+    GREEN="%{[32m%}"
+    YELLOW="%{[33m%}"
+    BLUE="%{[34m%}"
+    MAGENTA="%{[35m%}"
+    CYAN="%{[36m%}"
+    WHITE="%{[37m%}"
+
+    #
+    # background colors:
+    #
+    BGBLACK="%{[40m%}"
+    BGRED="%{[41m%}"
+    BGGREEN="%{[42m%}"
+    BGYELLOW="%{[43m%}"
+    BGBLUE="%{[44m%}"
+    BGMAGENTA="%{[45m%}"
+    BGCYAN="%{[46m%}"
+    BGWHITE="%{[47m%}"
+
+    #
+    # attributes:
+    #
+    BRIGHT="%{[01m%}"
+    NORMAL="%{[00m%}"
+    REVERSE="%{[07m%}"

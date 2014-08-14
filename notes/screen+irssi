@@ -1,0 +1,3 @@
+monitor irssi activity:
+/statusbar window remove time
+^A M

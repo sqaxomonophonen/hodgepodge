@@ -1,0 +1,54 @@
+set encoding=utf8
+colorscheme elflord
+syn on
+set ai
+set ruler
+set hlsearch
+
+highlight CursorLine cterm=NONE
+
+" highlight trailing whitespace
+highlight WhitespaceEOL ctermbg=red guibg=red
+autocmd BufRead,BufNew * match WhitespaceEOL /\s\+$/
+
+set backspace=2
+
+
+" xclip integration
+command! -range Xc <line1>,<line2>call XClipCopy()
+function! XClipCopy()
+	echo system("xclip -i -selection clipboard", join(getline(a:firstline, a:lastline),"\n"))
+endfunction
+
+command! Xp call XClipPaste()
+function! XClipPaste()
+	r!xclip -o -selection clipboard
+endfunction
+
+
+
+" holy war follows
+command! Ts call SwitchToTabIsSpaces()
+function! SwitchToTabIsSpaces()
+	set shiftwidth=4
+	set tabstop=13
+	set softtabstop=4
+	set expandtab
+endfunction
+
+command! Tt call SwitchToTabIsTabs()
+function! SwitchToTabIsTabs()
+	set shiftwidth=8
+	set tabstop=8
+	set softtabstop=0
+	set noexpandtab
+endfunction
+
+command! Tt4 call SwitchToTabIsTabsWidth4()
+function! SwitchToTabIsTabsWidth4()
+	set shiftwidth=4
+	set tabstop=4
+	set softtabstop=0
+	set noexpandtab
+endfunction
+

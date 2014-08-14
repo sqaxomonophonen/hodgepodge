@@ -1,0 +1,4 @@
+clear Lock
+keycode 66 = Multi_key
+keycode 37 = Control_L
+keycode 191 = Insert
