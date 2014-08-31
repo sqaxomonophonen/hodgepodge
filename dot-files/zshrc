@@ -60,3 +60,5 @@ alias redshift="redshift -l 55.3935:10.3641 -r"
 export WINEARCH=win32
 
 source ~/.myenv
+
+export SSH_ASKPASS=
