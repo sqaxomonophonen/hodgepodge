@@ -1,0 +1,7 @@
+shift 3
+set -- `echo $1|tr : ' '`
+echo $1,$2
+echo "$2
+d
+w
+x" | ed $1
