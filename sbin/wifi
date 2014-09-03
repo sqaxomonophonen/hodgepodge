@@ -1,0 +1,10 @@
+#!/bin/bash
+ESSID=${1-veralini}
+echo "ESSID: '$ESSID'"
+killall wpa_supplicant dhcpcd
+ifdown wlp4s0
+iwconfig wlp4s0 essid "$ESSID"
+wpa_supplicant -Dwext -iwlp4s0 -c/etc/wpa_supplicant/wpa_supplicant.conf -B -f /var/log/wpa_supplicant.log
+sleep 2
+dhcpcd wlp4s0
+iwlist wlp4s0 channel
