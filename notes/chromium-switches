@@ -2,7 +2,7 @@
 --user-data-dir=$PATH
 Use another "data dir"; preferences, caches, extensions, whatnot
 
---host-resolver-rules="MAP *.foo.com bar.com"
+--host-resolver-rules="MAP *.foo.com bar.com, MAP xyz.com zyx.com"
 Hostname resolver mapping, virtually equivalent to patching /etc/hosts but
 without the hassle. It even works for https (unlike --host-rules)
 
