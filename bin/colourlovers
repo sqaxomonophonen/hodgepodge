@@ -6,7 +6,7 @@ use LWP::Simple;
 use GD;
 use JSON;
 
-shift =~ m{^(http://www.colourlovers.com/(api/)?palette/)?(\d+)} or die("usage: $0 <colourlovers url or id>\n");
+@ARGV and shift =~ m{^(http://www.colourlovers.com/(api/)?palette/)?(\d+)} or die("usage: $0 <colourlovers url or id>\n");
 -t STDOUT && die("error: stdout is a tty (example usage: $0 <colourlovers url or id> | display)\n");
 my $body = get("http://www.colourlovers.com/api/palette/$3?showPaletteWidths=1&format=json");
 my $obj = decode_json($body)->[0];
