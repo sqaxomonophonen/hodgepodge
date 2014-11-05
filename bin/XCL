@@ -1,0 +1,13 @@
+#!/bin/sh
+clrlvr() {
+	colourlovers $( xclip -o -selection clipboard )
+}
+if [ "$1" = "" ] ; then
+	if test -t 1 ; then
+		clrlvr | display
+	else
+		clrlvr
+	fi
+else
+	clrlvr > $1
+fi
