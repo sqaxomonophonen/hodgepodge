@@ -40,7 +40,7 @@ my $y1 = $image_height * (1-$ymargin);
 while (@colors) {
 	my $color = $im->colorAllocate(unpack_hex_color shift @colors);
 	my $dx = $image_width * shift @color_widths;
-	$im->filledRectangle($x+1, $y0, $x + $dx - 2, $y1, $color);
+	$im->filledRectangle($x, $y0, $x + $dx, $y1, $color);
 	$x += $dx;
 }
 
