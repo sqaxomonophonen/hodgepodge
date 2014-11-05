@@ -29,7 +29,7 @@ sub unpack_hex_color ($)
 		push @rgb, hex substr $rest, 0, 2;
 		$rest = substr $rest, 2;
 	}
-	return @rgb;
+	@rgb;
 }
 
 my $x = 0;
@@ -38,9 +38,8 @@ my $y0 = $image_height * $ymargin;
 my $y1 = $image_height * (1-$ymargin);
 
 while (@colors) {
-	my $color_width = shift @color_widths;
 	my $color = $im->colorAllocate(unpack_hex_color shift @colors);
-	my $dx = $image_width * $color_width;
+	my $dx = $image_width * shift @color_widths;
 	$im->filledRectangle($x+1, $y0, $x + $dx - 2, $y1, $color);
 	$x += $dx;
 }
