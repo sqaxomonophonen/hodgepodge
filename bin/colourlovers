@@ -1,0 +1,49 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use LWP::Simple;
+use GD;
+use JSON;
+
+shift =~ m{^(http://www.colourlovers.com/(api/)?palette/)?(\d+)} or die("usage: $0 <colourlovers url or id>\n");
+-t STDOUT && die("error: stdout is a tty (example usage: $0 <colourlovers url or id> | display)\n");
+my $body = get("http://www.colourlovers.com/api/palette/$3?showPaletteWidths=1&format=json");
+my $obj = decode_json($body)->[0];
+
+my @color_widths = @{$obj->{colorWidths}};
+my @colors = @{$obj->{colors}};
+
+my $image_width = 384;
+my $image_height = 216;
+my $im = new GD::Image($image_width, $image_height);
+
+$im->colorAllocate(0,0,0);
+$im->colorAllocate(255,255,255);
+
+sub unpack_hex_color ($)
+{
+	my $rest = shift;
+	my @rgb;
+	for (1..3) {
+		push @rgb, hex substr $rest, 0, 2;
+		$rest = substr $rest, 2;
+	}
+	return @rgb;
+}
+
+my $x = 0;
+my $ymargin = 0.4;
+my $y0 = $image_height * $ymargin;
+my $y1 = $image_height * (1-$ymargin);
+
+while (@colors) {
+	my $color_width = shift @color_widths;
+	my $color = $im->colorAllocate(unpack_hex_color shift @colors);
+	my $dx = $image_width * $color_width;
+	$im->filledRectangle($x+1, $y0, $x + $dx - 2, $y1, $color);
+	$x += $dx;
+}
+
+binmode STDOUT;
+print $im->png;
