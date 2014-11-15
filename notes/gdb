@@ -1,0 +1,31 @@
+l [$N]	list source (from line $N)
+l -	list previous 10 lines
+l $FN	list function $FN
+l $A,$B	list range
+b $line	set breakpoint at line
+b $F:$L	set breakpoint at line $L in file $F
+b $fn	set breakpoint at function $fn
+b $X if $expr	break at $X if $expr is true, e.g. i==7
+cl $X	clear breakpoint, same arguments as with b
+d [$N] 	delete all breakpoints, or breakpoint #$N
+bt	backtrace
+	(stack frame #0 is always "current position")
+f [$N]	set and/or print frame context
+where	print where we are
+r	run
+c	continue
+s	step (into)
+n	next ("step over")
+p $S	print value of symbol $S
+pt $S	print type of symbol $S
+	(above works with C syntax, like `p &foo`, `p sizeof(foo)`, `p
+	xs[x+1]`, `p foo.bar`, etc.. p/pt even works well on structs)
+set	set variable, e.g. set foo=42
+	(set is kind of redundant because of how powerful p is; try `p foo=42`)
+k	kill program
+i b	breakpoint info (list them)
+
+set listsize $N		change number of lines listed by l (default: 10)
+set print pretty	prettier struct printing
+
+http://rsquared.sdf.org/gdb/
