@@ -6,18 +6,24 @@ int data_cmp(const void* va, const void* vb)
 {
 	const int* a = va;
 	const int* b = vb;
-	return a[0] - b[0];
+	int d0 = a[0] - b[0];
+	if (d0 != 0) {
+		return d0;
+	} else {
+		return a[1] - b[1];
+	}
 }
 
 int main(int argc, char** argv)
 {
-	if (argc != 4) {
-		fprintf(stderr, "usage: %s <width> <height> <bdf>\n", argv[0]);
+	if (argc < 4) {
+		fprintf(stderr, "usage: %s <width> <height> <bdf> [bdf...]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	int bitmap_width = atoi(argv[1]);
 	int bitmap_height = atoi(argv[2]);
+	int n_variants = argc - 3;
 
 	if (bitmap_width < 1 || bitmap_height < 1) {
 		fprintf(stderr, "invalid dimensions: %dx%d\n", bitmap_width, bitmap_height);
@@ -43,104 +49,111 @@ int main(int argc, char** argv)
 		dot++;
 	}
 
-	FILE* bdf = fopen(argv[3], "r");
-	if (bdf == NULL) {
-		perror(argv[3]);
-		exit(EXIT_FAILURE);
-	}
-
 	int* meta = calloc(1<<20, sizeof(int));
-
 	char buf[1024];
 
 	int x0 = 0;
 	int y0 = 0;
-	int dy = 0;
-	int glyph_width = 0;
-	int glyph_height = 0;
 	int line_height = 0;
-	int encoding = 0;
-
-	int eof = 0;
+	int n = 0;
 	int full = 0;
 
-	int in_bitmap = 0;
-	int n = 0;
+	int variant;
+	for (variant = 0; variant < n_variants; variant++) {
+		FILE* bdf = fopen(argv[3 + variant], "r");
+		if (bdf == NULL) {
+			perror(argv[3]);
+			exit(EXIT_FAILURE);
+		}
 
-	while (!eof && !full) {
-		fscanf(bdf, "%s", buf);
+		int dy = 0;
+		int glyph_width = 0;
+		int glyph_height = 0;
+		int encoding = 0;
 
-		if (!in_bitmap) {
-			if (strcmp("STARTCHAR", buf) == 0) {
-				x0 += glyph_width;
-				glyph_width = 0;
-				glyph_height = 0;
-			} else if (strcmp("ENCODING", buf) == 0) {
-				fscanf(bdf, "%d", &encoding);
-			} else if (strcmp("BBX", buf) == 0) {
-				fscanf(bdf, "%d %d", &glyph_width, &glyph_height);
-				if (x0 + glyph_width > bitmap_width) {
-					x0 = 0;
-					y0 += line_height;
-					line_height = 0;
-				}
-				if (glyph_height > line_height) {
-					line_height = glyph_height;
-				}
-				if (y0 + glyph_height > bitmap_height) {
-					full = 1;
-				}
-			} else if (strcmp("BITMAP", buf) == 0) {
-				meta[n*5+0] = encoding;
-				meta[n*5+1] = x0;
-				meta[n*5+2] = y0;
-				meta[n*5+3] = glyph_width;
-				meta[n*5+4] = glyph_height;
-				in_bitmap = 1;
-				dy = 0;
-			}
-		} else {
-			if (strcmp("ENDCHAR", buf) == 0) {
-				in_bitmap = 0;
-				n++;
-			} else {
-				unsigned int bit;
-				sscanf(buf, "%x", &bit);
-				int dx;
-				for (dx = 0; dx < glyph_width; dx++) {
-					int mask = 1 << (15-dx);
-					if (bit & mask) {
-						int x = x0 + dx;
-						int y = y0 + dy;
-						if (x < 0 || y < 0 || x >= bitmap_width || y >= bitmap_height) {
-							fprintf(stderr, "BUG!!! (%d,%d) out of bounds in %dx%d bitmap", x, y, bitmap_width, bitmap_height);
-							fclose(bdf);
-							exit(EXIT_FAILURE);
-						}
-						bitmap[x + y * bitmap_width] = 255;
+		int eof = 0;
+
+		int in_bitmap = 0;
+
+		while (!eof && !full) {
+			fscanf(bdf, "%s", buf);
+
+			if (!in_bitmap) {
+				if (strcmp("STARTCHAR", buf) == 0) {
+					x0 += glyph_width;
+					glyph_width = 0;
+					glyph_height = 0;
+				} else if (strcmp("ENCODING", buf) == 0) {
+					fscanf(bdf, "%d", &encoding);
+				} else if (strcmp("BBX", buf) == 0) {
+					fscanf(bdf, "%d %d", &glyph_width, &glyph_height);
+					if (x0 + glyph_width > bitmap_width) {
+						x0 = 0;
+						y0 += line_height;
+						line_height = 0;
 					}
+					if (glyph_height > line_height) {
+						line_height = glyph_height;
+					}
+					if (y0 + glyph_height > bitmap_height) {
+						full = 1;
+					}
+				} else if (strcmp("BITMAP", buf) == 0) {
+					meta[n*6+0] = variant;
+					meta[n*6+1] = encoding;
+					meta[n*6+2] = x0;
+					meta[n*6+3] = y0;
+					meta[n*6+4] = glyph_width;
+					meta[n*6+5] = glyph_height;
+					in_bitmap = 1;
+					dy = 0;
 				}
-				dy++;
+			} else {
+				if (strcmp("ENDCHAR", buf) == 0) {
+					in_bitmap = 0;
+					n++;
+				} else {
+					unsigned int bit;
+					sscanf(buf, "%x", &bit);
+					int dx;
+					for (dx = 0; dx < glyph_width; dx++) {
+						int mask = 1 << (15-dx);
+						if (bit & mask) {
+							int x = x0 + dx;
+							int y = y0 + dy;
+							if (x < 0 || y < 0 || x >= bitmap_width || y >= bitmap_height) {
+								fprintf(stderr, "BUG!!! (%d,%d) out of bounds in %dx%d bitmap", x, y, bitmap_width, bitmap_height);
+								fclose(bdf);
+								exit(EXIT_FAILURE);
+							}
+							bitmap[x + y * bitmap_width] = 255;
+						}
+					}
+					dy++;
+				}
+			}
+
+			while (1) {
+				char c = fgetc(bdf);
+				if (c == '\n') break;
+				if (c == EOF) {
+					eof = 1;
+					break;
+				}
 			}
 		}
 
-		while (1) {
-			char c = fgetc(bdf);
-			if (c == '\n') break;
-			if (c == EOF) {
-				eof = 1;
-				break;
-			}
-		}
+		fclose(bdf);
+
+		if (full) break;
 	}
 
-	fclose(bdf);
-
-	qsort(meta, n, sizeof(int)*5, data_cmp);
+	qsort(meta, n, sizeof(int)*6, data_cmp);
 
 	{
 		printf("int %s_bitmap_width = %d;\n", basename, bitmap_width);
 		printf("int %s_bitmap_height = %d;\n", basename, bitmap_height);
+		printf("int %s_n_variants = %d;\n", basename, n_variants);
 		printf("\n");
 	}
 
@@ -148,8 +161,8 @@ int main(int argc, char** argv)
 		printf("int %s_meta[] = {\n", basename);
 		int i;
 		for (i = 0; i < n; i++) {
-			int* m = &meta[i*5];
-			printf("%d,%d,%d,%d,%d%s\n", m[0], m[1], m[2], m[3], m[4], i==n-1?"":",");
+			int* m = &meta[i*6];
+			printf("%d,%d,%d,%d,%d,%d%s\n", m[0], m[1], m[2], m[3], m[4], m[5], i==n-1?"":",");
 		}
 		printf("};\n\n");
 	}
