@@ -16,17 +16,23 @@ int data_cmp(const void* va, const void* vb)
 
 int main(int argc, char** argv)
 {
-	if (argc < 4) {
-		fprintf(stderr, "usage: %s <width> <height> <bdf> [bdf...]\n", argv[0]);
+	if (argc < 5) {
+		fprintf(stderr, "usage: %s <width> <height> <output> <bdf> [bdf...]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	int bitmap_width = atoi(argv[1]);
 	int bitmap_height = atoi(argv[2]);
-	int n_variants = argc - 3;
+	int n_variants = argc - 4;
 
 	if (bitmap_width < 1 || bitmap_height < 1) {
 		fprintf(stderr, "invalid dimensions: %dx%d\n", bitmap_width, bitmap_height);
+		exit(EXIT_FAILURE);
+	}
+
+	FILE* output = fopen(argv[3], "w");
+	if (output == NULL) {
+		perror(argv[3]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -37,11 +43,13 @@ int main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
-	char* dot = argv[3];
+	char* first_bdf = argv[4];
+
+	char* dot = first_bdf;
 	while (*dot != '.' && *dot != 0) dot++;
 	char basename[256];
-	memcpy(basename, argv[3], dot - argv[3]);
-	basename[dot - argv[3]] = 0;
+	memcpy(basename, first_bdf, dot - first_bdf);
+	basename[dot - first_bdf] = 0;
 	dot = basename;
 	while (*dot != 0) {
 		int valid = (*dot >= 'a' && *dot <= 'z') || (*dot >= 'A' && *dot <= 'Z') || (*dot >= '0' && *dot <= '9');
@@ -60,9 +68,9 @@ int main(int argc, char** argv)
 
 	int variant;
 	for (variant = 0; variant < n_variants; variant++) {
-		FILE* bdf = fopen(argv[3 + variant], "r");
+		FILE* bdf = fopen(argv[4 + variant], "r");
 		if (bdf == NULL) {
-			perror(argv[3]);
+			perror(argv[4 + variant]);
 			exit(EXIT_FAILURE);
 		}
 
@@ -151,30 +159,32 @@ int main(int argc, char** argv)
 	qsort(meta, n, sizeof(int)*6, data_cmp);
 
 	{
-		printf("int %s_bitmap_width = %d;\n", basename, bitmap_width);
-		printf("int %s_bitmap_height = %d;\n", basename, bitmap_height);
-		printf("int %s_n_variants = %d;\n", basename, n_variants);
-		printf("\n");
+		fprintf(output, "int %s_bitmap_width = %d;\n", basename, bitmap_width);
+		fprintf(output, "int %s_bitmap_height = %d;\n", basename, bitmap_height);
+		fprintf(output, "int %s_n_variants = %d;\n", basename, n_variants);
+		fprintf(output, "\n");
 	}
 
 	{
-		printf("int %s_meta[] = {\n", basename);
+		fprintf(output, "int %s_meta[] = {\n", basename);
 		int i;
 		for (i = 0; i < n; i++) {
 			int* m = &meta[i*6];
-			printf("%d,%d,%d,%d,%d,%d%s\n", m[0], m[1], m[2], m[3], m[4], m[5], i==n-1?"":",");
+			fprintf(output, "%d,%d,%d,%d,%d,%d%s\n", m[0], m[1], m[2], m[3], m[4], m[5], i==n-1?"":",");
 		}
-		printf("};\n\n");
+		fprintf(output, "};\n\n");
 	}
 	{
-		printf("char %s_data[] = {\n", basename);
+		fprintf(output, "char %s_data[] = {\n", basename);
 		int i;
 		for (i = 0; i < bitmap_sz; i++) {
-			printf("%d%s", bitmap[i], i==bitmap_sz-1?"":",");
-			if ((i&31)==31) printf("\n");
+			fprintf(output, "%d%s", bitmap[i], i==bitmap_sz-1?"":",");
+			if ((i&31)==31) fprintf(output, "\n");
 		}
-		printf("};\n");
+		fprintf(output, "};\n");
 	}
+
+	fclose(output);
 
 	if (full) {
 		fprintf(stderr, "warning: bitmap %dx%d overflowed after %d glyphs\n", bitmap_width, bitmap_height, n);
