@@ -162,6 +162,7 @@ int main(int argc, char** argv)
 		fprintf(output, "int %s_bitmap_width = %d;\n", basename, bitmap_width);
 		fprintf(output, "int %s_bitmap_height = %d;\n", basename, bitmap_height);
 		fprintf(output, "int %s_n_variants = %d;\n", basename, n_variants);
+		fprintf(output, "int %s_n_meta = %d;\n", basename, n);
 		fprintf(output, "\n");
 	}
 
