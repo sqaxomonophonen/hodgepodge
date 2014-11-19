@@ -65,6 +65,7 @@ int main(int argc, char** argv)
 	int line_height = 0;
 	int n = 0;
 	int full = 0;
+	int pixel_size = -1;
 
 	int variant;
 	for (variant = 0; variant < n_variants; variant++) {
@@ -87,7 +88,9 @@ int main(int argc, char** argv)
 			fscanf(bdf, "%s", buf);
 
 			if (!in_bitmap) {
-				if (strcmp("STARTCHAR", buf) == 0) {
+				if (strcmp("PIXEL_SIZE", buf) == 0) {
+					fscanf(bdf, "%d", &pixel_size);
+				} else if (strcmp("STARTCHAR", buf) == 0) {
 					x0 += glyph_width;
 					glyph_width = 0;
 					glyph_height = 0;
@@ -163,6 +166,7 @@ int main(int argc, char** argv)
 		fprintf(output, "int %s_bitmap_height = %d;\n", basename, bitmap_height);
 		fprintf(output, "int %s_n_variants = %d;\n", basename, n_variants);
 		fprintf(output, "int %s_n_meta = %d;\n", basename, n);
+		fprintf(output, "int %s_size = %d;\n", basename, pixel_size);
 		fprintf(output, "\n");
 	}
 
