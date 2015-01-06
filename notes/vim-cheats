@@ -1,3 +1,5 @@
 :help filename-modifiers
 :w !diff -u % -
 ctrl-o / ctrl-i (:h jumplist)
+g] go to ctags location
+ctrl+t go back from a g] jump
