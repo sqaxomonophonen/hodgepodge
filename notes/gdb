@@ -34,3 +34,6 @@ http://rsquared.sdf.org/gdb/
 info proc mappings (show memory mappings; ranges the process can access, including code and heap)
 find /w 0x400000,0x401000,0x12345678 (search memory for sequence 0x12345678 in machine order)
 
+
+gdb -tui	UI mode
+ctrl+x o 	swap focus in UI mode (so cmd history can be used)
