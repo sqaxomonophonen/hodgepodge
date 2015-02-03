@@ -1,0 +1,151 @@
+<html>
+<head>
+<style type="text/css">
+body {
+	background-color: #012;
+}
+</style>
+<script type="text/javascript">
+window.onload = function () {
+	var stage = document.getElementById('stage');
+	var ctx = stage.getContext('2d');
+
+	var handles = [[0,0],[stage.width-1,stage.height-1]];
+
+	var size_exp = 4;
+	var size = 1<<size_exp;
+
+	var n_columns = stage.width >> size_exp;
+	var n_rows = stage.height >> size_exp;
+
+	var new_grid = function () {
+		var rows = [];
+		for (var y = 0; y < n_rows; y++) {
+			var row = [];
+			for (var x = 0; x < n_columns; x++) row.push(0);
+			rows.push(row);
+		}
+		return rows;
+	};
+	var grid = new_grid();
+
+	var active_handle = 0;
+
+	var refresh = function () {
+		ctx.fillStyle = "rgb(0,0,0)";
+		ctx.fillRect(0, 0, stage.width, stage.height);
+
+		for (var y = 0; y < n_rows; y++) {
+			for (var x = 0; x < n_columns; x++) {
+				var cell = grid[y][x];
+				if (cell == 1) {
+					ctx.fillStyle = 'rgb(0,150,70)';
+				} else if (cell == 2) {
+					ctx.fillStyle = 'rgb(255,255,255)';
+				} else if (((x^y)&1) == 0) {
+					ctx.fillStyle = 'rgb(0,0,40)';
+				} else {
+					ctx.fillStyle = 'rgb(0,30,70)';
+				}
+				ctx.fillRect(x << size_exp, y << size_exp, size, size);
+			}
+		}
+
+		ctx.strokeStyle = 'rgb(255,255,0)';
+		ctx.beginPath();
+		ctx.moveTo(handles[0][0], handles[0][1]);
+		ctx.lineTo(handles[1][0], handles[1][1]);
+		ctx.stroke();
+	};
+
+	var bresenham = function () {
+		var x0 = handles[0][0];
+		var y0 = handles[0][1];
+		var x1 = handles[1][0];
+		var y1 = handles[1][1];
+
+		var plot = function (x, y, v)  {
+			if (x < 0 || y < 0 || x >= n_columns || y >= n_rows) {
+				console.log("crap - plot of out bounds: " + x + ", " + y);
+				return;
+			}
+			grid[y][x] = v;
+		};
+
+		var dx = x1 - x0;
+		var dy = y1 - y0;
+
+		var adx = Math.abs(dx);
+		var ady = Math.abs(dy);
+
+		var xinc = x1 > x0 ? 1 : -1;
+		var yinc = y1 > y0 ? 1 : -1;
+
+		var x = x0 >> size_exp;
+		var y = y0 >> size_exp;
+
+		plot(x,y,2);
+
+		var mask = size-1;
+		var fx = x0 & mask;
+		var fy = y0 & mask;
+		if (dx >= 0) fx = mask-fx;
+		if (dy >= 0) fy = mask-fy;
+
+		var mid = 1 << (size_exp-1);
+
+		if (adx > ady) {
+			var d = (mid + fx)*ady - fy*adx;
+			var e1 = (ady - adx) << size_exp;
+			var e0 = ady << size_exp;
+			while (x != (x1 >> size_exp)) {
+				if (d > 0) {
+					y += yinc;
+					d += e1;
+				} else {
+					d += e0;
+				}
+				x += xinc;
+				plot(x,y,1);
+			}
+		} else {
+			var d = (mid + fy)*adx - fx*ady;
+			var e1 = (adx - ady) << size_exp;
+			var e0 = adx << size_exp;
+			while (y != (y1 >> size_exp)) {
+				if (d > 0) {
+					x += xinc;
+					d += e1;
+				} else {
+					d += e0;
+				}
+				y += yinc;
+				plot(x,y,1);
+			}
+		}
+	};
+
+	stage.onmousemove = function (e) {
+		var x = e.clientX - stage.offsetLeft;
+		var y = e.clientY - stage.offsetTop;
+		if (x < 0) x = 0;
+		if (x >= stage.width) x = stage.width-1;
+		if (y < 0) y = 0;
+		if (y >= stage.height) y = stage.height-1;
+
+		handles[active_handle] = [x,y];
+		grid = new_grid();
+		bresenham();
+		refresh();
+	};
+	window.onclick = function (e) {
+		active_handle ^= 1;
+	}
+	refresh();
+};
+</script>
+</head>
+<body>
+<canvas id="stage" width="512" height="512"></canvas>
+</body>
+</html>
