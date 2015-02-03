@@ -6,6 +6,9 @@ body {
 	color: white;
 	font-family: monospace;
 }
+div {
+	float: left;
+}
 </style>
 <script type="text/javascript">
 window.onload = function () {
@@ -52,8 +55,8 @@ window.onload = function () {
 		var dx = x1 - x0;
 		var dy = y1 - y0;
 
-		dbg += "[dx=" + dx + "]";
-		dbg += "[dy=" + dy + "]";
+		dbg += "dx=" + dx + "<br/>";
+		dbg += "dy=" + dy + "<br/>";
 
 		var adx = Math.abs(dx);
 		var ady = Math.abs(dy);
@@ -71,22 +74,26 @@ window.onload = function () {
 		var fy = y0 & mask;
 		if (dx >= 0) {
 			fx = mask-fx;
-			dbg += "[fx-]";
+			dbg += "-fx=";
 		} else {
-			dbg += "[fx+]";
+			dbg += "+fx=";
 		}
+		dbg += fx + "<br/>";
+
 		if (dy >= 0) {
 			fy = mask-fy;
-			dbg += "[fy-]";
+			dbg += "-fy=";
 		} else {
-			dbg += "[fy+]";
+			dbg += "+fy=";
 		}
+		dbg += fy + "<br/>";
 
 		var mid = 1 << (size_exp-1);
 
 		if (adx > ady) {
-			dbg += "[adx>ady]";
+			dbg += "adx&gt;ady<br/>";
 			var d = (mid + fx)*ady - fy*adx;
+			dbg += "d=" + d + "<br/>";
 			var e1 = (ady - adx) << size_exp;
 			var e0 = ady << size_exp;
 			while (x != (x1 >> size_exp)) {
@@ -100,8 +107,9 @@ window.onload = function () {
 				plot(x,y,1);
 			}
 		} else {
-			dbg += "[adx<=ady]";
+			dbg += "adx&lt;=ady<br/>";
 			var d = (mid + fy)*adx - fx*ady;
+			dbg += "d=" + d + "<br/>";
 			var e1 = (adx - ady) << size_exp;
 			var e0 = adx << size_exp;
 			while (y != (y1 >> size_exp)) {
