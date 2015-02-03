@@ -3,6 +3,8 @@
 <style type="text/css">
 body {
 	background-color: #012;
+	color: white;
+	font-family: monospace;
 }
 </style>
 <script type="text/javascript">
@@ -31,9 +33,99 @@ window.onload = function () {
 
 	var active_handle = 0;
 
+	var bresenham = function () {
+		var x0 = handles[0][0];
+		var y0 = handles[0][1];
+		var x1 = handles[1][0];
+		var y1 = handles[1][1];
+
+		var plot = function (x, y, v)  {
+			if (x < 0 || y < 0 || x >= n_columns || y >= n_rows) {
+				console.log("crap - plot of out bounds: " + x + ", " + y);
+				return;
+			}
+			grid[y][x] = v;
+		};
+
+		var dbg = "";
+
+		var dx = x1 - x0;
+		var dy = y1 - y0;
+
+		dbg += "[dx=" + dx + "]";
+		dbg += "[dy=" + dy + "]";
+
+		var adx = Math.abs(dx);
+		var ady = Math.abs(dy);
+
+		var xinc = x1 > x0 ? 1 : -1;
+		var yinc = y1 > y0 ? 1 : -1;
+
+		var x = x0 >> size_exp;
+		var y = y0 >> size_exp;
+
+		plot(x,y,2);
+
+		var mask = size-1;
+		var fx = x0 & mask;
+		var fy = y0 & mask;
+		if (dx >= 0) {
+			fx = mask-fx;
+			dbg += "[fx-]";
+		} else {
+			dbg += "[fx+]";
+		}
+		if (dy >= 0) {
+			fy = mask-fy;
+			dbg += "[fy-]";
+		} else {
+			dbg += "[fy+]";
+		}
+
+		var mid = 1 << (size_exp-1);
+
+		if (adx > ady) {
+			dbg += "[adx>ady]";
+			var d = (mid + fx)*ady - fy*adx;
+			var e1 = (ady - adx) << size_exp;
+			var e0 = ady << size_exp;
+			while (x != (x1 >> size_exp)) {
+				if (d > 0) {
+					y += yinc;
+					d += e1;
+				} else {
+					d += e0;
+				}
+				x += xinc;
+				plot(x,y,1);
+			}
+		} else {
+			dbg += "[adx<=ady]";
+			var d = (mid + fy)*adx - fx*ady;
+			var e1 = (adx - ady) << size_exp;
+			var e0 = adx << size_exp;
+			while (y != (y1 >> size_exp)) {
+				if (d > 0) {
+					x += xinc;
+					d += e1;
+				} else {
+					d += e0;
+				}
+				y += yinc;
+				plot(x,y,1);
+			}
+		}
+
+		document.getElementById('dbg').innerHTML = dbg;
+	};
+
+
 	var refresh = function () {
 		ctx.fillStyle = "rgb(0,0,0)";
 		ctx.fillRect(0, 0, stage.width, stage.height);
+
+		grid = new_grid();
+		bresenham();
 
 		for (var y = 0; y < n_rows; y++) {
 			for (var x = 0; x < n_columns; x++) {
@@ -58,73 +150,6 @@ window.onload = function () {
 		ctx.stroke();
 	};
 
-	var bresenham = function () {
-		var x0 = handles[0][0];
-		var y0 = handles[0][1];
-		var x1 = handles[1][0];
-		var y1 = handles[1][1];
-
-		var plot = function (x, y, v)  {
-			if (x < 0 || y < 0 || x >= n_columns || y >= n_rows) {
-				console.log("crap - plot of out bounds: " + x + ", " + y);
-				return;
-			}
-			grid[y][x] = v;
-		};
-
-		var dx = x1 - x0;
-		var dy = y1 - y0;
-
-		var adx = Math.abs(dx);
-		var ady = Math.abs(dy);
-
-		var xinc = x1 > x0 ? 1 : -1;
-		var yinc = y1 > y0 ? 1 : -1;
-
-		var x = x0 >> size_exp;
-		var y = y0 >> size_exp;
-
-		plot(x,y,2);
-
-		var mask = size-1;
-		var fx = x0 & mask;
-		var fy = y0 & mask;
-		if (dx >= 0) fx = mask-fx;
-		if (dy >= 0) fy = mask-fy;
-
-		var mid = 1 << (size_exp-1);
-
-		if (adx > ady) {
-			var d = (mid + fx)*ady - fy*adx;
-			var e1 = (ady - adx) << size_exp;
-			var e0 = ady << size_exp;
-			while (x != (x1 >> size_exp)) {
-				if (d > 0) {
-					y += yinc;
-					d += e1;
-				} else {
-					d += e0;
-				}
-				x += xinc;
-				plot(x,y,1);
-			}
-		} else {
-			var d = (mid + fy)*adx - fx*ady;
-			var e1 = (adx - ady) << size_exp;
-			var e0 = adx << size_exp;
-			while (y != (y1 >> size_exp)) {
-				if (d > 0) {
-					x += xinc;
-					d += e1;
-				} else {
-					d += e0;
-				}
-				y += yinc;
-				plot(x,y,1);
-			}
-		}
-	};
-
 	stage.onmousemove = function (e) {
 		var x = e.clientX - stage.offsetLeft;
 		var y = e.clientY - stage.offsetTop;
@@ -134,18 +159,33 @@ window.onload = function () {
 		if (y >= stage.height) y = stage.height-1;
 
 		handles[active_handle] = [x,y];
-		grid = new_grid();
-		bresenham();
 		refresh();
 	};
 	window.onclick = function (e) {
 		active_handle ^= 1;
-	}
+	};
+	window.onkeypress = function (e) {
+		var c = e.charCode;
+		var op = [["wi",0,-1],["sk",0,1],["aj",-1,0],["dl",1,0]];
+		for (var i = 0; i < 4; i++) {
+			var opi = op[i];
+			for (var j = 0; j < 2; j++) {
+				if (opi[0][j].charCodeAt(0) == c) {
+					handles[j][0] += opi[1];
+					handles[j][1] += opi[2];
+				}
+			}
+		}
+		refresh();
+	};
 	refresh();
 };
 </script>
 </head>
 <body>
+<div>
 <canvas id="stage" width="512" height="512"></canvas>
+</div>
+<div id="dbg">---</div>
 </body>
 </html>
