@@ -62,3 +62,6 @@ export WINEARCH=win32
 source ~/.myenv
 
 export SSH_ASKPASS=
+
+unset -f preexec
+unset -f precmd
