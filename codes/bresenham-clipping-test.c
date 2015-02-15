@@ -48,7 +48,7 @@ static int solve_iteratively_for_y(int x1, int dx, int dy)
 static int solve_algebraically_for_y(int x1, int dx, int dy)
 {
 	// source: http://stackoverflow.com/questions/25488264/bresenham-integer-equation-not-just-the-algorithm
-	return ((x1+1) * dy*2 + dx - 1) / (dx*2); // FIXME off by positive 1 in 50% of cases
+	return (x1 * dy*2 + dx - 1) / (dx*2);
 }
 
 
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
 			int y1_it = solve_iteratively_for_y(x1, dx, dy);
 			int y1_al = solve_algebraically_for_y(x1, dx, dy);
 			if (y1_it == y1_al) correct++;
-			//paranoid_verify(x1, y1_al, dx, dy);
+			paranoid_verify(x1, y1_al, dx, dy);
 		}
 		printf("solve for x: %d/%d\n", correct, N);
 	}
