@@ -1,0 +1,11 @@
+#!/bin/sh
+if [ -z "$1" ] ; then
+	echo "usage: $0 <php function>"
+	exit 1
+fi
+baseurl="http://php.net/$1"
+location=$(curl -sv $baseurl 2>&1 | perl -ne '/^< Location: ([^ \r\n]+)/ && print "$1";')
+if [ -z "$location" ] ; then
+	location="$baseurl"
+fi
+w3m "$location#refsect1-function.$( echo "$1" | tr _ -)-description"
