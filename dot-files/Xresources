@@ -3,9 +3,9 @@ XTerm*saveLines:        3000
 XTerm*foreground: rgb:ef/ef/ef
 !XTerm*background: rgb:09/09/1f
 XTerm*background: rgb:00/08/10
-XTerm*color4: rgb:08/40/ff
+XTerm*color4: rgb:28/68/ff
 XTerm*color6: rgb:00/e0/e0
-XTerm*color12: rgb:10/60/ff
+XTerm*color12: rgb:50/a0/ff
 XTerm*color14: rgb:40/e0/e0
 !XTerm*background: rgb:0c/23/2a
 !XTerm*foreground: rg:fc/ef/db
