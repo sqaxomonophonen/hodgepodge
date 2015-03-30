@@ -2,3 +2,4 @@ nethack on
 caption always "%{yk}%c %{rk}%d %M %Y %{bk}%l %{gk}%w"
 startup_message off
 defscrollback 100000
+msgminwait 0
