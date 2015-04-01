@@ -55,7 +55,7 @@ export SANDBOX_HOME="${HOME}/tmp/mysql-sandboxes"
 export PERL5LIB=$HOME/usr/local/lib/perl5/site_perl/5.18.1
 
 function TT { sleep $1 || return ; while true ; do echo -ne "\rteatime!\a" ; sleep 1 ; done }
-alias redshift="redshift -l 55.3935:10.3641 -r"
+alias redshift="redshift -l 55.3935:10.3641 -r -b 1:0.75 -t 5500:2700"
 
 export WINEARCH=win32
 
