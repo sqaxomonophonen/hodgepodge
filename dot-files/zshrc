@@ -62,3 +62,5 @@ export WINEARCH=win32
 source ~/.myenv
 
 export SSH_ASKPASS=
+
+bindkey -e
