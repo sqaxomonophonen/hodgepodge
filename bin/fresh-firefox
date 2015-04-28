@@ -1,0 +1,6 @@
+#!/bin/sh
+UUID=$(uuidgen)
+PROFILE=$HOME/tmp/fresh-firefox/$UUID
+mkdir $PROFILE
+firefox --profile $PROFILE --new-instance
+echo "you can now wipe out $PROFILE"
