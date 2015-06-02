@@ -5,6 +5,8 @@ set ai
 set ruler
 set hlsearch
 
+autocmd BufNewFile,BufRead * setlocal formatoptions-=r formatoptions-=c formatoptions-=o 
+
 highlight CursorLine cterm=NONE
 
 " highlight trailing whitespace
