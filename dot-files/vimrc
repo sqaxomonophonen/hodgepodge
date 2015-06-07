@@ -29,6 +29,14 @@ endfunction
 
 
 
+" insert <file>:<line> into yank buffer - Bp for bufferposition or breakpoint :)
+command! Bp call BufferPosition()
+function! BufferPosition()
+	let @" = @% . ":" . line('.')
+endfunction
+
+
+
 " holy war follows
 command! Ts call SwitchToTabIsSpaces()
 function! SwitchToTabIsSpaces()
