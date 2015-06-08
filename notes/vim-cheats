@@ -1,5 +1,11 @@
 :help filename-modifiers
-:w !diff -u % -
-ctrl-o / ctrl-i (:h jumplist)
+:w !diff -u % - (show unsaved changes as a diff)
 g] go to ctags location
 ctrl+t go back from a g] jump
+:map <leader>k :silent !pman <cword><cr>
+`" go to where I last exited that buffer
+`` go back to where jumped from
+ctrl-o / ctrl-i (:h jumplist)
+`[ and `] go to start/end of changed/yanked text
+`< and `> go to start/end of visual selection (even if "cancelled")
+gv re-select last visual selection (even if "cancelled")
