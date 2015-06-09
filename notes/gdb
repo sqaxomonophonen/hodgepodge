@@ -1,3 +1,7 @@
+$ pinfo gdb
+
+help $CMD
+
 l [$N]	list source (from line $N)
 l -	list previous 10 lines
 l $FN	list function $FN
@@ -20,10 +24,32 @@ p $S	print value of symbol $S
 pt $S	print type of symbol $S
 	(above works with C syntax, like `p &foo`, `p sizeof(foo)`, `p
 	xs[x+1]`, `p foo.bar`, etc.. p/pt even works well on structs)
-set	set variable, e.g. set foo=42
+printf "%d %d", i, j
+	print formatted
+dprintf $WHERE,$FMT,%X,...
+	like printf combined with a breakpoint, e.g.:
+	 $ dprintf foo.c:100,"i is %d\n",i
+	this will print i everytime execution reaches foo.c:100
+disp(lay) [$S]
+	like "p $S" but adds it to the "display list" which is executed every
+	time the program stops (like after every step, or breakpoint)
+und(isplay) $N
+	remove from display list (type disp to see the numbers)
+exp(lore)
+	explore variable or expression. especially useful with deep structures
+	which you can navigate interactively.
+set var	set variable, e.g. set var foo=42
 	(set is kind of redundant because of how powerful p is; try `p foo=42`)
 k	kill program
 i b	breakpoint info (list them)
+comm(ands)
+	enter commands to be executed when stopping at most recently defined
+	breakpoint, print values and so on. end list of commands using "end"
+def(ine) $CMD
+	defines a new command. like `commands` you enter a list of commands and
+	end with `end`. e.g. try `def pq` and enter some print commands. now
+	that list will be executed when you type `pq`.
+pi	python interactive
 
 set listsize $N		change number of lines listed by l (default: 10)
 set print pretty	prettier struct printing
@@ -37,3 +63,21 @@ find /w 0x400000,0x401000,0x12345678 (search memory for sequence 0x12345678 in m
 
 gdb -tui	UI mode
 ctrl+x o 	swap focus in UI mode (so cmd history can be used)
+
+
+
+NOTES
+
+gdb expressions may include function calls (functions in your C code), e.g. "b
+foo.c:100 if foo(j)==bar(k)" is a perfectly valid breakpoint.
+
+gdb understands C macros; if you `#define FOO(n) (n*666)` then you can
+`p FOO(77)` in gdb
+
+gdb can be extended in python; see /usr/share/gdb/python/gdb(/command); also
+see pinfo gdb, "Extending GDB", "Python"
+
+gdb can speak various "protocols", e.g. "gdb --interpretter mi2" which is
+useful for integration with other programs. see pinfo gdb, "Interpretters"
+and/or "GDB/MI".
+
