@@ -1,0 +1,5 @@
+capture gif of area on screen
+$ ffmpeg -video_size 111x53 -framerate 25 -f x11grab -i :0.0+3452,336 output.gif
+
+clip gif, starting at 6 seconds and 2 seconds forth
+$ ffmpeg -i output.gif -ss 6 -t 2 o2.gif
