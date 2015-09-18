@@ -1,0 +1,8 @@
+enable persistent connections:
+/etc/ssh/ssh_config:
+ControlMaster auto
+ControlPath ~/.ssh/%r@%h:%p
+ControlPersist 1h
+
+kill persistent connection:
+$ ssh -O exit root@guevara
