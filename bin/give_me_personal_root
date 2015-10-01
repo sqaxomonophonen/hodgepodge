@@ -1,0 +1,51 @@
+#!/bin/sh
+if [ -z "$1" ] ; then
+	echo "usage: $0 <host>" > /dev/stderr
+fi
+
+host="$1"
+
+pwdb=$(ssh root@$host getent passwd $(whoami))
+if [ "$?" = "0" ] ; then
+	echo -n "seems you're already a user there ($pwdb) ... "
+	if echo $pwdb | grep -F ':0:0:' > /dev/null ; then
+		echo "and you're already root"
+	else
+		echo "but you are not root; fix it yourself"
+	fi
+	exit 1
+fi
+
+pubkey=~/.ssh/id_rsa.pub
+
+if [ ! -f $pubkey ] ; then
+	echo "public ssh key not found at $pubkey ... bailing"
+	exit 1
+fi
+
+no() {
+	while true ; do
+		echo "$1 [y/N]"
+		read Q
+		if [ -z "$Q" -o "$Q" = "n" -o "$Q" = "N" ] ; then
+			return 0
+		elif [ "$Q" = "y" -o "$Q" = "Y" ] ; then
+			return 1
+		else
+			echo "answer y or n"
+		fi
+	done
+}
+
+cmd="useradd -ou 0 -g 0 $(whoami)"
+
+akeys_dir="/home/$(whoami)/.ssh"
+akeys="$akeys_dir/authorized_keys"
+if no "execute \`$cmd\` remotely and put your ssh public key in $akeys?" ; then exit 1 ; fi
+
+ssh root@$host $cmd
+ssh root@$host mkdir -p $akeys_dir
+ssh root@$host chmod 700 $akeys_dir
+scp $pubkey root@$host:$akeys
+
+ssh $host echo "yay, it works. try it yourself: $ ssh $host date"
