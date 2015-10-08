@@ -9,3 +9,7 @@ ctrl-o / ctrl-i (:h jumplist)
 `[ and `] go to start/end of changed/yanked text
 `< and `> go to start/end of visual selection (even if "cancelled")
 gv re-select last visual selection (even if "cancelled")
+:help I_ or :help ins-completion
+ctrl+x ctrl+f -- path autocomplete
+ctrl+x ctrl+l -- line completion
+; and , repeats last f (or similar) in same and opposite direction respectively
