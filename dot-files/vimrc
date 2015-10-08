@@ -5,6 +5,9 @@ set ai
 set ruler
 set hlsearch
 
+set modelines=0
+set nomodeline
+
 autocmd BufNewFile,BufRead * setlocal formatoptions-=r formatoptions-=c formatoptions-=o 
 
 highlight CursorLine cterm=NONE
