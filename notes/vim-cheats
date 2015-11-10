@@ -13,3 +13,7 @@ gv re-select last visual selection (even if "cancelled")
 ctrl+x ctrl+f -- path autocomplete
 ctrl+x ctrl+l -- line completion
 ; and , repeats last f (or similar) in same and opposite direction respectively
+
+; perhaps you want a cursorline sometimes?
+:set cursorline
+:hi CursorLine ctermbg=darkred
