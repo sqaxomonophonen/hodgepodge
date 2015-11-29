@@ -3,7 +3,6 @@ export LC_ALL=en_US.utf8
 
 source ~/.termcolors
 
-#prompt="%1(j.$MAGENTA(%j) .)$BRIGHT$YELLOW%T $NORMAL%n@%m:$YELLOW%30<..<%~/$NORMAL > "
 prompt="%1(j.$MAGENTA(%j) .)$BRIGHT$BLUE%T $NORMAL%n@%m:$BLUE%30<..<%~/$NORMAL > "
 
 unset RPROMPT
@@ -13,37 +12,15 @@ HISTFILE=~/.histfile
 HISTSIZE=1000
 SAVEHIST=5000
 
-# End of lines configured by zsh-newuser-install
-# The following lines were added by compinstall
-zstyle -e ':completion:*:ssh:*' hosts 'reply=($(sed -e "/^#/d" -e "s/ .*\$//" -e "s/,/ /g" /etc/ssh_known_hosts ~/.ssh/known_hosts ~/.ssh/known_hosts2 2>/dev/null))'
-
-setopt auto_pushd
-setopt nopromptcr
-setopt nocorrect
-setopt nocorrectall
-setopt print_exit_value
-unsetopt bg_nice
-unsetopt hup
+autoload -U compinit
+compinit
 
 alias rm="rm -v"
 alias ls="ls --color"
 
-# End of lines added by compinstall
-
-autoload -U history-search-end
-zle -N history-beginning-search-backward-end history-search-end
-zle -N history-beginning-search-forward-end history-search-end
-bindkey "^[[A" history-beginning-search-backward-end
-bindkey "^[[B" history-beginning-search-forward-end
+setopt print_exit_value
 
 export WORDCHARS=${WORDCHARS:s#/#}
-
-autoload -U compinit
-compinit
-
-autoload edit-command-line
-zle -N edit-command-line
-bindkey "^[e" edit-command-line
 
 export CFLAGS="${CPPFLAGS} -I${HOME}/usr/include"
 export CPPFLAGS="${CPPFLAGS} -I${HOME}/usr/include"
@@ -55,7 +32,6 @@ export SANDBOX_HOME="${HOME}/tmp/mysql-sandboxes"
 export PERL5LIB=$HOME/usr/local/lib/perl5/site_perl/5.18.1
 
 function TT { sleep $1 || return ; while true ; do echo -ne "\rteatime!\a" ; sleep 1 ; done }
-alias redshift="redshift -l 55.3935:10.3641 -r -b 1:0.75 -t 5500:2700"
 
 export WINEARCH=win32
 
@@ -64,3 +40,4 @@ source ~/.myenv
 export SSH_ASKPASS=
 
 bindkey -e
+
