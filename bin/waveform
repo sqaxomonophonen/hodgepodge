@@ -1,36 +1,12 @@
 #!/bin/bash
-
+set -e -x -v
 if [ -z "$2" ] ; then
-	echo "usage: $0 <audio file> <png output> [width:5000] [height:500]"
+	echo "usage: $0 <audio file> <png output>"
 	exit 1
 fi
-
-width=5000
-height=500
-
-if [ -n "$3" ] ; then
-	width=$3
-fi
-
-if [ -n "$4" ] ; then
-	height=$4
-fi
-
-gp() {
-gnuplot <<EOF
-set terminal png size $width,$height;
-set output '$2';
-
-unset key;
-unset tics;
-unset border;
-set lmargin 0;
-set rmargin 0;
-set tmargin 0;
-set bmargin 0;
-
-plot '$1' binary filetype=bin format='%int16' endian=little array=1:0 with lines;
-EOF
-}
-
-gp <(ffmpeg -i "$1" -ac 1 -filter:a aresample=8000 -map 0:a -c:a pcm_s16le -f data -) "$2" $width $height
+upsampling=32
+width=1024
+upwidth=$(($width * $upsampling))
+height=128
+/usr/bin/ffmpeg -i "$1" -ac 1 -filter:a aresample=8000 -map 0:a -c:a pcm_s16le -f data - | /usr/bin/gnuplot -e "set terminal png size ${upwidth},${height}; set output '$2'; unset key; unset tics; unset border; set lmargin 0; set rmargin 0; set tmargin 0; set bmargin 0; plot '<cat' binary filetype=bin format='%int16' endian=little array=1:0 with lines lc rgb 'black';"
+/usr/bin/gm mogrify -resize ${width}x${height}\! $2
