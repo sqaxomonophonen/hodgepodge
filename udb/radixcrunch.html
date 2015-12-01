@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+
+<style>
+textarea {
+	width:800px;
+	height:100px;
+	margin:10px 0
+}
+</style>
+
+<script>
+window.onload = function () {
+	var refresh = function() {
+		var process = function (input) {
+			var result = {};
+
+			// get char codes
+			var codes = [];
+			for (var i in input) codes.push(input.charCodeAt(i));
+			result.codes = codes = codes.sort(function (a,b) { return a-b; });
+
+			// convert array to set
+			var set = [];
+			var prev = null;
+			for (var i in codes) {
+				if (codes[i] !== prev) {
+					set.push(codes[i]);
+					prev = codes[i];
+				}
+			}
+			result.set = set;
+			result.radix = set.length;
+
+			// reverse map
+			var map = {};
+			for (var i in set) map[set[i]] = i;
+			result.map = map;
+
+			// digits
+			var digits = [];
+			for (var i in input) digits.push(parseInt(map[input.charCodeAt(i)]));
+			result.digits = digits;
+
+			// convert set to range pairs
+			var ranges = []
+			var pair = [null, null];
+			for (var i in set) {
+				var x = set[i];
+				if (pair[0] === null) {
+					pair[0] = pair[1] = x;
+				} else if(x === pair[1]+1) {
+					pair[1] = x;
+				} else {
+					ranges.push(pair);
+					pair = [x,x];
+				}
+			}
+			ranges.push(pair);
+			result.ranges = ranges;
+
+			// compressed ranges (XXX subject to change?)
+			var rngsqsh = [];
+			var idx = 0;
+			for (var i in ranges) {
+				var a = ranges[i][0];
+				var b = ranges[i][1];
+				rngsqsh.push(a - idx);
+				var d = b-a;
+				rngsqsh.push(d);
+				idx = a+d;
+			}
+			result.rngsqsh = rngsqsh;
+
+			return result;
+		};
+
+		var stats = function (d) {
+			return "<ul>"
+				+ "<li>radix: " + d.radix
+				+ "<li>" + d.ranges.length + " range(s): " + JSON.stringify(d.ranges)
+				+ "<li>rngsqsh: " + JSON.stringify(d.rngsqsh)
+				+ "</ul>";
+		};
+
+		var input_text = document.getElementById("input").value;
+		var input = process(input_text);
+		document.getElementById('input_stats').innerHTML = stats(input);
+
+		var output_alphabet_text = document.getElementById("output_alphabet").value;
+		var output_alphabet = process(output_alphabet_text);
+		document.getElementById('output_alphabet_stats').innerHTML = stats(output_alphabet );
+
+		if (input.radix < 2) {
+			document.getElementById('output').innerText = "not enough input! (paste some js above)";
+			return;
+		}
+
+		var radix_convert = function (input_digits, input_radix, output_radix) {
+			var divisor_digits = [];
+			var n = output_radix;
+			while (n > 0) {
+				divisor_digits.unshift(n % input_radix);
+				n = Math.floor(n / input_radix);
+			}
+
+			var output_digits = [];
+
+			var digits = input_digits.slice();
+
+			// returns a-b for multi-digit values, null if negative
+			var mmsub = function (a,b) {
+				a = a.slice().reverse();
+				b = b.slice().reverse();
+				var result = [];
+				var borrow = 0;
+				for (var i = 0; i < a.length; i++) {
+					var ax = (a[i]||0) - borrow;
+					if (ax < 0) {
+						ax = input_radix + ax;
+					} else {
+						borrow = 0;
+					}
+					var s = ax - (b[i]||0);
+					if (s < 0) {
+						s = input_radix + s;
+						borrow = 1;
+					}
+					result.unshift(s);
+				}
+				return borrow ? null : result;
+			}
+
+			// returns a>b for multi-digit values
+			var mmgt = function (a,b) {
+				return mmsub(b,a) === null;
+			}
+
+			// returns a*b, a being multi-digit, b being a number
+			var msmul = function (a,b) {
+				a = a.slice().reverse();
+				var result = [];
+				var remainder = 0;
+				for (var i = 0; i < a.length; i++) {
+					var s = a[i] * b + remainder;
+					result.unshift(s % input_radix);
+					remainder += Math.floor(s / input_radix);
+				}
+				if (remainder > 0) result.unshift(remainder);
+				return result;
+			}
+
+			while (mmgt(digits,[0])) {
+				// perform long division
+				var quotient = [];
+				var remainder = [];
+				for (var i in digits) {
+					remainder.push(digits[i]);
+					var product = [0];
+					for (var j = 1; j <= input_radix; j++) {
+						var tmp_product = msmul(divisor_digits, j);
+						if (mmgt(tmp_product, remainder)) {
+							quotient.push(j-1);
+							break;
+						}
+						product = tmp_product;
+					}
+					remainder = mmsub(remainder, product);
+				}
+
+				// convert remainder into output_radix
+				var output_digit = 0;
+				/*remainder =*/ remainder.reverse();
+				var s = 1;
+				for (var i in remainder) {
+					output_digit += remainder[i] * s;
+					s *= input_radix;
+				}
+				output_digits.unshift(output_digit);
+
+				// repeat
+				digits = quotient;
+			}
+
+			return output_digits;
+		};
+
+		var output_digits = radix_convert(input.digits, input.radix, output_alphabet.radix);
+		console.log(output_digits);
+
+
+		document.getElementById('output').innerText = "todo";
+	}
+
+	document.getElementById("output_alphabet").onkeyup = refresh;
+	document.getElementById("input").onkeyup = refresh;
+	refresh();
+}
+</script>
+
+</head>
+
+<body>
+
+<h1>radix crunch</h1>
+
+<textarea id="output_alphabet" placeholder="paste your output alphabet here">!#$&amp;'()*+,-./0123456789:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz[]|~ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſƀƁƂƃƄƅƆƇƈƉƊƋƌƍƎƏƐƑƒƓƔƕƖƗƘƙƚƛƜƝƞƟƠơƢƣƤƥƦƧƨƩƪƫƬƭƮƯưƱƲƳƴƵƶƷƸƹƺƻƼƽƾƿǀǁǂǃǄǅǆǇǈǉǊǋǌǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜǝǞǟǠǡǢǣǤǥǦǧǨǩǪǫǬǭǮǯǰǱǲǳǴǵǶǷǸǹǺǻǼǽǾǿȀȁȂȃȄȅȆȇȈȉȊȋȌȍȎȏȐȑȒȓȔȕȖȗȘșȚțȜȝȞȟȠȡȢȣȤȥȦȧȨȩȪȫȬȭȮȯȰȱȲȳȴȵȶȷȸȹȺȻȼȽȾȿɀɁɂɃɄɅɆɇɈɉɊɋɌɍɎɏ</textarea>
+<br>
+<span id="output_alphabet_stats"></span>
+<br><br>
+
+<textarea id="input" placeholder="paste your input JavaScript here"></textarea>
+<br>
+<span id="input_stats"></span>
+<br><br>
+
+<pre id="output"></pre>
+
+</body>
+
+</html>
