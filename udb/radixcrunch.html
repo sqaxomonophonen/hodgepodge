@@ -197,9 +197,9 @@ window.onload = function () {
 
 		report += "input length: " + input_text.length + "\n";
 		report += "encoded length: " + encoded.length + "\n";
-		report += "cruncher overhead (init data): " + packed.jsinit.length + "\n";
-		report += "cruncher overhead (code only): " + packed.js.length + "\n";
-		report += "cruncher overhead (combined):  " + (packed.jsinit+packed.js).length + "\n";
+		report += "decruncher overhead (init data): " + packed.jsinit.length + "\n";
+		report += "decruncher overhead (code only): " + packed.js.length + "\n";
+		report += "decruncher overhead (combined):  " + (packed.jsinit+packed.js).length + "\n";
 		report += "combined length: " + packed.combined.length + "\n";
 		report += "combined length / input length: " + (packed.combined.length / input_text.length).toFixed(3) + "\n";
 		report += "executable blob:\n";
