@@ -68,7 +68,7 @@ window.onload = function () {
 				var a = ranges[i][0];
 				var b = ranges[i][1];
 				rngsqsh.push(a - idx);
-				var d = b-a;
+				var d = b-a+1;
 				rngsqsh.push(d);
 				idx = a+d;
 			}
@@ -98,100 +98,76 @@ window.onload = function () {
 			return;
 		}
 
-		var radix_convert = function (input_digits, input_radix, output_radix) {
-			var divisor_digits = [];
-			var n = output_radix;
-			while (n > 0) {
-				divisor_digits.unshift(n % input_radix);
-				n = Math.floor(n / input_radix);
-			}
-
-			var output_digits = [];
-
-			var digits = input_digits.slice();
-
-			// returns a-b for multi-digit values, null if negative
-			var mmsub = function (a,b) {
-				a = a.slice().reverse();
-				b = b.slice().reverse();
-				var result = [];
-				var borrow = 0;
-				for (var i = 0; i < a.length; i++) {
-					var ax = (a[i]||0) - borrow;
-					if (ax < 0) {
-						ax = input_radix + ax;
-					} else {
-						borrow = 0;
-					}
-					var s = ax - (b[i]||0);
-					if (s < 0) {
-						s = input_radix + s;
-						borrow = 1;
-					}
-					result.unshift(s);
-				}
-				return borrow ? null : result;
-			}
-
-			// returns a>b for multi-digit values
-			var mmgt = function (a,b) {
-				return mmsub(b,a) === null;
-			}
-
-			// returns a*b, a being multi-digit, b being a number
-			var msmul = function (a,b) {
-				a = a.slice().reverse();
-				var result = [];
+		var radix_convert = function (input, input_base, output_base) {
+			var result = [];
+			while (input.length) {
+				var dividend = [];
 				var remainder = 0;
-				for (var i = 0; i < a.length; i++) {
-					var s = a[i] * b + remainder;
-					result.unshift(s % input_radix);
-					remainder += Math.floor(s / input_radix);
+				for (var i in input) {
+					var d = input[i];
+					var x = d + remainder * input_base;
+					var e = Math.floor(x / output_base);
+					remainder = x % output_base;
+					if (dividend.length || e) dividend.push(e);
 				}
-				if (remainder > 0) result.unshift(remainder);
-				return result;
+				input = dividend;
+				result.unshift(remainder);
 			}
-
-			while (mmgt(digits,[0])) {
-				// perform long division
-				var quotient = [];
-				var remainder = [];
-				for (var i in digits) {
-					remainder.push(digits[i]);
-					var product = [0];
-					for (var j = 1; j <= input_radix; j++) {
-						var tmp_product = msmul(divisor_digits, j);
-						if (mmgt(tmp_product, remainder)) {
-							quotient.push(j-1);
-							break;
-						}
-						product = tmp_product;
-					}
-					remainder = mmsub(remainder, product);
-				}
-
-				// convert remainder into output_radix
-				var output_digit = 0;
-				/*remainder =*/ remainder.reverse();
-				var s = 1;
-				for (var i in remainder) {
-					output_digit += remainder[i] * s;
-					s *= input_radix;
-				}
-				output_digits.unshift(output_digit);
-
-				// repeat
-				digits = quotient;
-			}
-
-			return output_digits;
+			return result;
 		};
 
 		var output_digits = radix_convert(input.digits, input.radix, output_alphabet.radix);
-		console.log(output_digits);
+		var padding = input.digits.length - radix_convert(output_digits, output_alphabet.radix, input.radix).length;
 
+		/*
+		  if c2d is true:  character code (x) to digit conversion
+		  if c2d is false: digit (x) to character code conversion
+		*/
+		var rngsqsh_coder = function (x, rngsqsh, c2d) {
+			var doffset = 0;
+			var coffset = 0;
+			for (var i in rngsqsh) {
+				var v = rngsqsh[i];
+				coffset += v;
+				if (i&1) {
+					doffset += v;
+					if (c2d && x < coffset) {
+						return doffset - v + (x - (coffset - v));
+					}
 
-		document.getElementById('output').innerText = "todo";
+					if (!c2d && x < doffset) {
+						return coffset - v + (x - (doffset - v));
+					}
+				}
+			}
+		};
+
+		var d2c = function (d, rngsqsh) { return rngsqsh_coder(d, rngsqsh, 0); };
+		var c2d = function (c, rngsqsh) { return rngsqsh_coder(c, rngsqsh, 1); };
+
+		var report = "";
+		report += "padding = " + padding + "\n";
+
+		var encoded = "";
+		for (var i in output_digits) encoded += String.fromCharCode(d2c(output_digits[i], output_alphabet.rngsqsh));
+		report += "encoded = " + JSON.stringify(encoded) + "\n";
+
+		var decruncher = function (encoded, encoded_base, encoder_rngsqsh, decoded_base, decoder_rngsqsh, padding) {
+			var encoded_digits = [];
+			for (var i in encoded) encoded_digits.push(c2d(encoded.charCodeAt(i), encoder_rngsqsh));
+			var decoded_digits = radix_convert(encoded_digits, encoded_base, decoded_base);
+			for (var i = 0; i < padding; i++) decoded_digits.unshift(0);
+			var output = "";
+			for (var i in decoded_digits) output += String.fromCharCode(d2c(decoded_digits[i], decoder_rngsqsh));
+			return output;
+		};
+		var verification = decruncher(encoded, output_alphabet.radix, output_alphabet.rngsqsh, input.radix, input.rngsqsh, padding);
+		report += "verification: " + verification + "\n";
+		report += "verification successful: " + (verification == input_text) + "\n";
+
+		report += "\n";
+
+		document.getElementById('output').innerText = report;
 	}
 
 	document.getElementById("output_alphabet").onkeyup = refresh;
