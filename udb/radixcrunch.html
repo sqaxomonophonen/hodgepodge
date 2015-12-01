@@ -177,7 +177,13 @@ window.onload = function () {
 
 			var js = "";
 			js += 'l=function(A,B,F){C=D=0;for(E in B){G=B[E];D=D+G;if(E&1){C=C+G;H=[D,C];G=H[F^1];H=H[F];if(A<G)return H+A-G}}};e=[];for(a in b)e[a]=l(b.charCodeAt(a),d,1);for(b=[];e.length;){d=[];f=0;for(a in e){f=e[a]+f*c,m=Math.floor(f/k),f=f%k;(d.length||m)&&d.push(m)}e=d;b.unshift(f)}';
-			if (padding) js += 'for(a=0;' + padding + '>a;a++)b.unshift(0);';
+
+			/* handle padding special cases */
+			if      (padding == 1) js += 'b.unshift(0);';
+			else if (padding == 2) js += 'b.unshift(0);b.unshift(0);';
+			else if (padding == 3) js += 'b.unshift(0);b.unshift(0);b.unshift(0);';
+			else if (padding > 3)  js += 'for(a=0;' + padding + '>a;a++)b.unshift(0);';
+
 			js += 'c="";for(a in b)c+=String.fromCharCode(l(b[a],n,0));eval(c)';
 
 			return {
