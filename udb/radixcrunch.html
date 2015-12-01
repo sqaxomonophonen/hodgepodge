@@ -132,13 +132,10 @@ window.onload = function () {
 				coffset += v;
 				if (i&1) {
 					doffset += v;
-					if (c2d && x < coffset) {
-						return doffset - v + (x - (coffset - v));
-					}
-
-					if (!c2d && x < doffset) {
-						return coffset - v + (x - (doffset - v));
-					}
+					var os = [coffset,doffset];
+					var o0 = os[c2d^1];
+					var o1 = os[c2d];
+					if (x < o0) return o1 + x - o0;
 				}
 			}
 		};
@@ -167,6 +164,40 @@ window.onload = function () {
 		report += "verification successful: " + (verification == input_text) + "\n";
 
 		report += "\n";
+
+
+		var pack = function (encoded, encoded_base, encoder_rngsqsh, decoded_base, decoder_rngsqsh, padding) {
+			var data = "b=" + JSON.stringify(encoded) + ";";
+
+			var jsinit = "";
+			jsinit += "c=" + encoded_base + ";";
+			jsinit += "d=" + JSON.stringify(encoder_rngsqsh) + ";";
+			jsinit += "k=" + decoded_base + ";";
+			jsinit += "n=" + JSON.stringify(decoder_rngsqsh) + ";";
+
+			var js = "";
+			js += 'l=function(A,B,F){C=D=0;for(E in B){G=B[E];D=D+G;if(E&1){C=C+G;H=[D,C];G=H[F^1];H=H[F];if(A<G)return H+A-G}}};e=[];for(a in b)e[a]=l(b.charCodeAt(a),d,1);for(b=[];e.length;){d=[];f=0;for(a in e){f=e[a]+f*c,m=Math.floor(f/k),f=f%k;(d.length||m)&&d.push(m)}e=d;b.unshift(f)}';
+			if (padding) js += 'for(a=0;' + padding + '>a;a++)b.unshift(0);';
+			js += 'c="";for(a in b)c+=String.fromCharCode(l(b[a],n,0));eval(c)';
+
+			return {
+				"jsinit": jsinit,
+				"js": js,
+				"combined": (data+jsinit+js)
+			};
+		};
+
+		var packed = pack(encoded, output_alphabet.radix, output_alphabet.rngsqsh, input.radix, input.rngsqsh, padding);
+
+		report += "input length: " + input_text.length + "\n";
+		report += "encoded length: " + encoded.length + "\n";
+		report += "cruncher overhead (init data): " + packed.jsinit.length + "\n";
+		report += "cruncher overhead (code only): " + packed.js.length + "\n";
+		report += "cruncher overhead (combined):  " + (packed.jsinit+packed.js).length + "\n";
+		report += "combined length: " + packed.combined.length + "\n";
+		report += "combined length / input length: " + (packed.combined.length / input_text.length).toFixed(3) + "\n";
+		report += "executable blob:\n";
+		report += packed.combined;
 
 		document.getElementById('output').innerText = report;
 	}
