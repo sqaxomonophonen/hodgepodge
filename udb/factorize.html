@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<script>
+window.onload = function () {
+	document.getElementById("input").onkeyup = function () {
+		var value = parseInt(input.value);
+		var factors = [];
+		for (var i = 1; i < (value-1); i++) if ((value%i) === 0) factors.push(i);
+		document.getElementById("output").textContent = JSON.stringify(factors);
+	};
+};
+</script>
+</head>
+<body>
+integer: <input id="input"> - factors: <span id="output"></span>
+</body>
+</html>
