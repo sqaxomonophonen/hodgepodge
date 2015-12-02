@@ -205,7 +205,7 @@ window.onload = function () {
 		report += "executable blob:\n";
 		report += packed.combined;
 
-		document.getElementById('output').innerText = report;
+		document.getElementById('output').textContent = report;
 	}
 
 	document.getElementById("output_alphabet").onkeyup = refresh;
