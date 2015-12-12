@@ -81,3 +81,6 @@ gdb can speak various "protocols", e.g. "gdb --interpretter mi2" which is
 useful for integration with other programs. see pinfo gdb, "Interpretters"
 and/or "GDB/MI".
 
+you can use INT 3 as an alternative to breakpoints:
+  asm("int $3");
+(this requires gnu extensions to compile; -std=gnu99 for c99)
