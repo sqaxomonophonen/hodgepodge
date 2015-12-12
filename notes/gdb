@@ -96,5 +96,12 @@ if you wish to disable an inlined breakpoint, observe that:
   (gdb) set *(char*)($pc-1)=0x90
 to replace INT 3 with NOP
 
-you can use the disas(semble) command to verify it's correct
+you can also:
+  (gdb) set $B0=($pc-1)
+to store the position if you want to enable it again later:
+  (gdb) set *(char*)$B0=0x90
+  (gdb) set *(char*)$B0=0xcc
+
+you can use the disas(semble) command to verify it's correct, and also to grab
+the address if you want to manipulate a nearby breakpoint
 
