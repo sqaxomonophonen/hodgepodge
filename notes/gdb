@@ -81,6 +81,20 @@ gdb can speak various "protocols", e.g. "gdb --interpretter mi2" which is
 useful for integration with other programs. see pinfo gdb, "Interpretters"
 and/or "GDB/MI".
 
+
+
+INT 3
+
 you can use INT 3 as an alternative to breakpoints:
   asm("int $3");
 (this requires gnu extensions to compile; -std=gnu99 for c99)
+
+if you wish to disable an inlined breakpoint, observe that:
+  (gdb) p/x *(char*)($pc-1)
+  $1 = 0xcc
+0xcc is INT 3, so you can:
+  (gdb) set *(char*)($pc-1)=0x90
+to replace INT 3 with NOP
+
+you can use the disas(semble) command to verify it's correct
+
