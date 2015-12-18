@@ -20,13 +20,13 @@ set backspace=2
 
 
 " xsel integration
-command! -range Xc <line1>,<line2>call XClipCopy()
-function! XClipCopy()
+command! -range Xc <line1>,<line2>call XSelCopy()
+function! XSelCopy()
 	echo system("xsel -ib", join(getline(a:firstline, a:lastline),"\n"))
 endfunction
 
-command! Xp call XClipPaste()
-function! XClipPaste()
+command! Xp call XSelPaste()
+function! XSelPaste()
 	r!xsel -b
 endfunction
 
