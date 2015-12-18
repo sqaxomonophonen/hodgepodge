@@ -19,15 +19,15 @@ autocmd BufRead,BufNew * match WhitespaceEOL /\s\+$/
 set backspace=2
 
 
-" xclip integration
+" xsel integration
 command! -range Xc <line1>,<line2>call XClipCopy()
 function! XClipCopy()
-	echo system("xclip -i -selection clipboard", join(getline(a:firstline, a:lastline),"\n"))
+	echo system("xsel -ib", join(getline(a:firstline, a:lastline),"\n"))
 endfunction
 
 command! Xp call XClipPaste()
 function! XClipPaste()
-	r!xclip -o -selection clipboard
+	r!xsel -b
 endfunction
 
 
