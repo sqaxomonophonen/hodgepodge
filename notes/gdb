@@ -14,12 +14,17 @@ cl $X	clear breakpoint, same arguments as with b
 d [$N] 	delete all breakpoints, or breakpoint #$N
 bt	backtrace
 	(stack frame #0 is always "current position")
+bt f    backtrace full; backtrace + info locals
 f [$N]	set and/or print frame context
-where	print where we are
+where	print where we are (uhm, same as bt!)
 r	run
 c	continue
 s	step (into)
 n	next ("step over")
+ni/si   next/step assembly instruction
+u(ntil) until next line (a little weird)
+u $L    until location, e.g. "+10"
+return  return from current function now (with argument!)
 p $S	print value of symbol $S
 pt $S	print type of symbol $S
 	(above works with C syntax, like `p &foo`, `p sizeof(foo)`, `p
@@ -42,6 +47,8 @@ set var	set variable, e.g. set var foo=42
 	(set is kind of redundant because of how powerful p is; try `p foo=42`)
 k	kill program
 i b	breakpoint info (list them)
+i lo    i(nfo) lo(cals); print local variables
+i ar    i(nfo) ar(gs); print arguments
 comm(ands)
 	enter commands to be executed when stopping at most recently defined
 	breakpoint, print values and so on. end list of commands using "end"
@@ -61,8 +68,23 @@ info proc mappings (show memory mappings; ranges the process can access, includi
 find /w 0x400000,0x401000,0x12345678 (search memory for sequence 0x12345678 in machine order)
 
 
-gdb -tui	UI mode
-ctrl+x o 	swap focus in UI mode (so cmd history can be used)
+gdb -tui        UI mode
+ctrl+x o        swap focus in UI mode (so cmd history can be used)
+ctrl+x a        enable/disable TUI mode
+ctrl+x s	single key mode
+                c/f/n/r/s: continue/finish/next/run/step
+                u/d: up/down frame
+		q: quit
+		v: info locals
+		w: where?
+		any other key: temporary gdb prompt (press space if conflict)
+la(yout)
+la sr(c)   show source
+la a(sm)   show assembler
+la r(egs)  show asm+regs
+la spl(it) show src+asm
+win SRC +1 increase window height by one
+wh S +1	   same
 
 
 
@@ -105,3 +127,10 @@ to store the position if you want to enable it again later:
 you can use the disas(semble) command to verify it's correct, and also to grab
 the address if you want to manipulate a nearby breakpoint
 
+
+
+"SCRIPTS"
+put this into a file and run in with `gdb -x`:
+file <executable>
+... throw breakpoints here...
+r <args>
