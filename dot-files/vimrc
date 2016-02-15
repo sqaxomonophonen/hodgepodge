@@ -40,6 +40,11 @@ endfunction
 
 
 
+" php pman under cursor
+autocmd BufNewFile,BufRead *.php,*.phtml noremap K :!pman <cword><cr>
+
+
+
 " holy war follows
 command! Ts call SwitchToTabIsSpaces()
 function! SwitchToTabIsSpaces()
