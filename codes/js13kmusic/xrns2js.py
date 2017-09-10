@@ -2,7 +2,6 @@
 import sys
 import os
 import xml.etree.cElementTree as et
-import json
 
 tree = et.fromstring(sys.stdin.read())
 
@@ -50,4 +49,12 @@ for e in sequence:
 		for i in range(nl - last_index - 1):
 			track.append(0)
 
-print "var SONG = %s;" % json.dumps(song)
+def jsondump(v):
+	if isinstance(v, list):
+		return "[%s,]" % ",".join([jsondump(x) for x in v])
+	elif v == 0:
+		return ""
+	else:
+		return str(v)
+print "var SONG = %s;" % jsondump(song)
+
