@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+	background: black;
+	color: white;
+	font-family: monospace;
+}
+</style>
+<script>
+
+const SR=48e3;
+const PI2 = Math.PI*2;
+
+var Phase = function () {
+	var phase = 0;
+	this.sample = function (hz) {
+		phase += (hz / SR) * PI2;
+		phase %= PI2;
+		return phase;
+	};
+};
+
+var Note = function (value, x) {
+	var phase = new Phase();
+	var vibrato_phase = new Phase();
+	var gain = 0.1;
+
+	this.sample = function () {
+		if (value === 0) return 0;
+		var v = value + 0.4 * Math.sin(vibrato_phase.sample(3));
+		var hz = 440*Math.pow(2, (v-57)/12);
+		gain *= 0.9998;
+		var phi = phase.sample(hz);
+		return Math.pow(Math.sin(phi), x) * gain;
+	};
+};
+
+var Song = new function () {
+	@@@SONG@@@
+	var position = -1;
+
+	var mk_audio = function (data) {
+		var l = data.length;
+		var l2=l*4;
+
+		var b32 = function (v) {
+			var s = 0;
+			var b = "";
+			for (var i=0; i<4; i++,s+=8) b+=String.fromCharCode((v>>s)&255);
+			return b;
+		};
+		var b16 = function (v) {
+			var b = b32(v);
+			return b[0]+b[1];
+		};
+
+		var b = "RIFF"+b32(l2+36)+"WAVEfmt "+b32(16)+b16(1)+b16(2)+b32(SR)+b32(SR*4)+b16(4)+b16(16)+"data"+b32(l2);
+		for (var i in data) {
+			var value = Math.min(1.0, Math.max(-1.0, data[i]));
+			b+=b16(data[i]*32767);
+		}
+		return new Audio("data:audio/wav;base64,"+btoa(b));
+	};
+
+	var play = function () {
+		var n = SONG[0].length;
+		var index = position;
+		while (index < 0) index += n;
+		index %= n;
+
+		document.getElementById("position").innerHTML = position + " (" + index + "/" + n + ")";
+
+		var note1 = new Note(SONG[0][index], 1);
+		var note2 = new Note(SONG[1][index], 1);
+
+		var samples = [];
+		for (var i = 0; i < SR; i++) {
+			var s1 = note1.sample();
+			var s2 = note2.sample();
+			var left = s1 + s2 * 0.5;
+			var right = s1 * 0.5 + s2;
+			samples.push(left);
+			samples.push(right);
+		}
+		mk_audio(samples).play();
+	};
+
+	this.forward = function () {
+		position++;
+		play();
+	};
+
+	this.back = function () {
+		position--;
+		play();
+	};
+};
+
+</script>
+</head>
+<body>
+<button onclick="Song.forward();">forward</button>
+<button onclick="Song.back();">back</button>
+<div>position: <span id="position">?</span></div>
+</body>
+</html>
