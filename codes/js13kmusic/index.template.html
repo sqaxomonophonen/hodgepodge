@@ -28,7 +28,7 @@ var Note = function (value, x) {
 	var gain = 0.1;
 
 	this.sample = function () {
-		if (value === 0) return 0;
+		if (!value) return 0;
 		var v = value + 0.4 * Math.sin(vibrato_phase.sample(3));
 		var hz = 440*Math.pow(2, (v-57)/12);
 		gain *= 0.9998;
