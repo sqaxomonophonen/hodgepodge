@@ -37,8 +37,7 @@ var Note = function (value, x) {
 	};
 };
 
-var Song = new function () {
-	@@@SONG@@@
+var Song = function (song) {
 	var position = -1;
 
 	var mk_audio = function (data) {
@@ -65,15 +64,19 @@ var Song = new function () {
 	};
 
 	var play = function () {
-		var n = SONG[0].length;
+		var n = song.length/2;
 		var index = position;
 		while (index < 0) index += n;
 		index %= n;
 
 		document.getElementById("position").innerHTML = position + " (" + index + "/" + n + ")";
 
-		var note1 = new Note(SONG[0][index], 1);
-		var note2 = new Note(SONG[1][index], 1);
+		var get_note = function (channel) {
+			return song[index*2+channel].charCodeAt(0) - 48;
+		};
+
+		var note1 = new Note(get_note(0), 1);
+		var note2 = new Note(get_note(1), 1);
 
 		var samples = [];
 		for (var i = 0; i < SR; i++) {
@@ -98,11 +101,19 @@ var Song = new function () {
 	};
 };
 
+var song1 = new Song(@@@SONG1@@@);
+var song2 = new Song(@@@SONG2@@@);
+
+
 </script>
 </head>
 <body>
-<button onclick="Song.forward();">forward</button>
-<button onclick="Song.back();">back</button>
+
+<button onclick="song1.forward();">song1 forward</button>
+<button onclick="song1.back();">song1 back</button>
+<button onclick="song2.forward();">song2 forward</button>
+<button onclick="song2.back();">song2 back</button>
 <div>position: <span id="position">?</span></div>
+
 </body>
 </html>

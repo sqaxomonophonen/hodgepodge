@@ -49,12 +49,16 @@ for e in sequence:
 		for i in range(nl - last_index - 1):
 			track.append(0)
 
-def jsondump(v):
-	if isinstance(v, list):
-		return "[%s,]" % ",".join([jsondump(x) for x in v])
-	elif v == 0:
-		return ""
-	else:
-		return str(v)
-print "var SONG = %s;" % jsondump(song)
 
+def dump(song):
+	n_tracks = len(song)
+	n_lines = len(song[0])
+	s = ""
+	for i in range(n_lines):
+		for j in range(n_tracks):
+			c = song[j][i]+48
+			if c > 126: raise RuntimeError("out of bounds")
+			s += chr(c)
+	return "\"%s\"" % s
+
+print dump(song)
