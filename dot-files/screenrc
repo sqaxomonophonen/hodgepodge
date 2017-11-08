@@ -4,3 +4,6 @@ startup_message off
 defscrollback 100000
 msgminwait 0
 hardstatus off
+encoding utf8
+defencoding utf8
+defutf8 on

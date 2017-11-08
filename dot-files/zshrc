@@ -1,6 +1,3 @@
-export LANG=en_US.utf8
-export LC_ALL=en_US.utf8
-
 source ~/.termcolors
 
 prompt="%1(j.$MAGENTA(%j) .)$BRIGHT$BLUE%T $NORMAL%n@%m:$BLUE%30<..<%~/$NORMAL > "
@@ -16,7 +13,8 @@ autoload -U compinit
 compinit
 
 alias rm="rm -v"
-alias ls="ls --color"
+alias ls="ls -G"
+alias screen="screen -U"
 
 setopt print_exit_value
 
