@@ -69,13 +69,18 @@ class State(object):
 		hours = duration / 3600
 		return "%.3dh %.2dm %.2ds" % (hours, minutes, seconds)
 
-	def _daysback(self, d):
+	def _boundary_ts(self, d):
 		daystart = 5*3600
-		begin = int((datetime.date.fromtimestamp(time.time() - daystart) - datetime.timedelta(days = d)).strftime('%s')) + daystart
-		return self._format_interval(begin)
+		return int((datetime.date.fromtimestamp(time.time() - daystart) - datetime.timedelta(days = d)).strftime('%s')) + daystart
+
+	def _daysback(self, d):
+		return self._format_interval(self._boundary_ts(d))
 
 	def today(self):
 		return self._daysback(0)
+
+	def yesterday(self):
+		return self._format_interval(begin = self._boundary_ts(1), end = self._boundary_ts(0))
 
 	def week(self):
 		return self._daysback(time.localtime().tm_wday)
@@ -151,11 +156,12 @@ try:
 
 		w.addstr(y, x, "Status: " + ("working \\o/" if state.is_working() else "not working :-<"), color_text); y += 1
 		y += 1
-		w.addstr(y, x, "Today:   %s" % state.today()); y += 1
-		w.addstr(y, x, "Week:    %s" % state.week()); y += 1
-		w.addstr(y, x, "Month:   %s" % state.month()); y += 1
-		w.addstr(y, x, "Year:    %s" % state.year()); y += 1
-		w.addstr(y, x, "Forever: %s" % state.forever()); y += 1
+		w.addstr(y, x, "Today:     %s" % state.today()); y += 1
+		w.addstr(y, x, "Yesterday: %s" % state.yesterday()); y += 1
+		w.addstr(y, x, "Week:      %s" % state.week()); y += 1
+		w.addstr(y, x, "Month:     %s" % state.month()); y += 1
+		w.addstr(y, x, "Year:      %s" % state.year()); y += 1
+		w.addstr(y, x, "Forever:   %s" % state.forever()); y += 1
 
 		c = w.getch()
 
