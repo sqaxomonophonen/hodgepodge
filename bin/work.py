@@ -70,7 +70,8 @@ class State(object):
 		return "%.3dh %.2dm %.2ds" % (hours, minutes, seconds)
 
 	def _daysback(self, d):
-		begin = int((datetime.date.today() - datetime.timedelta(days = d)).strftime('%s')) + 5*3600
+		daystart = 5*3600
+		begin = int((datetime.date.fromtimestamp(time.time() - daystart) - datetime.timedelta(days = d)).strftime('%s')) + daystart
 		return self._format_interval(begin)
 
 	def today(self):
