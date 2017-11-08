@@ -136,7 +136,7 @@ try:
 
 		maxyx = w.getmaxyx()
 
-		border_width = 7
+		border_width = 10
 		border_height = 4
 		for dy in range(border_height):
 			w.addstr(dy, 0, ' ' * maxyx[1], border_color)
