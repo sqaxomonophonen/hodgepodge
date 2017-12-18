@@ -17,3 +17,6 @@ ctrl+x ctrl+l -- line completion
 ; perhaps you want a cursorline sometimes?
 :set cursorline
 :hi CursorLine ctermbg=darkred
+
+; fix syntax highlight on line 9997 or wherever you are
+:syntax sync fromstart
