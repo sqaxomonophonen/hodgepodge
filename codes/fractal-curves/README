@@ -1,0 +1,4 @@
+To generate fractals, run make (requires C compiler / POSIX)
+
+Fractal definitions are from http://www.fractalcurves.com/HorrorVacui.html (by
+Jeffrey Ventrella, thanks!); see various chapters.
