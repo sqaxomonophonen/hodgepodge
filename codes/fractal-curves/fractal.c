@@ -378,8 +378,11 @@ void render(struct curve* curve, int iterations)
 void usage(char* prg)
 {
 	fprintf(stderr,
-		"usage: %s [-o outfile.svg] [-n n_iterations] [-s style] <infile>\n"
-		"n_iterations=2 by default\n"
+		"usage: %s [-o outfile.svg] [-n n_iterations] [-s style] [-w width] [-h height] <infile>\n"
+		"defaults:\n"
+		"  n_iterations=2\n"
+		"  width=1920\n"
+		"  height=1080\n"
 		"available styles:\n"
 		,
 		prg);
@@ -407,7 +410,7 @@ int main(int argc, char** argv)
 
 	int n_iterations = 2;
 
-	while ((opt = getopt(argc, argv, "o:n:s:")) != -1) {
+	while ((opt = getopt(argc, argv, "o:n:w:h:s:")) != -1) {
 		switch (opt) {
 		case 'o':
 			outfile = fopen(optarg, "w");
@@ -419,6 +422,12 @@ int main(int argc, char** argv)
 			break;
 		case 'n':
 			n_iterations = atoi(optarg);
+			break;
+		case 'w':
+			svg_width = atoi(optarg);
+			break;
+		case 'h':
+			svg_height = atoi(optarg);
 			break;
 		case 's':
 			{
