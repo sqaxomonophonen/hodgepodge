@@ -20,3 +20,6 @@ ctrl+x ctrl+l -- line completion
 
 ; fix syntax highlight on line 9997 or wherever you are
 :syntax sync fromstart
+
+; open recently closed file
+:tabnew#
