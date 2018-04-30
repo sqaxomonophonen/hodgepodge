@@ -70,3 +70,10 @@ function! SwitchToTabIsTabsWidth4()
 	set noexpandtab
 endfunction
 
+command! Ss call SyntaxSyncFromStart()
+function! SyntaxSyncFromStart()
+	" seem to recall there's a way to raise the number of lines it searches
+	" backwards when jumping, but I can't find it... (let c_minlines=10000
+	" has no effect on syntax highlighting breaking after jumps)
+	syntax sync fromstart
+endfunction
