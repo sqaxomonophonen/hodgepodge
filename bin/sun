@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+LOC="55.384808N 10.375666E"
+for t in daylight civil nautical astronomical ; do
+	echo -ne "$t:"
+	npad=$((15 - ${#t}))
+	while [ $npad -gt 0 ] ; do
+		echo -n " "
+		npad=$(($npad - 1))
+	done
+	sunwait list $t $LOC 2>/dev/null
+done
