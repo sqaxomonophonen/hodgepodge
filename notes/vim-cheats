@@ -23,3 +23,11 @@ ctrl+x ctrl+l -- line completion
 
 ; open recently closed file
 :tabnew#
+
+
+
+:highlight WhitespaceEOL ctermbg=red guibg=red
+:match WhitespaceEOL /\s\+$/
+:highlight clear WhitespaceEOL
+
+:highlight Search ctermbg=5
