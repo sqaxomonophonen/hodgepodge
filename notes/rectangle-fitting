@@ -1,0 +1,32 @@
+
+We have two rectangles, r0 and r1, and r0 must be fitted into r1; i.e. r0 must
+be scaled and positioned so that it is both optimally centered inside r1, and
+as large as possible without overflowing r1.
+
+======== pseudo code ========
+
+aspect0 = r0.width / r0.height
+aspect1 = r1.width / r1.height
+
+if aspect0 > aspect1 {
+	/* r0's aspect ratio is wider than r1's; r0's left and right borders
+	 * must touch r1's left and right borders; r0's top and bottom margin
+	 * must be the same */
+	x0 = 0
+	x1 = r1.width
+	scale = r1.width / r0.width
+	margin = (r1.height - r0.height*scale) / 2
+	y0 = margin
+	y1 = r1.height - margin
+
+} else {
+	/* r0's aspect ratio is narrower than r1's; r0's top and bottom borders
+	 * must touch r1's top and bottom borders; r0's left and right margin
+	 * must be the same */
+	y0 = 0
+	y1 = r1.height
+	scale = r1.height / r0.height
+	margin = (r1.width - r0.width*scale) / 2
+	x0 = margin
+	x1 = r1.width - margin
+}
