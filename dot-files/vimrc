@@ -47,6 +47,7 @@ autocmd BufNewFile,BufRead *.php,*.phtml nnoremap <buffer> K :!pman <cword><cr>
 
 " holy war follows
 command! Ts call SwitchToTabIsSpaces()
+command! Ts4 call SwitchToTabIsSpaces()
 function! SwitchToTabIsSpaces()
 	set shiftwidth=4
 	set tabstop=13
@@ -63,6 +64,7 @@ function! SwitchToTabIsSpacesWidth2()
 endfunction
 
 command! Tt call SwitchToTabIsTabs()
+command! Tt8 call SwitchToTabIsTabs()
 function! SwitchToTabIsTabs()
 	set shiftwidth=8
 	set tabstop=8
