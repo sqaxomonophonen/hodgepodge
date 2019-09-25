@@ -19,6 +19,10 @@ autocmd BufRead,BufNew * match WhitespaceEOL /\s\+$/
 set backspace=2
 
 
+" disable help via F1 (:help is fine!)
+nmap <F1> <nop>
+
+
 " xsel integration
 command! -range Xc <line1>,<line2>call XSelCopy()
 function! XSelCopy()
