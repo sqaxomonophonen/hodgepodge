@@ -3,9 +3,8 @@
 aws=$(which aws)
 
 usage() {
-	echo "Usage: $0 [-c] <editor> <url>" > /dev/stderr
+	echo "Usage: $0 [-c] <url>" > /dev/stderr
 	echo " -c         Do encryption via OpenSSL" > /dev/stderr
-	echo " <editor>   E.g. \"vim\" or \"vim @\" (\"@\" is replaced with tmpfile)" > /dev/stderr
 	echo " <url>      Path or URL" > /dev/stderr
 	echo > /dev/stderr
 	echo "Supported URL types:" > /dev/stderr
@@ -37,17 +36,13 @@ while true ; do
 	shift
 done
 
-editor=$1
-shift
-if [ -z "$editor" ] ; then
-	echo "<editor> is missing" > /dev/stderr
-	echo > /dev/stderr
-	usage
-	exit 1
+if [ -z "$EDITOR" ] ; then
+	EDITOR=$(which vi)
+	if [ -z "$EDITOR" ] ; then
+		echo "\$EDITOR not set, and vi not found" > /dev/stderr
+		exit 1
+	fi
 fi
-
-# TODO support "@"?
-editor=$(which $editor)
 
 url=$1
 shift
@@ -151,7 +146,7 @@ if [ -n "$do_crypt" ] ; then
 	fi
 fi
 
-$editor $tmp || exit 1
+$EDITOR $tmp || exit 1
 
 if [ -n "$do_crypt" ] ; then
 	tmptmp=${tmp}.enc${ext}
