@@ -107,14 +107,14 @@ confirm_create() {
 
 if [ "$method" = "file" ] ; then
 	if [ -f $path ] ; then
-		cp $path $tmp
+		cp $path $tmp || exit 1
 	else
 		confirm_create || exit 0
 		is_new=1
 	fi
 elif [ "$method" = "s3" ] ; then
 	if aws s3 ls $url > /dev/null ; then
-		aws s3 cp $url $tmp
+		aws s3 cp $url $tmp || exit 1
 	else
 		confirm_create || exit 0
 		is_new=1
@@ -146,17 +146,17 @@ if [ -n "$do_crypt" ] ; then
 
 	if [ -z "$is_new" ] ; then
 		tmptmp=__dec${tmp}
-		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
 		rm -rf $tmp
 		tmp=${tmptmp}
 	fi
 fi
 
-$editor $tmp
+$editor $tmp || exit 1
 
 if [ -n "$do_crypt" ] ; then
 	tmptmp=__enc${tmp}
-	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
 	rm -rf ${tmp}
 	tmp=${tmptmp}
 fi
