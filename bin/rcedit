@@ -83,8 +83,7 @@ else
 	exit 1
 fi
 
-tmp=$(mktemp __rcedit.XXXXXXXXXXX${ext})
-
+tmp=$(mktemp --tmpdir __rcedit.XXXXXXXXXXX${ext})
 
 confirm_create() {
 	while true ; do
@@ -145,7 +144,7 @@ if [ -n "$do_crypt" ] ; then
 	common_openssl_options="-aes256 -salt -pbkdf2 -k \"$password\""
 
 	if [ -z "$is_new" ] ; then
-		tmptmp=__dec${tmp}
+		tmptmp=${tmp}.dec${ext}
 		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
 		rm -rf $tmp
 		tmp=${tmptmp}
@@ -155,7 +154,7 @@ fi
 $editor $tmp || exit 1
 
 if [ -n "$do_crypt" ] ; then
-	tmptmp=__enc${tmp}
+	tmptmp=${tmp}.enc${ext}
 	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
 	rm -rf ${tmp}
 	tmp=${tmptmp}
