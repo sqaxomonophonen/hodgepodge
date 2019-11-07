@@ -78,7 +78,11 @@ else
 	exit 1
 fi
 
+set -e
+
 tmp=$(mktemp --tmpdir __rcedit.XXXXXXXXXXX${ext})
+
+trap "{ rm -f \$tmp; }" EXIT
 
 confirm_create() {
 	while true ; do
@@ -101,14 +105,14 @@ confirm_create() {
 
 if [ "$method" = "file" ] ; then
 	if [ -f $path ] ; then
-		cp $path $tmp || exit 1
+		cp $path $tmp
 	else
 		confirm_create || exit 0
 		is_new=1
 	fi
 elif [ "$method" = "s3" ] ; then
 	if aws s3 ls $url > /dev/null ; then
-		aws s3 cp $url $tmp || exit 1
+		aws s3 cp $url $tmp
 	else
 		confirm_create || exit 0
 		is_new=1
@@ -140,18 +144,18 @@ if [ -n "$do_crypt" ] ; then
 
 	if [ -z "$is_new" ] ; then
 		tmptmp=${tmp}.dec${ext}
-		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
-		rm -rf $tmp
+		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+		rm -f $tmp
 		tmp=${tmptmp}
 	fi
 fi
 
-$EDITOR $tmp || exit 1
+$EDITOR $tmp
 
 if [ -n "$do_crypt" ] ; then
 	tmptmp=${tmp}.enc${ext}
-	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp} || exit 1
-	rm -rf ${tmp}
+	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+	rm -f ${tmp}
 	tmp=${tmptmp}
 fi
 
@@ -163,5 +167,3 @@ else
 	echo "PROGRAMMING ERROR"
 	exit 1
 fi
-
-rm -rf $tmp
