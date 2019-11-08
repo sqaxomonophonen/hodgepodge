@@ -111,7 +111,11 @@ if [ "$method" = "file" ] ; then
 		is_new=1
 	fi
 elif [ "$method" = "s3" ] ; then
-	if aws s3 ls $url > /dev/null ; then
+	ret=0
+	aws s3 ls $url > /dev/null || ret=$?
+	if [ $ret -eq 255 ] ; then
+		exit 255
+	elif [ $ret -eq 0 ] ; then
 		aws s3 cp $url $tmp
 	else
 		confirm_create || exit 0
