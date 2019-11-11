@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+
+aws=$(which aws)
+
+usage() {
+	echo "Usage: $0 [-c] <url>" > /dev/stderr
+	echo " -c         Do encryption via OpenSSL" > /dev/stderr
+	echo " <url>      Path or URL" > /dev/stderr
+	echo > /dev/stderr
+	echo "Supported URL types:" > /dev/stderr
+	echo " - plain e.g. \"path/to/file.txt\"" > /dev/stderr
+	if [ -n "$aws" ] ; then
+		echo " - S3 via ${aws} e.g. \"s3://bucket/file.txt\"" > /dev/stderr
+	fi
+	echo > /dev/stderr
+}
+
+options=$(getopt -o c -- "$@")
+if [ $? -ne 0 ] ; then
+	echo > /dev/stderr
+	usage
+	exit 1
+fi
+
+eval set -- "$options"
+while true ; do
+	case "$1" in
+	-c)
+		do_crypt=1
+		;;
+	--)
+		shift
+		break
+		;;
+	esac
+	shift
+done
+
+if [ -z "$EDITOR" ] ; then
+	EDITOR=$(which vi)
+	if [ -z "$EDITOR" ] ; then
+		echo "\$EDITOR not set, and vi not found" > /dev/stderr
+		exit 1
+	fi
+fi
+
+url=$1
+shift
+if [ -z "$url" ] ; then
+	echo "<url> is missing" > /dev/stderr
+	echo > /dev/stderr
+	usage
+	exit 1
+fi
+
+proto=$(echo $url | grep :// | sed -e's,^\(.*\)://.*,\1,g')
+path="$url"
+if [ -n "$proto" ] ; then
+	path=$(echo $path | sed -e s,$proto://,,g)
+fi
+
+ext=${path##*.}
+if [ "$ext" = "$path" ] ; then
+	ext=""
+else
+	ext=".$ext"
+fi
+
+
+if [ -z "$proto" -o "$proto" = "file" ] ; then
+	method=file
+elif [ "$proto" = "s3" ] ; then
+	method=s3
+else
+	echo "unhandled protocol $proto" > /dev/stderr
+	echo > /dev/stderr
+	usage
+	exit 1
+fi
+
+set -e
+
+tmp=$(mktemp --tmpdir __rcedit.XXXXXXXXXXX${ext})
+
+trap "{ rm -f \$tmp; }" EXIT
+
+confirm_create() {
+	while true ; do
+		echo
+		echo -n "$url does not exist; create it? [Y/n] "
+		read answer
+		case "$answer" in
+		y|Y|"")
+			return 0
+			;;
+		n|N)
+			echo "OK! I won't"
+			return 1
+			;;
+		*)
+			;;
+		esac
+	done
+}
+
+if [ "$method" = "file" ] ; then
+	if [ -f $path ] ; then
+		cp $path $tmp
+	else
+		confirm_create || exit 0
+		is_new=1
+	fi
+elif [ "$method" = "s3" ] ; then
+	ret=0
+	aws s3 ls $url > /dev/null || ret=$?
+	if [ $ret -eq 255 ] ; then
+		exit 255
+	elif [ $ret -eq 0 ] ; then
+		aws s3 cp $url $tmp
+	else
+		confirm_create || exit 0
+		is_new=1
+	fi
+else
+	echo "PROGRAMMING ERROR"
+	exit 1
+fi
+
+if [ -n "$do_crypt" ] ; then
+	if [ -n "$is_new" ] ; then
+		echo -n Password:
+		read -s password
+		echo
+		echo -n Password again:
+		read -s passwordagain
+
+		if [ "$password" != "$passwordagain" ] ; then
+			echo "Passwords do not match" > /dev/stderr
+			exit 1
+		fi
+	else
+		echo -n Password:
+		read -s password
+		echo
+	fi
+
+	common_openssl_options="-aes256 -salt -pbkdf2 -k \"$password\""
+
+	if [ -z "$is_new" ] ; then
+		tmptmp=${tmp}.dec${ext}
+		openssl enc -d ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+		rm -f $tmp
+		tmp=${tmptmp}
+	fi
+fi
+
+$EDITOR $tmp
+
+if [ -n "$do_crypt" ] ; then
+	tmptmp=${tmp}.enc${ext}
+	openssl enc -e ${common_openssl_options} -in ${tmp} -out ${tmptmp}
+	rm -f ${tmp}
+	tmp=${tmptmp}
+fi
+
+if [ "$method" = "file" ] ; then
+	cp $tmp $path
+elif [ "$method" = "s3" ] ; then
+	aws s3 cp $tmp $url
+else
+	echo "PROGRAMMING ERROR"
+	exit 1
+fi
