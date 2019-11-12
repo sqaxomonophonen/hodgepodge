@@ -154,7 +154,18 @@ if [ -n "$do_crypt" ] ; then
 	fi
 fi
 
+hash() {
+	sha256sum "$1" | awk '{ print $1 }'
+}
+
+hash_before=$(hash $tmp)
 $EDITOR $tmp
+hash_after=$(hash $tmp)
+
+if [ "$hash_before" = "$hash_after" ] ; then
+	echo "file not changed"
+	exit 0
+fi
 
 if [ -n "$do_crypt" ] ; then
 	tmptmp=${tmp}.enc${ext}
