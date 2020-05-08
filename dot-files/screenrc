@@ -7,3 +7,4 @@ hardstatus off
 encoding utf8
 defencoding utf8
 defutf8 on
+defdynamictitle off # I don't know why I'd ever want anything except myself to change my titles
