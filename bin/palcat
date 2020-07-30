@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import sys
+
+colors = []
+for path in sys.argv[1:]:
+	with open(path) as f:
+		if f.readline().strip() != "JASC-PAL":
+			sys.stderr.write("%s: not a pal file\n" % path)
+			sys.exit(1)
+		f.readline() # 0100?! version probabaly, but nobody knows what to do with it :)
+		n = int(f.readline())
+		for i in range(n):
+			color = map(int, f.readline().strip().split(" "))
+			colors.append(color)
+
+out = sys.stdout
+
+out.write("JASC-PAL\n0100\n%d\n" % len(colors))
+for color in colors:
+	out.write("%d %d %d\n" % (color[0], color[1], color[2]))
