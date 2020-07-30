@@ -43,6 +43,13 @@ function! BufferPosition()
 endfunction
 
 
+" insert YYYY-MM-DD
+command! D call PutDate()
+command! Date call PutDate()
+function! PutDate()
+	:put =strftime('%Y-%m-%d')
+endfunction
+
 
 " php pman under cursor
 autocmd BufNewFile,BufRead *.php,*.phtml nnoremap <buffer> K :!pman <cword><cr>
