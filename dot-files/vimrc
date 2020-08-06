@@ -16,7 +16,7 @@ highlight CursorLine cterm=NONE
 highlight WhitespaceEOL ctermbg=red guibg=red
 autocmd BufRead,BufNew * match WhitespaceEOL /\s\+$/
 
-" :Whatever; turns off highlight of training whitespace
+" :Whatever; turns off highlight of trailing whitespace
 command! Whatever call Whatever()
 function! Whatever()
 	highlight clear WhitespaceEOL
