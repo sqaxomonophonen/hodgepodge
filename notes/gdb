@@ -6,56 +6,79 @@ l [$N]	list source (from line $N)
 l -	list previous 10 lines
 l $FN	list function $FN
 l $A,$B	list range
+
 b $line	set breakpoint at line
 b $F:$L	set breakpoint at line $L in file $F
 b $fn	set breakpoint at function $fn
 b $X if $expr	break at $X if $expr is true, e.g. i==7
 cl $X	clear breakpoint, same arguments as with b
 d [$N] 	delete all breakpoints, or breakpoint #$N
+
 bt	backtrace
 	(stack frame #0 is always "current position")
 bt f    backtrace full; backtrace + info locals
+
 f [$N]	set and/or print frame context
-where	print where we are (uhm, same as bt!)
+
 r	run
 c	continue
 s	step (into)
 n	next ("step over")
 ni/si   next/step assembly instruction
+
 u(ntil) until next line (a little weird)
 u $L    until location, e.g. "+10"
+
 return  return from current function now (with argument!)
+
 p $S	print value of symbol $S
+
 pt $S	print type of symbol $S
 	(above works with C syntax, like `p &foo`, `p sizeof(foo)`, `p
 	xs[x+1]`, `p foo.bar`, etc.. p/pt even works well on structs)
+
 printf "%d %d", i, j
 	print formatted
+
 dprintf $WHERE,$FMT,%X,...
 	like printf combined with a breakpoint, e.g.:
 	 $ dprintf foo.c:100,"i is %d\n",i
 	this will print i everytime execution reaches foo.c:100
+
 disp(lay) [$S]
 	like "p $S" but adds it to the "display list" which is executed every
 	time the program stops (like after every step, or breakpoint)
+
 und(isplay) $N
 	remove from display list (type disp to see the numbers)
+
 exp(lore)
 	explore variable or expression. especially useful with deep structures
 	which you can navigate interactively.
+
 set var	set variable, e.g. set var foo=42
 	(set is kind of redundant because of how powerful p is; try `p foo=42`)
+
 k	kill program
+
 i b	breakpoint info (list them)
+
 i lo    i(nfo) lo(cals); print local variables
 i ar    i(nfo) ar(gs); print arguments
+
 comm(ands)
 	enter commands to be executed when stopping at most recently defined
 	breakpoint, print values and so on. end list of commands using "end"
+
 def(ine) $CMD
 	defines a new command. like `commands` you enter a list of commands and
 	end with `end`. e.g. try `def pq` and enter some print commands. now
-	that list will be executed when you type `pq`.
+	that list will be executed when you type `pq`. NOTE: this is a good
+	replacement for "watch expressions"; monitoring expressions and such...
+	only crappy thing is that it's hard to append to a define. BUT, say you
+	have "$ def Z", then you can "$ show user Z" to get the contents of the
+	define, and then perhaps GNU Screen copy/pasta your way out of it.
+
 pi	python interactive
 
 set listsize $N		change number of lines listed by l (default: 10)
