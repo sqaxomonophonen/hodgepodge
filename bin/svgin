@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 tmp=$(mktemp --tmpdir svgshow.XXXXXXXX.svg)
 cat > $tmp
-geeqie -t -f $tmp
+geeqie -f $tmp
 rm -f $tmp
