@@ -670,11 +670,22 @@ static inline double kaiser_bessel(double alpha, double x)
 	return bessel_I0(alpha * sqrt(1.0f - x*x)) / bessel_I0(alpha);
 }
 
+static inline double welch(double x)
+{
+	return 1.0 - x*x;
+}
+
+enum window_type {
+	W_NONE = 0,
+	W_TRI,
+	W_WELCH,
+	W_KAISER_BESSEL,
+};
+
 struct {
-	int    n;
-	int    downsample_factor;
-	int    window_none_use;
-	int    window_kaiser_bessel_use;
+	int n;
+	int downsample_factor;
+	enum window_type window_type;
 	double window_kaiser_bessel_alpha;
 } cfg;
 
@@ -683,14 +694,20 @@ static inline double eval_window(int index)
 	int n = cfg.n;
 	if (index < 0) index = -index;
 	assert(index < n);
-	double ws = 0.0;
-	if (cfg.window_none_use) {
-		ws = 1.0;
-	} else if (cfg.window_kaiser_bessel_use) {
-		double wt = (double)index / (double)n;
-		ws = kaiser_bessel(cfg.window_kaiser_bessel_alpha, wt);
+	double t = (double)index / (double)n;
+	switch (cfg.window_type) {
+	case W_NONE:
+		return 1.0;
+	case W_TRI:
+		return 1.0 - t;
+	case W_WELCH:
+		return welch(t);
+	case W_KAISER_BESSEL:
+		return kaiser_bessel(cfg.window_kaiser_bessel_alpha, t);
+	default:
+		assert(!"invalid window type");
+		return 0;
 	}
-	return ws;
 }
 
 static inline double eval_fir(int index)
@@ -710,6 +727,8 @@ int main(int argc, char** argv)
 		fprintf(stderr, "\n");
 		fprintf(stderr, "Available window functions:\n");
 		fprintf(stderr, "   none                          No window function; simply truncate at edge\n");
+		fprintf(stderr, "   tri                           Triangle window\n");
+		fprintf(stderr, "   welch                         Welch window (polynomial)\n");
 		fprintf(stderr, "   kaiser_bessel:alpha=<alpha>   Kaiser-Bessel window with specified alpha value\n");
 		fprintf(stderr, "   kaiser_bessel:att=<att>       Kaiser-Bessel window with alpha value derived from attenuation\n");
 		fprintf(stderr, "\n");
@@ -742,7 +761,17 @@ int main(int argc, char** argv)
 				exit(EXIT_FAILURE);
 			}
 			snprintf(window_str, sizeof window_str, "no window");
-			cfg.window_none_use = 1;
+			cfg.window_type = W_NONE;
+		} else if (memcmp(arg, "tri", n0) == 0) {
+			if (*p != 0) {
+				fprintf(stderr, "\"tri\" takes no arguments; see usage\n");
+				exit(EXIT_FAILURE);
+			}
+			snprintf(window_str, sizeof window_str, "triangle window");
+			cfg.window_type = W_TRI;
+		} else if (memcmp(arg, "welch", n0) == 0) {
+			snprintf(window_str, sizeof window_str, "Welch window");
+			cfg.window_type = W_WELCH;
 		} else if (memcmp(arg, "kaiser_bessel", n0) == 0) {
 			if (*p != ':') {
 				fprintf(stderr, "\"kaiser_bessel\" requires an argument; see usage\n");
@@ -766,7 +795,7 @@ int main(int argc, char** argv)
 				fprintf(stderr, "invalid kaiser-bessel argument in \"%s\"; see usage\n", arg);
 				exit(EXIT_FAILURE);
 			}
-			cfg.window_kaiser_bessel_use = 1;
+			cfg.window_type = W_KAISER_BESSEL;
 			cfg.window_kaiser_bessel_alpha = alpha;
 		} else {
 			fprintf(stderr, "invalid <window function> value: %s (see usage)\n", arg);
