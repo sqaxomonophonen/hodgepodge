@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
@@ -165,40 +166,79 @@ static void b3d_render(struct b3d* b, uint8_t* pixels, int width, int height, in
 
 int main(int argc, char** argv)
 {
-	const int n = 32;
-	struct b3d b;
-	b3d_init(&b, n,n,n);
-
-	for (int z = 0; z < n; z++) {
-		for (int y = 0; y < n; y++) {
-			for (int x = 0; x < n; x++) {
-				int is_grid = (x&3)==0 || (y&3)==0 || (z&3)==0;
-				int is_mid =
-					((x>n/4)&&(x<n*3/4))
-					|| ((y>n/4)&&(y<n*3/4))
-					|| ((z>n/4)&&(z<n*3/4));
-				b3d_plot(&b, x, y, z, is_grid ? 2 : (is_mid ? 3 : 1));
-			}
-		}
-	}
-
 	const int im_width = 1920/5;
 	const int im_height = 1080/5;
 
 	size_t im_size = im_width * im_height * NCOMP;
 	uint8_t* pixels = malloc(im_size);
 	assert(pixels != NULL);
-	memset(pixels, 0, im_size);
 
-	for (int y = 0; y < im_height; y++) {
-		for (int x = 0; x < im_width; x++) {
-			plot(pixels, im_width, im_height, x, y, 0x0000aa);
+	for (int out = 0; out < 3; out++) {
+		struct b3d b;
+
+		if (out == 0) {
+			const int n = 32;
+			b3d_init(&b, n,n,n);
+			for (int z = 0; z < n; z++) {
+				for (int y = 0; y < n; y++) {
+					for (int x = 0; x < n; x++) {
+						int is_grid = (x&3)==0 || (y&3)==0 || (z&3)==0;
+						int is_mid =
+							((x>n/4)&&(x<n*3/4))
+							|| ((y>n/4)&&(y<n*3/4))
+							|| ((z>n/4)&&(z<n*3/4));
+						b3d_plot(&b, x, y, z, is_grid ? 2 : (is_mid ? 3 : 1));
+					}
+				}
+			}
+		} else if (out == 1) {
+			const int n = 48;
+			b3d_init(&b, n,n,n);
+			for (int z = 0; z < n; z++) {
+				for (int y = 0; y < n; y++) {
+					for (int x = 0; x < n; x++) {
+						int dx = x - n/2;
+						int dy = y - n/2;
+						int dz = z - n/2;
+						int dsqr = dx*dx + dy*dy + dz*dz;
+						int dthr = (n/2)*(n/2);
+						int inside = dsqr < dthr;
+						b3d_plot(&b, x, y, z, inside ? 1 : 0);
+					}
+				}
+			}
+		} else if (out == 2) {
+			const int n = 48;
+			b3d_init(&b, n,n,n);
+			for (int z = 0; z < n; z++) {
+				for (int y = 0; y < n; y++) {
+					for (int x = 0; x < n; x++) {
+						int dx = x - n/2;
+						int dy = y - n/2;
+						int dz = z - n/2;
+						int dsqr = dx*dx + dy*dy + dz*dz;
+						int dthr = (n/2)*(n/2);
+						int inside = dsqr > dthr && dz < 0;
+						b3d_plot(&b, x, y, z, inside ? 1 : 0);
+					}
+				}
+			}
+		} else {
+			assert(!"???");
 		}
+
+		for (int y = 0; y < im_height; y++) {
+			for (int x = 0; x < im_width; x++) {
+				plot(pixels, im_width, im_height, x, y, 0x0000aa);
+			}
+		}
+
+		b3d_render(&b, pixels, im_width, im_height, im_width/2, im_height/2);
+
+		char path[1000];
+		sprintf(path, "out%d.png", out);
+		stbi_write_png(path, im_width, im_height, NCOMP, pixels, im_width*NCOMP);
 	}
-
-	b3d_render(&b, pixels, im_width, im_height, im_width/2, im_height/2);
-
-	stbi_write_png("out.png", im_width, im_height, NCOMP, pixels, im_width*NCOMP);
 
 	return EXIT_SUCCESS;
 }

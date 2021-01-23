@@ -7,4 +7,4 @@ isofun: isofun.o stb_image_write.o
 	$(CC) $^ -o $@
 
 clean:
-	rm -f *.o isofun out.png
+	rm -f *.o isofun out*.png
