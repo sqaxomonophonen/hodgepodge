@@ -61,6 +61,14 @@ endfunction
 autocmd BufNewFile,BufRead *.php,*.phtml nnoremap <buffer> K :!pman <cword><cr>
 
 
+" I typically use filenames without extension for text documents, in which case
+" the default tabs-is-tabs-of-width-8 is actually quite annoying; I use spaces
+" for formatting, and as soon as a line is indented 8+ spaces, vim starts
+" converting spaces to tabs upon newline. It looks right but feels way too
+" wrong :-)
+autocmd BufNewFile,BufRead * if expand('%:t') !~ '\.' | call SwitchToTabIsSpaces() | endif
+
+
 
 "---------------------------
 " syntax highlight unfucking
