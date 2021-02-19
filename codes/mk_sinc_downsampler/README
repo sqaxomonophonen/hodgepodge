@@ -1,0 +1,22 @@
+Stuff for generating integer-factor sinc downsamplers (C) and analyzing the
+filters.
+
+For 2x downsampling there's potentially a ~2x optimization because nearly half
+of the FIR coefficents are zeroes, and can be efficiently skipped, but I
+haven't made the code generator yet.  But maybe, "in the real world", people
+tend to place the cutoff slightly below the Nyquist-frequency to avoid aliasing
+near the transition band? In that case, there would be no optimization possible
+:)
+
+# build mk_sinc_downsampler
+$ gcc mk_sinc_downsampler.c -o mk_sinc_downsampler -lm
+
+# analyze halfband filter (2x downsampling), Kaiser-Bessel window, 20 taps
+$ ./mk_sinc_downsampler 2 kaiser_bessel:att=60 20 svg | svgin
+
+# generate code for the filter
+$ ./mk_sinc_downsampler 2 kaiser_bessel:att=60 20 c0
+
+
+# demo/test; generates WAVs (sweeps) and PNGs (spectrograms)
+$ run.sh
