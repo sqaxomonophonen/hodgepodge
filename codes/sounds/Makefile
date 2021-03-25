@@ -1,7 +1,8 @@
-CFLAGS=-O2
+#CFLAGS=-O2
+CFLAGS=-O0 -g
 LDLIBS=-lm
 
-all: lattice
+all: lattice lattice3d
 
 clean:
-	rm -f lattice
+	rm -f lattice lattice3d
