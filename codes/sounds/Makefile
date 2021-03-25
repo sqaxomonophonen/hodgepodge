@@ -6,4 +6,4 @@ bin=lattice lattice3d
 all: $(bin)
 
 clean:
-	rm -f $(bin)
+	rm -f $(bin) *.wav
