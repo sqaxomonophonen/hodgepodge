@@ -1,8 +1,9 @@
-#CFLAGS=-O2
-CFLAGS=-O0 -g
+CFLAGS=-O2
+#CFLAGS=-O0 -g
 LDLIBS=-lm
 
-all: lattice lattice3d
+bin=lattice lattice3d
+all: $(bin)
 
 clean:
-	rm -f lattice lattice3d
+	rm -f $(bin)
