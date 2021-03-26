@@ -20,12 +20,12 @@
 #include "stretchy_buffer.h"
 
 float* wo_samples;
-const char* wo_filename;
+char wo_filename[1<<12];
 
-static inline void wo_begin(const char* filename)
+static inline void wo_begin(const char* prg)
 {
 	wo_samples = NULL;
-	wo_filename = filename;
+	snprintf(wo_filename, sizeof wo_filename, "%s.wav", prg);
 }
 
 static inline void wo_push(float sample)

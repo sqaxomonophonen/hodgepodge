@@ -3,15 +3,14 @@
 //#define LATTICE_WIDTH (101)
 //#define LATTICE_HEIGHT (64)
 
-#define LATTICE_WIDTH (80)
-#define LATTICE_HEIGHT (80)
+#define LATTICE_WIDTH (5000)
+#define LATTICE_HEIGHT (5)
 #define LATTICE_N (LATTICE_WIDTH * LATTICE_HEIGHT)
 #define POS(x,y) ((x)+(y)*LATTICE_WIDTH)
 
 struct lattice {
 	int64_t pos[LATTICE_N];
 	int64_t vel[LATTICE_N];
-	//int64_t div[LATTICE_N];
 	int64_t damp[LATTICE_N];
 };
 
@@ -88,7 +87,6 @@ int main(int argc, char** argv)
 			int pi = POS(x,y);
 			//lattice->damp[pi] = 3000 + cos(dd) * 1000;
 			lattice->damp[pi] = 3000;
-			//lattice->damp[pi] = 2000 + cos(dd) * 1000;
 		}
 	}
 

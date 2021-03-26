@@ -103,7 +103,7 @@ int main(int argc, char** argv)
 
 	int n = 800000;
 
-	wo_begin("lattice.wav");
+	wo_begin(argv[0]);
 	for (int i = 0; i < n; i++) {
 		lattice_step(lattice);
 		wo_push(lattice_sample(lattice, LATTICE_WIDTH/2, LATTICE_HEIGHT/2));
