@@ -22,10 +22,10 @@ int main(int argc, char** argv)
 		const double tmpo = 2.2;
 
 		double tm = fmod(t*tmpo, 1.0);
-		double tm4 = fmod(t*tmpo*4, 1.0);
+		double tm4 = fmod(t*tmpo*3, 1.0);
 
 		double im = expimp(tm,5);
-		double im2 = expimp(tm,35);
+		double im2 = expimp(tm,55);
 		double im3 = expimp(tm4,35);
 
 		double left = 0;
