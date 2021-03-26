@@ -2,7 +2,7 @@ CFLAGS=-O2
 #CFLAGS=-O0 -g
 LDLIBS=-lm
 
-bin=lattice lattice3d lattice4 lattice5 lattice6
+bin=lattice lattice3d lattice4 lattice5 lattice6 lattice6f
 all: $(bin)
 
 clean:
