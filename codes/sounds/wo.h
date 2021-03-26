@@ -28,13 +28,14 @@ static inline void wo_begin(const char* prg)
 	snprintf(wo_filename, sizeof wo_filename, "%s.wav", prg);
 }
 
-static inline void wo_push(float sample)
+static inline void wo_push(float left, float right)
 {
 	int i = sb_count(wo_samples);
-	if ((i % WO_SAMPLE_RATE) == 0) {
-		printf("sample %d...\n", i);
+	if ((i % (2*WO_SAMPLE_RATE)) == 0) {
+		printf("sample %d...\n", i/2);
 	}
-	sb_push(wo_samples, sample);
+	sb_push(wo_samples, left);
+	sb_push(wo_samples, right);
 }
 
 static inline void wo_end()
@@ -63,11 +64,11 @@ static inline void wo_end()
 	drwav_data_format format;
 	format.container = drwav_container_riff;
 	format.format = DR_WAVE_FORMAT_PCM;
-	format.channels = 1;
+	format.channels = 2;
 	format.sampleRate = WO_SAMPLE_RATE;
 	format.bitsPerSample = 16;
 	drwav_init_file_write(&wav, wo_filename, &format, NULL);
-	drwav_write_pcm_frames(&wav, n, samples16);
+	drwav_write_pcm_frames(&wav, n/2, samples16);
 	drwav_uninit(&wav);
 }
 
