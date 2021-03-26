@@ -10,10 +10,8 @@ int main(int argc, char** argv)
 	for (int i = 0; i < n; i++) {
 		double x = (double)i * ((110.0*PI*2.0) / 48000.0);
 		double t = (double)i * (1.0 / 48000.0);
-		//double s = cos(x+t+sin(x-t*2+cos(x-t*2.1+sin(x+t*0.1+cos(x+t*5.5+sin(x))))));
-		//double s = sin(x+sin(x+t*2+sin(x-t+sin(x+sin(x+sin(x))))));
-		double left = sin(x+sin(x+sin(x-t+sin(x*0.5-t+sin(x*0.91-t*7+sin(x*10+t*20))))));
-		double right = sin(x+sin(x+sin(x-t+sin(x*0.5-t+sin(x*0.92-t*7+sin(x*10+t*20))))));
+		double left = sin(x+cos(x*1.01+sin(x-t+sin(x*0.5-t+sin(x*0.91-t*7+cos(x*10+t*20))))));
+		double right = sin(x+sin(x+sin(x*1.012-t+cos(x*0.5-t+sin((x-3)*0.92-t*7+sin(x*10+t*20))))));
 		wo_push((float)left, (float)right);
 	}
 	wo_end();
