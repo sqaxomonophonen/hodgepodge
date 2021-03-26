@@ -45,23 +45,26 @@ static float lattice_sample(struct lattice* l, int x, int y)
 
 static void lattice_step(struct lattice* l)
 {
+	int pi = POS(1,1);
+	const int dx = 1;
+	const int dy = LATTICE_WIDTH;
+
 	for (int y = 1; y < (LATTICE_HEIGHT-1); y++) {
 		for (int x = 1; x < (LATTICE_WIDTH-1); x++) {
 
-			const int dx = 1;
-			const int dy = LATTICE_WIDTH;
-
-			int64_t c0 = l->pos[POS(x+1,y)];
-			int64_t c1 = l->pos[POS(x-1,y)];
-			int64_t c2 = l->pos[POS(x,y+1)];
-			int64_t c3 = l->pos[POS(x,y-1)];
+			int64_t c0 = l->pos[pi-dx];
+			int64_t c1 = l->pos[pi+dx];
+			int64_t c2 = l->pos[pi-dy];
+			int64_t c3 = l->pos[pi+dy];
 
 			int64_t avg = (c0+c1+c2+c3) >> 2;
 
-			int pi = POS(x,y);
 			int64_t f = avg - l->pos[pi];
 			l->vel[pi] = ((l->vel[pi] + f) * (l->damp[pi]-1)) / l->damp[pi];
+
+			pi++;
 		}
+		pi+=2;
 	}
 
 	for (int i = 0; i < LATTICE_N; i++) {
