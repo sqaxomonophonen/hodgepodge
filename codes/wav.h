@@ -1,7 +1,26 @@
 #ifndef WAV_H
 
+/*
+Very small library for outputting 16-bit .wav files
+
+Usage:
+
+   FILE* file = fopen("output.wav", "wb");
+   wav_header(file, sample_rate, n_channels, n_frames);
+   wav_sample(file, sample); // repeat n_channels*n_frames times
+   fclose(file);
+
+*OR*
+
+   FILE* file = wav_begin("output.wav", sample_rate, n_channels);
+   wav_sample(file, sample); // repeat n_channels*n_frames times
+   wav_end(file, n_frames);
+
+*/
+
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <assert.h>
 #include <math.h>
 
@@ -47,6 +66,34 @@ static inline void wav_header(FILE* file, int sample_rate, int n_channels, int n
 	wav__str(file, "data");
 	wav__u32(file, data_length);
 
+}
+
+static inline FILE* wav_begin(const char* path, int sample_rate, int n_channels)
+{
+	FILE* file = fopen(path, "wb+");
+	wav_header(file, sample_rate, n_channels, 0);
+	return file;
+}
+
+static inline void wav_end(FILE* file, int n_frames)
+{
+	// avoiding structs by reading back n_channels :-)
+	assert(fseek(file, 22, SEEK_SET) == 0);
+	uint8_t bs[2];
+	assert(fread(bs, 1, 2, file) == 2);
+	int n_channels = bs[0] | (bs[1] << 8);
+
+	const int data_length = 2 * n_channels * n_frames;
+
+	// patch in RIFF block length (data length + 36)
+	assert(fseek(file, 4, SEEK_SET) == 0);
+	wav__u32(file, data_length + 36);
+
+	// patch in data block length
+	assert(fseek(file, 40, SEEK_SET) == 0);
+	wav__u32(file, data_length);
+
+	fclose(file);
 }
 
 /* emit a single sample (NOTE: 1 mono frame contains 1 sample; 1 stereo frame
