@@ -8,6 +8,13 @@
 #include "miniaudio.h"
 #include "gl.h"
 
+#define MAX_TONES (500)
+#define SAMPLE_RATE (48000)
+#define PI (3.141592653589793f)
+#define PI2 (2.0f * PI)
+#define BASE_FREQ (220.0f)
+#define N_PHASORS (12)
+
 struct globals {
 	SDL_Window* window;
 	int true_screen_width;
@@ -41,17 +48,11 @@ NVGcontext* nanovg_create_context();
 ma_device audio_device;
 
 
-#define MAX_TONES (500)
-#define SAMPLE_RATE (48000)
-#define PI (3.141592653589793f)
-#define PI2 (2.0f * PI)
-
 struct phasor {
 	float acc;
 	float add;
 };
 
-#define N_PHASORS (12)
 struct phasor phasors[N_PHASORS];
 
 struct tone {
@@ -162,12 +163,13 @@ static int tone_active(int id)
 	return 0;
 }
 
+
 static void start_audio()
 {
 	for (int i = 0; i < N_PHASORS; i++) {
 		struct phasor* phasor = &phasors[i];
 		phasor->acc = 0;
-		const float freq = 110.0f * powf(2.0f, (float)i / (float)N_PHASORS);
+		const float freq = BASE_FREQ * powf(2.0f, (float)i / (float)N_PHASORS);
 		phasor->add = (freq / (float)SAMPLE_RATE) * PI2;
 	}
 
@@ -232,6 +234,7 @@ int main(int argc, char** argv)
 	int rightdown = 0;
 	while (!exiting) {
 		SDL_Event e;
+		int click = 0;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT) {
 				exiting = 1;
@@ -253,12 +256,14 @@ int main(int argc, char** argv)
 				} else if (e.button.button == SDL_BUTTON_RIGHT) {
 					rightdown = 1;
 				}
+				click = 1;
 			} else if (e.type == SDL_MOUSEBUTTONUP) {
 				if (e.button.button == SDL_BUTTON_LEFT) {
 					leftdown = 0;
 				} else if (e.button.button == SDL_BUTTON_RIGHT) {
 					rightdown = 0;
 				}
+				click = 1;
 			} else if (e.type == SDL_WINDOWEVENT) {
 				if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
 					populate_screen_globals();
@@ -300,7 +305,7 @@ int main(int argc, char** argv)
 				}
 			}
 			SDL_UnlockMutex(sound_mutex);
-			nvgStrokeColor(g.vg, nvgRGB(255,255,255));
+			nvgStrokeColor(g.vg, nvgRGBA(64,128,255,100));
 			nvgStrokeWidth(g.vg, 2.0f);
 			nvgStroke(g.vg);
 		}
@@ -335,12 +340,31 @@ int main(int argc, char** argv)
 		const int A = 9;
 		const int B = 11;
 
+		#if 0
 		const int notes[] = {
 			C,    E,   G,
 			C,    F,   A,
 			B-12, D,   F,   G,
 			C,    G,   E,
 		};
+		#else
+		const int notes[] = {
+			C-12,
+			D-12,
+			E-12,
+			F-12,
+			G-12,
+			A-12,
+			B-12,
+			C,
+			D,
+			E,
+			F,
+			G,
+			A,
+			B
+		};
+		#endif
 
 		const int n_notes = sizeof(notes) / sizeof(*notes);
 
@@ -351,11 +375,12 @@ int main(int argc, char** argv)
 		for (int i = 0; i < n_notes; i++) {
 			int note = notes[i] + 12;
 
-			float freq = powf(2.0f, (float)note / 12.0f);
+			float freq = BASE_FREQ * powf(2.0f, (float)note / 12.0f);
 			for (int j = 0; j < n_overtones; j++) {
 				int overtone = j+1;
 				float ofreq = freq * (float)(overtone);
-				float noterel = (12.0f * logf(ofreq)) / LOG2;
+				if (ofreq > (SAMPLE_RATE/2)) continue;
+				float noterel = (12.0f * logf(ofreq/BASE_FREQ)) / LOG2;
 				float y = g.screen_height - ((float)noterel * y_scale);
 
 				nvgBeginPath(g.vg);
@@ -369,7 +394,7 @@ int main(int argc, char** argv)
 				nvgFill(g.vg);
 
 				if ((leftdown || rightdown) && mx >= x && mx <= (x+xstep)) {
-					if (leftdown) {
+					if (leftdown && (click || lastmy != my)) {
 						int my0 = my;
 						int my1 = lastmy;
 						if (my1 < my0) {
@@ -377,7 +402,10 @@ int main(int argc, char** argv)
 							my0 = my1;
 							my1 = tmp;
 						}
-						if (my0 <= y && y <= my1) {
+						int do_toggle = 0;
+						do_toggle |= (click && (my0 <= (y+6) && (y-6) <= my1));
+						do_toggle |= (!click && (my0 <= (y) && (y) < my1));
+						if (do_toggle) {
 							tone_toggle(tone_id, note, overtone);
 						}
 					}
