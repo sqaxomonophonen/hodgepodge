@@ -332,6 +332,17 @@ int main(int argc, char** argv)
 			nvgStroke(g.vg);
 		}
 
+		char str[512];
+		float myfreq = BASE_FREQ * powf(2.0f, (((float)g.screen_height-(float)my) / y_scale) / 12.0f);
+		snprintf(str, sizeof str, "f0=%.1f", myfreq);
+		nvgFontSize(g.vg, 20.0f);
+		nvgTextAlign(g.vg, NVG_ALIGN_LEFT);
+		nvgFillColor(g.vg, nvgRGB(0,0,0));
+		nvgText(g.vg, 32, 32, str, NULL);
+		nvgFillColor(g.vg, nvgRGB(255,50,50));
+		nvgText(g.vg, 30, 30, str, NULL);
+
+
 		const int C = 0;
 		const int D = 2;
 		const int E = 4;
