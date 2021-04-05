@@ -60,13 +60,11 @@ class BaseModule:
 
 class UnitDelay(BaseModule):
 	bits = 1
-	def get_inputs(self):
-		return ["IN"]
-	def get_outputs(self):
-		return ["OUT"]
+	def get_inputs(self):  return ["IN"]
+	def get_outputs(self): return ["OUT"]
 
 modules = {
-	"@UNIT_DELAY": UnitDelay(),
+	"!UNIT_DELAY": UnitDelay(),
 }
 
 class Module(BaseModule):
@@ -122,9 +120,11 @@ class Module(BaseModule):
 		return Proxy(ports)
 
 	def finalize(self):
+		# check that sinks have values
 		for sink in self.sinks:
 			assert sink.expr is not None
 
+		# enumerate inputs/outputs
 		self.input_indices = {}
 		for index,p in enumerate(self.inputs):
 			self.input_indices[p] = index
@@ -142,6 +142,13 @@ class Module(BaseModule):
 			n += module.bits
 		self.bits = n
 		self.instance_offsets = offsets
+
+		# TODO calculate "dependency map"? like for each output; which
+		# inputs does it depend on? (NOTE: unit delay output does NOT
+		# depend on the input)
+		for p in self.outputs:
+			pass
+
 
 	def get_input_index(self, port_name):
 		return self.input_indices[port_name]
@@ -216,7 +223,7 @@ def module(module_name):
 	return builder.module(module_name)
 
 def unit_delay():
-	return module("@UNIT_DELAY")
+	return module("!UNIT_DELAY")
 
 
 ##############################################################################
@@ -278,7 +285,7 @@ class VM:
 			self["%s%d" % (prefix, i)] = (value & (1<<i)) != 0
 
 	def tick(self):
-		pass
+		pass # XXX TODO
 
 
 
