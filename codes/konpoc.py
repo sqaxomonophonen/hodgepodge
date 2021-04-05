@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-modules = {}
-current_module = None
-
 class Expr:
 	def __init__(self, *tup):
 		self.tup = tuple(tup)
@@ -47,15 +44,32 @@ class Sink:
 		return receiver + " := " + repr(self.expr)
 
 
-class Instance:
+class Proxy:
 	def __init__(self, ports):
 		self.ports = ports
 
 	def __getitem__(self, key):
 		return self.ports[key]
 
+class BaseModule:
+	def get_inputs(self):
+		raise NotImplementedError()
 
-class Module:
+	def get_outputs(self):
+		raise NotImplementedError()
+
+class UnitDelay(BaseModule):
+	bits = 1
+	def get_inputs(self):
+		return ["IN"]
+	def get_outputs(self):
+		return ["OUT"]
+
+modules = {
+	"@UNIT_DELAY": UnitDelay(),
+}
+
+class Module(BaseModule):
 	def __init__(self, module_name):
 		self.module_name = module_name
 		self.inputs = []
@@ -63,6 +77,12 @@ class Module:
 		self.port_names = set()
 		self.sinks = []
 		self.instances = []
+
+	def get_inputs(self):
+		return self.inputs
+
+	def get_outputs(self):
+		return self.outputs
 
 	def _regport(self, port_name):
 		if port_name in self.port_names: raise KeyError("re-definition of %s" % port_name)
@@ -86,53 +106,51 @@ class Module:
 		return self._mksink(None, port_name)
 
 	def module(self, module_name):
+		module = modules[module_name]
+		assert isinstance(module, BaseModule)
+
 		ports = {}
 		instance_index = len(self.instances)
 
-		if module_name[0] == "@":
-			if module_name == "@UNIT_DELAY":
-				ports["IN"] = self._mksink(instance_index, "IN")
-				ports["OUT"] = Expr("MODOUT", instance_index, "OUT")
-			else:
-				raise KeyError(module_name)
-		else:
-			assert module_name in modules, "no such module %s" % module_name
-			m = modules[module_name]
-			for port_name in m.inputs:
-				assert port_name not in ports
-				ports[port_name] = self._mksink(instance_index, port_name)
-			for port_name in m.outputs:
-				assert port_name not in ports
-				ports[port_name] = Expr("MODOUT", instance_index, port_name)
+		for i in module.get_inputs():
+			assert i not in ports
+			ports[i] = self._mksink(instance_index, i)
+		for o in module.get_outputs():
+			assert o not in ports
+			ports[o] = Expr("MODOUT", instance_index, o)
 
-		instance = Instance(ports)
 		self.instances.append(module_name)
-		return instance
+		return Proxy(ports)
 
 	def finalize(self):
 		for sink in self.sinks:
 			assert sink.expr is not None
 
 		# count state bits
-		bits = 0
+		offsets = []
+		n = 0
 		for module_name in self.instances:
-			if module_name[0] == "@":
-				if module_name == "@UNIT_DELAY":
-					bits += 1
-				else:
-					raise KeyError(module_name)
-			else:
-				assert module_name in modules, "no such module %s" % module_name
-				m = modules[module_name]
-				bits += m.bits
-		self.bits = bits
+			offsets.append(n)
+			module = modules[module_name]
+			n += module.bits
+		self.bits = n
+		self.instance_offsets = offsets
 
 	def print(self):
 		print("===============================================================================")
 		print("MODULE: " + self.module_name)
 		print("Inputs: %s" % ", ".join(self.inputs))
 		print("Outputs: %s" % ", ".join(self.outputs))
-		print("Instances: %s" % ", ".join(self.instances))
+
+		iwos = []
+		for i, module_name in enumerate(self.instances):
+			bits = modules[module_name].bits
+			if bits == 0:
+				iwos.append(module_name)
+			else:
+				iwos.append("%s@%d" % (module_name, self.instance_offsets[i]))
+		print("Instances: %s" % ", ".join(iwos))
+
 		print("Bit count: %d" % self.bits)
 		print("Sinks:")
 		for sink in self.sinks:
@@ -142,34 +160,47 @@ class Module:
 
 
 class ModuleBuilder:
-	def __init__(self, module_name):
+	def __init__(self):
+		self.current_module = None
+
+	def begin(self, module_name):
 		self.module_name = module_name
+		return self
+
+	def input(self, port_name, comment = None):
+		return self.current_module.input(port_name, comment)
+
+	def output(self, port_name, comment = None):
+		return self.current_module.output(port_name, comment)
+
+	def module(self, module_name):
+		return self.current_module.module(module_name)
 
 	def __enter__(self):
 		assert self.module_name not in modules, "re-definition of %s" % self.module_name
-		global current_module
-		assert current_module is None, "re-entrant module definition"
-		current_module = Module(self.module_name)
+		assert self.current_module is None, "re-entrant module definition"
+		self.current_module = Module(self.module_name)
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		global current_module
-		current_module.finalize()
-		current_module.print()
-		modules[self.module_name] = current_module
-		current_module = None
+		self.current_module.finalize()
+		self.current_module.print()
+		modules[self.module_name] = self.current_module
+		self.module_name = None
+		self.current_module = None
 
+builder = ModuleBuilder()
 
 def module_def(module_name):
-	return ModuleBuilder(module_name)
+	return builder.begin(module_name)
 
 def input(port_name, comment = None):
-	return current_module.input(port_name, comment)
+	return builder.input(port_name, comment)
 
 def output(port_name, comment = None):
-	return current_module.output(port_name, comment)
+	return builder.output(port_name, comment)
 
 def module(module_name):
-	return current_module.module(module_name)
+	return builder.module(module_name)
 
 def unit_delay():
 	return module("@UNIT_DELAY")
