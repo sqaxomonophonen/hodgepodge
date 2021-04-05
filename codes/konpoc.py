@@ -70,8 +70,7 @@ modules = {
 }
 
 class Module(BaseModule):
-	def __init__(self, module_name):
-		self.module_name = module_name
+	def __init__(self):
 		self.inputs = []
 		self.outputs = []
 		self.port_names = set()
@@ -126,6 +125,14 @@ class Module(BaseModule):
 		for sink in self.sinks:
 			assert sink.expr is not None
 
+		self.input_indices = {}
+		for index,p in enumerate(self.inputs):
+			self.input_indices[p] = index
+
+		self.output_indices = {}
+		for index,p in enumerate(self.outputs):
+			self.output_indices[p] = index
+
 		# count state bits
 		offsets = []
 		n = 0
@@ -136,9 +143,15 @@ class Module(BaseModule):
 		self.bits = n
 		self.instance_offsets = offsets
 
-	def print(self):
+	def get_input_index(self, port_name):
+		return self.input_indices[port_name]
+
+	def get_output_index(self, port_name):
+		return self.output_indices[port_name]
+
+	def dump(self, name):
 		print("===============================================================================")
-		print("MODULE: " + self.module_name)
+		print("MODULE: " + name)
 		print("Inputs: %s" % ", ".join(self.inputs))
 		print("Outputs: %s" % ", ".join(self.outputs))
 
@@ -179,11 +192,11 @@ class ModuleBuilder:
 	def __enter__(self):
 		assert self.module_name not in modules, "re-definition of %s" % self.module_name
 		assert self.current_module is None, "re-entrant module definition"
-		self.current_module = Module(self.module_name)
+		self.current_module = Module()
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		self.current_module.finalize()
-		self.current_module.print()
+		self.current_module.dump(self.module_name)
 		modules[self.module_name] = self.current_module
 		self.module_name = None
 		self.current_module = None
@@ -210,10 +223,63 @@ def unit_delay():
 ##############################################################################
 ##############################################################################
 
+class BitArray:
+	def __init__(self, n_bits):
+		n_bytes = (n_bits+7)>>3
+		self.buf8 = bytearray(n_bytes)
 
-def compile(module_name):
-	assert module_name in modules, "no such module %s" % module_name
-	# TODO
+	def _coerce(self, value):
+		return {True:1, False:0, 1:1, 0:0}[value]
+
+	def __getitem__(self, key):
+		return self._coerce((self.buf8[key>>3] & (1<<(key&7))) != 0)
+
+	def __setitem__(self, key, value):
+		value = self._coerce(value)
+		m = 1<<(key&7)
+		if value == 0:
+			self.buf8[key>>3] &= ((~m)&255)
+		else:
+			self.buf8[key>>3] |= m
+
+
+class VM:
+	def __init__(self, module_name):
+		m = modules[module_name]
+		self.module = m
+		self.state = BitArray(m.bits)
+		self.input_data = BitArray(len(m.get_inputs()))
+		self.output_data = BitArray(len(m.get_outputs()))
+		#self.inputs = m.get_inputs()
+		#self.outputs = m.get_outputs()
+
+	def get_input_ports(self):
+		return self.module.get_inputs()
+
+	def get_output_ports(self):
+		return self.module.get_outputs()
+
+	def __setitem__(self, key, value):
+		self.input_data[self.module.get_input_index(key)] = value
+
+	def __getitem__(self, key):
+		return self.output_data[self.module.get_output_index(key)]
+
+	def get_bus_value(self, prefix, size):
+		value = 0
+		for i in range(size):
+			value |= self["%s%d" % (prefix, i)] << i
+		return value
+
+	def set_bus_value(self, prefix, size, value):
+		assert value >= 0, "value must be unsigned"
+		assert value < (1<<size), "value out-of-bounds"
+		for i in range(size):
+			self["%s%d" % (prefix, i)] = (value & (1<<i)) != 0
+
+	def tick(self):
+		pass
+
 
 
 ##############################################################################
@@ -337,6 +403,96 @@ with module_def("Ram64k"): emit_ram16(16, "Ram4k")
 ##############################################################################
 ##############################################################################
 
-prg = compile("Ram64k")
+import random, time
+
+class Timer:
+	def __init__(self, what):
+		self.what = what
+
+	def __enter__(self):
+		self.t0 = time.time()
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		dt = time.time() - self.t0
+		print("*", self.what, "took", ("%.2fs" % dt))
 
 
+class RamTest:
+	def __init__(self, module_name, address_bus_size):
+		print("TEST:    %s (address bus size: %d)" % (module_name, address_bus_size))
+		vm = VM(module_name)
+		print("Inputs: ", ", ".join(vm.get_input_ports()))
+		print("Outputs:", ", ".join(vm.get_output_ports()))
+		self.vm = vm
+		self.address_bus_size = address_bus_size
+
+	def set_address(self, value):
+		self.vm.set_bus_value("A", self.address_bus_size, value)
+
+	def set_input(self, value):
+		self.vm.set_bus_value("I", 8, value)
+
+	def get_output(self):
+		return self.vm.get_bus_value("O", 8)
+
+	def set_write_enable(self, value):
+		self.vm["WE"] = value
+
+	def set_read_enable(self, value):
+		self.vm["RE"] = value
+
+	def tick(self):
+		self.vm.tick()
+
+	def selftest(self):
+		fmtaddr = lambda v: ("$%." + str((self.address_bus_size+3) >> 2) + "X") % v
+		fmtimm = lambda v: "#$%.2X" % v
+
+		with Timer("TOTAL"):
+			n = 1 << self.address_bus_size
+
+			with Timer("FILL"):
+				print("Filling memory (n=%d) ..." % n)
+				self.set_write_enable(1)
+				self.set_read_enable(0)
+				vs = []
+				for a in range(n):
+					self.set_address(a)
+					v = random.randint(0,255)
+					vs.append(v)
+					self.set_input(v)
+					self.tick()
+
+			with Timer("LINEAR"):
+				print("Verifying memory; linear access (n=%d) ..." % n)
+				self.set_write_enable(0)
+				self.set_read_enable(1)
+				for a in range(n):
+					self.set_address(a)
+					self.tick()
+					actual = self.get_output()
+					expected = vs[a]
+					if actual != expected:
+						print("FAILED READ at %s; expected %s; got %s" % (fmtaddr(a), fmtimm(expected), fmtimm(actual)))
+
+			with Timer("RANDOM"):
+				nr = 100
+				print("Verifying memory; random access (n=%d) ..." % nr)
+				self.set_write_enable(0)
+				self.set_read_enable(1)
+				for i in range(nr):
+					a = random.randint(0, n-1)
+					self.set_address(a)
+					self.tick()
+					actual = self.get_output()
+					expected = vs[a]
+					if actual != expected:
+						print("FAILED READ at %s; expected %s; got %s" % (fmtaddr(a), fmtimm(expected), fmtimm(actual)))
+
+
+
+#t = RamTest("Ram16",  4)
+t = RamTest("Ram256", 8)
+#t = RamTest("Ram4k",  12)
+#t = RamTest("Ram64k", 16)
+t.selftest()
