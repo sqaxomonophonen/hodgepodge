@@ -22,6 +22,20 @@ class Expr:
 				ys.append(x)
 		return tuple(ys)
 
+	def trace(self):
+		xs = self.tup
+		op = xs[0]
+		if op in ("NOT",):
+			return xs[1].trace()
+		elif op in ("AND", "OR"):
+			return xs[1].trace() + xs[2].trace()
+		elif op in ("IN",):
+			return [(None, xs[1])]
+		elif op in ("MODOUT",):
+			return [(xs[1], xs[2])]
+		else:
+			raise RuntimeError("unexpected op %s" % op)
+
 	def __repr__(self):
 		return repr(self.tuplify())
 
@@ -35,6 +49,9 @@ class Sink:
 		assert isinstance(expr, Expr)
 		assert self.expr is None, "re-assignment"
 		self.expr = expr
+
+	def key(self):
+		return (self.instance_index, self.port_name)
 
 	def __repr__(self):
 		receiver = ""
@@ -52,16 +69,18 @@ class Proxy:
 		return self.ports[key]
 
 class BaseModule:
-	def get_inputs(self):
-		raise NotImplementedError()
-
-	def get_outputs(self):
-		raise NotImplementedError()
+	def get_inputs(self): return self.inputs
+	def get_outputs(self): return self.outputs
 
 class UnitDelay(BaseModule):
+	# unit delays store exactly one bit
 	bits = 1
-	def get_inputs(self):  return ["IN"]
-	def get_outputs(self): return ["OUT"]
+	inputs  = ["IN"]
+	outputs = ["OUT"]
+	# OUT "loosely" depends on IN, but delayed by one tick, so for the
+	# purpose of trace analysis, OUT has no dependencies (however it must
+	# be declared to avoid lookup failure)
+	output_dependencies = {"OUT": []}
 
 modules = {
 	"!UNIT_DELAY": UnitDelay(),
@@ -73,13 +92,8 @@ class Module(BaseModule):
 		self.outputs = []
 		self.port_names = set()
 		self.sinks = []
+		self.sink_map = {}
 		self.instances = []
-
-	def get_inputs(self):
-		return self.inputs
-
-	def get_outputs(self):
-		return self.outputs
 
 	def _regport(self, port_name):
 		if port_name in self.port_names: raise KeyError("re-definition of %s" % port_name)
@@ -88,6 +102,7 @@ class Module(BaseModule):
 	def _mksink(self, instance_index, port_name):
 		sink = Sink(instance_index, port_name)
 		self.sinks.append(sink)
+		self.sink_map[sink.key()] = sink
 		return sink
 
 	def input(self, port_name, comment):
@@ -119,6 +134,23 @@ class Module(BaseModule):
 		self.instances.append(module_name)
 		return Proxy(ports)
 
+	def _trace_output_dependencies(self, port_name):
+		input_ports = []
+
+		def trace_sink(key):
+			deps = self.sink_map[key].expr.trace()
+			for (instance_index, port_name) in deps:
+				if instance_index is None:
+					input_ports.append(port_name)
+				else:
+					for mport in modules[self.instances[instance_index]].output_dependencies[port_name]:
+						trace_sink((instance_index, mport))
+
+		trace_sink((None, port_name))
+
+		return sorted(list(set(input_ports)), key = lambda p: self.get_input_index(p))
+
+
 	def finalize(self):
 		# check that sinks have values
 		for sink in self.sinks:
@@ -126,12 +158,9 @@ class Module(BaseModule):
 
 		# enumerate inputs/outputs
 		self.input_indices = {}
-		for index,p in enumerate(self.inputs):
-			self.input_indices[p] = index
-
+		for index,p in enumerate(self.inputs): self.input_indices[p] = index
 		self.output_indices = {}
-		for index,p in enumerate(self.outputs):
-			self.output_indices[p] = index
+		for index,p in enumerate(self.outputs): self.output_indices[p] = index
 
 		# count state bits
 		offsets = []
@@ -143,12 +172,12 @@ class Module(BaseModule):
 		self.bits = n
 		self.instance_offsets = offsets
 
-		# TODO calculate "dependency map"? like for each output; which
-		# inputs does it depend on? (NOTE: unit delay output does NOT
-		# depend on the input)
-		for p in self.outputs:
-			pass
+		self.output_dependencies = {}
+		for port_name in self.outputs:
+			self.output_dependencies[port_name] = self._trace_output_dependencies(port_name)
 
+	def get_output_dependencies(self, port_name):
+		return self.output_dependencies[port_name]
 
 	def get_input_index(self, port_name):
 		return self.input_indices[port_name]
@@ -159,8 +188,9 @@ class Module(BaseModule):
 	def dump(self, name):
 		print("===============================================================================")
 		print("MODULE: " + name)
-		print("Inputs: %s" % ", ".join(self.inputs))
-		print("Outputs: %s" % ", ".join(self.outputs))
+		print("Inputs:   %s" % ", ".join(self.inputs))
+		print("Outputs:  %s" % ", ".join(self.outputs))
+		print("I/O deps: %s" % self.output_dependencies)
 
 		iwos = []
 		for i, module_name in enumerate(self.instances):
@@ -499,7 +529,7 @@ class RamTest:
 
 
 #t = RamTest("Ram16",  4)
-t = RamTest("Ram256", 8)
+#t = RamTest("Ram256", 8)
 #t = RamTest("Ram4k",  12)
 #t = RamTest("Ram64k", 16)
-t.selftest()
+#t.selftest()
