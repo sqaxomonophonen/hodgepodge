@@ -3,15 +3,20 @@
 class Expr:
 	def __init__(self, *tup):
 		self.tup = tuple(tup)
+		self.refcount = 0
 
 	def __invert__(self):
-		return Expr("NOT", self)
+		return Expr("NOT", self.ref())
 
 	def __and__(self, other):
-		return Expr("AND", self, other)
+		return Expr("AND", self.ref(), other.ref())
 
 	def __or__(self, other):
-		return Expr("OR", self, other)
+		return Expr("OR", self.ref(), other.ref())
+
+	def ref(self):
+		self.refcount += 1
+		return self
 
 	def tuplify(self):
 		ys = [self.tup[0]]
@@ -22,43 +27,57 @@ class Expr:
 				ys.append(x)
 		return tuple(ys)
 
-	def trace(self):
-		xs = self.tup
-		op = xs[0]
-		if op in ("NOT",):
-			return xs[1].trace()
-		elif op in ("AND", "OR"):
-			return xs[1].trace() + xs[2].trace()
-		elif op in ("IN",):
-			return [(None, xs[1])]
-		elif op in ("MODOUT",):
-			return [(xs[1], xs[2])]
+	def children(self):
+		op = self.tup[0]
+		if op in ("NOT","AND","OR"):
+			return self.tup[1:]
 		else:
-			raise RuntimeError("unexpected op %s" % op)
+			return []
+
+	def trace(self):
+		t = self.tup
+		op = t[0]
+		if op == "IN":
+			return [(None, t[1])]
+		elif op == "MODOUT":
+			return [(t[1], t[2])]
+		else:
+			xs = []
+			for c in self.children(): xs += c.trace()
+			return xs
+
+	def should_tmpify(self):
+		# tmpify non-leafs referenced more than once
+		return self.refcount >= 2 and len(self.children()) > 0
+
+	def tmpify(self, tmp_index):
+		clone = Expr(*self.tup).ref()
+		self.tup = ("GETTMP", tmp_index)
+		return clone
 
 	def __repr__(self):
 		return repr(self.tuplify())
 
+
+def mk_sink_key_output(port): return ("OUT", port)
+def mk_sink_key_module_input(instance_index, port): return ("MODIN", instance_index, port)
+def mk_sink_key_temporary(index): return ("TMP", index)
+
 class Sink:
-	def __init__(self, instance_index, port_name):
-		self.instance_index = instance_index
-		self.port_name = port_name
-		self.expr = None
+	def __init__(self, key, expr = None):
+		self.key = key
+		self.expr = expr
 
 	def assign(self, expr):
 		assert isinstance(expr, Expr)
 		assert self.expr is None, "re-assignment"
-		self.expr = expr
+		self.expr = expr.ref()
 
-	def key(self):
-		return (self.instance_index, self.port_name)
+	def _keystr(self):
+		return ":".join([str(x) for x in self.key])
 
 	def __repr__(self):
-		receiver = ""
-		if self.instance_index is not None:
-			receiver += "%d:" % self.instance_index
-		receiver += self.port_name
-		return receiver + " := " + repr(self.expr)
+		return self._keystr() + " := " + repr(self.expr)
 
 
 class Proxy:
@@ -69,7 +88,7 @@ class Proxy:
 		return self.ports[key]
 
 class BaseModule:
-	def get_inputs(self): return self.inputs
+	def get_inputs(self):  return self.inputs
 	def get_outputs(self): return self.outputs
 
 class UnitDelay(BaseModule):
@@ -92,30 +111,28 @@ class Module(BaseModule):
 		self.outputs = []
 		self.port_names = set()
 		self.sinks = []
-		self.sink_map = {}
 		self.instances = []
 
-	def _regport(self, port_name):
-		if port_name in self.port_names: raise KeyError("re-definition of %s" % port_name)
-		self.port_names.add(port_name)
+	def _regport(self, port):
+		if port in self.port_names: raise KeyError("re-definition of %s" % port)
+		self.port_names.add(port)
 
-	def _mksink(self, instance_index, port_name):
-		sink = Sink(instance_index, port_name)
+	def _addsink(self, key):
+		sink = Sink(key)
 		self.sinks.append(sink)
-		self.sink_map[sink.key()] = sink
 		return sink
 
-	def input(self, port_name, comment):
-		self._regport(port_name)
-		assert port_name not in self.inputs
-		self.inputs.append(port_name)
-		return Expr("IN", port_name)
+	def input(self, port, comment):
+		self._regport(port)
+		assert port not in self.inputs
+		self.inputs.append(port)
+		return Expr("IN", port)
 
-	def output(self, port_name, comment):
-		self._regport(port_name)
-		assert port_name not in self.outputs
-		self.outputs.append(port_name)
-		return self._mksink(None, port_name)
+	def output(self, port, comment):
+		self._regport(port)
+		assert port not in self.outputs
+		self.outputs.append(port)
+		return self._addsink(mk_sink_key_output(port))
 
 	def module(self, module_name):
 		module = modules[module_name]
@@ -124,31 +141,18 @@ class Module(BaseModule):
 		ports = {}
 		instance_index = len(self.instances)
 
-		for i in module.get_inputs():
-			assert i not in ports
-			ports[i] = self._mksink(instance_index, i)
-		for o in module.get_outputs():
-			assert o not in ports
-			ports[o] = Expr("MODOUT", instance_index, o)
+		for port in module.get_inputs():
+			assert port not in ports
+			ports[port] = self._addsink(mk_sink_key_module_input(instance_index, port))
+		for port in module.get_outputs():
+			assert port not in ports
+			ports[port] = Expr("MODOUT", instance_index, port)
 
 		self.instances.append(module_name)
 		return Proxy(ports)
 
-	def _trace_output_dependencies(self, port_name):
-		input_ports = []
-
-		def trace_sink(key):
-			deps = self.sink_map[key].expr.trace()
-			for (instance_index, port_name) in deps:
-				if instance_index is None:
-					input_ports.append(port_name)
-				else:
-					for mport in modules[self.instances[instance_index]].output_dependencies[port_name]:
-						trace_sink((instance_index, mport))
-
-		trace_sink((None, port_name))
-
-		return sorted(list(set(input_ports)), key = lambda p: self.get_input_index(p))
+	def _mk_sink_map(self):
+		return dict([(sink.key, sink) for sink in self.sinks])
 
 
 	def finalize(self):
@@ -172,18 +176,48 @@ class Module(BaseModule):
 		self.bits = n
 		self.instance_offsets = offsets
 
-		self.output_dependencies = {}
-		for port_name in self.outputs:
-			self.output_dependencies[port_name] = self._trace_output_dependencies(port_name)
+		# trace output dependencies
+		sink_map = self._mk_sink_map()
+		def trace_port(port):
+			input_ports = set()
+			def trace_sink(key):
+				for (instance_index, port) in sink_map[key].expr.trace():
+					if instance_index is None:
+						input_ports.add(port)
+					else:
+						for mport in modules[self.instances[instance_index]].output_dependencies[port]:
+							trace_sink(mk_sink_key_module_input(instance_index, mport))
+			trace_sink(mk_sink_key_output(port))
+			return sorted(list(input_ports), key = lambda p: self.get_input_index(p))
+		self.output_dependencies = dict([(port, trace_port(port)) for port in self.outputs])
 
-	def get_output_dependencies(self, port_name):
-		return self.output_dependencies[port_name]
+		tmp_sinks = []
+		def split(expr):
+			t = expr.tup
+			op = t[0]
+			if op == "GETTMP": return
+			if expr.should_tmpify():
+				tmp_index = len(tmp_sinks)
+				expr = expr.tmpify(tmp_index)
+				tmp_sinks.append(Sink(mk_sink_key_temporary(tmp_index), expr))
+			for c in expr.children(): split(c)
+		for sink in self.sinks:
+			split(sink.expr)
+		tmp_sinks.reverse()
+		self.sinks = tmp_sinks + self.sinks
 
-	def get_input_index(self, port_name):
-		return self.input_indices[port_name]
 
-	def get_output_index(self, port_name):
-		return self.output_indices[port_name]
+
+
+
+	def get_output_dependencies(self, port):
+		return self.output_dependencies[port]
+
+	def get_input_index(self, port):
+		return self.input_indices[port]
+
+	def get_output_index(self, port):
+		return self.output_indices[port]
 
 	def dump(self, name):
 		print("===============================================================================")
@@ -217,11 +251,11 @@ class ModuleBuilder:
 		self.module_name = module_name
 		return self
 
-	def input(self, port_name, comment = None):
-		return self.current_module.input(port_name, comment)
+	def input(self, port, comment = None):
+		return self.current_module.input(port, comment)
 
-	def output(self, port_name, comment = None):
-		return self.current_module.output(port_name, comment)
+	def output(self, port, comment = None):
+		return self.current_module.output(port, comment)
 
 	def module(self, module_name):
 		return self.current_module.module(module_name)
@@ -243,11 +277,11 @@ builder = ModuleBuilder()
 def module_def(module_name):
 	return builder.begin(module_name)
 
-def input(port_name, comment = None):
-	return builder.input(port_name, comment)
+def input(port, comment = None):
+	return builder.input(port, comment)
 
-def output(port_name, comment = None):
-	return builder.output(port_name, comment)
+def output(port, comment = None):
+	return builder.output(port, comment)
 
 def module(module_name):
 	return builder.module(module_name)
@@ -287,8 +321,6 @@ class VM:
 		self.state = BitArray(m.bits)
 		self.input_data = BitArray(len(m.get_inputs()))
 		self.output_data = BitArray(len(m.get_outputs()))
-		#self.inputs = m.get_inputs()
-		#self.outputs = m.get_outputs()
 
 	def get_input_ports(self):
 		return self.module.get_inputs()
@@ -434,7 +466,6 @@ with module_def("Ram16"):  emit_ram16( 4, "MemoryByte")
 with module_def("Ram256"): emit_ram16( 8, "Ram16")
 with module_def("Ram4k"):  emit_ram16(12, "Ram256")
 with module_def("Ram64k"): emit_ram16(16, "Ram4k")
-
 
 ##############################################################################
 ##############################################################################
