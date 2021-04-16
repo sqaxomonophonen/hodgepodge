@@ -28,16 +28,26 @@ set backspace=2
 " disable help via F1 (:help is fine!)
 nmap <F1> <nop>
 
+" OS detection
+let g:os = substitute(system('uname'), '\n', '', '')
 
 " xsel integration
 command! -range Xc <line1>,<line2>call XSelCopy()
 function! XSelCopy()
-	echo system("xsel -ib", join(getline(a:firstline, a:lastline),"\n"))
+	if g:os == "Linux"
+		echo system("xsel -ib", join(getline(a:firstline, a:lastline),"\n"))
+	elseif g:os == "Darwin"
+		echo system("pbcopy", join(getline(a:firstline, a:lastline),"\n"))
+	endif
 endfunction
 
 command! Xp call XSelPaste()
 function! XSelPaste()
-	r!xsel -b
+	if g:os == "Linux"
+		r!xsel -b
+	elseif g:os == "Darwin"
+		r!pbpaste
+	endif
 endfunction
 
 
