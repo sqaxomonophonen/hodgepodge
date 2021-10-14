@@ -1,0 +1,35 @@
+When using nakst/gf for Linux kernel debugging through QEMU with `-gdb`,
+hardware breakpoints must be used. `gf2` is hardcoded to use b/tbreak, but a
+workaround that works with vanilla gf2 is to redefine these:
+
+```ini
+define b
+	hbreak $arg0
+end
+define tbreak
+	thbreak $arg0
+end
+```
+
+Other notes:
+
+ - Linux must be built with `CONFIG_DEBUG_INFO=y`; no other debugging options
+   seems necessary when running through QEMU's `-gdb` options; KGDB support is
+   not required; the GDB scripts may be of interest, but I haven't tried them.
+
+ - run qemu with `-s -S`
+
+ - from gdb/gf2 connect with `target remote :1234`
+
+ - `b start_kernel` (or `hbreak start_kernel` without the above redefine)
+
+ - start gdb/gf2 with `vmlinux`, or extract debugging info with `objcopy
+   --only-keep-debug vmlinux kernel.sym` and use `kernel.sym` instead.
+
+ - gdb/gf2 can find sources provided you put `vmlinux`/`kernel.sym` in the
+   linux source root directory and run gdb/gf2 there
+
+ - Linux should be booted with the `nokaslr` option; put "nokaslr" in
+   `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub` and then run
+   `grub-mkconfig -o /boot/grub/grub.cfg`
+
