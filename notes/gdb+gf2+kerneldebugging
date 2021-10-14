@@ -1,6 +1,8 @@
-When using nakst/gf for Linux kernel debugging through QEMU with `-gdb`,
-hardware breakpoints must be used. `gf2` is hardcoded to use b/tbreak, but a
-workaround that works with vanilla gf2 is to redefine these:
+When using nakst/gf for Linux kernel debugging through QEMU with `-gdb` and
+`-enable-kvm`, hardware breakpoints must be used (software breakpoints works
+fine without `-enable-kvm`). `gf2` is hardcoded to use b/tbreak, but a
+workaround that works with vanilla gf2 is to put the following into a local
+`.gdbinit`:
 
 ```ini
 define b
@@ -10,6 +12,10 @@ define tbreak
 	thbreak $arg0
 end
 ```
+
+(gdb might complain about the `.gdbinit` path not being whitelisted; just
+follow its instructions)
+
 
 Other notes:
 
