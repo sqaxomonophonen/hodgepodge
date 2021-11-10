@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ] ; then
+	echo "Usage: $0 <image>"
+	exit 1
+fi
+
+if [ ! -e "$1" ] ; then
+	echo "$1: no such file"
+	exit 1
+fi
+
+mime=$(file --mime-type $1 | perl -ne '/: (.*)$/ && print $1')
+
+echo -n "data:$mime;base64,"
+base64 -w0 $1
+echo
