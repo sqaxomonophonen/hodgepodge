@@ -1,0 +1,116 @@
+<!doctype HTML>
+<html>
+<head>
+
+<title>veralin.dk</title>
+
+<style>
+
+body {
+	background-color: black;
+	font-family: monospace;
+	font-size: 1.5em;
+}
+
+
+a {
+	color: #aff;
+}
+
+a:visited {
+	color: #a9f;
+}
+
+a:hover {
+	background-color: #404;
+}
+
+
+.main {
+	color: white;
+	background: rgba(0,0,0, 0.7);
+	width: 80%;
+	margin: auto;
+	border-radius: 5px;
+	padding: 1em;
+}
+</style>
+
+<script>
+
+function set_bg() {
+	let canvas = document.createElement('canvas');
+	const W = 768;
+	const H = 768;
+	canvas.width = W;
+	canvas.height = H;
+
+	const ctx = canvas.getContext('2d');
+
+	ctx.globalCompositeOperation = "lighter";
+
+	ctx.fillStyle = '#000000';
+	ctx.fillRect(0, 0, W, H);
+
+	ctx.fillStyle = '#112233';
+	ctx.font = '65px serif';
+
+	const N = 444;
+	const S = "veralin.dk";
+	for (let i = 0; i < N; i++) {
+		let x = Math.random()*W;
+		let y = Math.random()*H;
+		let r = Math.random()*2.0*Math.PI;
+		for (let dy = -1; dy <= 1; dy++) {
+			for (let dx = -1; dx <= 1; dx++) {
+				ctx.save();
+				ctx.translate(x+dx*W, y+dy*H);
+				ctx.rotate(r);
+				ctx.fillText(S[i%S.length],0,0);
+				ctx.restore();
+			}
+		}
+	}
+
+	document.body.style.backgroundImage = "url('" + canvas.toDataURL() + "')";
+}
+
+window.onload = function() {
+	set_bg();
+}
+
+</script>
+</head>
+<body>
+
+<div class="main">
+
+	<h2>hub</h2>
+	<ul>
+	<li><a href="https://github.com/sqaxomonophonen">github.com/sqaxomonophonen</a>
+	<li><a href="https://shadertoy.com/user/sqaxomonophonen">shadertoy.com/user/sqaxomonophonen</a>
+	<li><a href="http://remix.kwed.org/index.php?search=plasm303">c64 covers @ remix.kwed.org</a>
+	<li><a href="https://aktiedysten.dk">I co-founded aktiedysten.dk</a>
+	</ul>
+	<h2>local</h2>
+	<ul>
+	<li><a href="/ld19">ludum dare 19 (suspension of disbelief)</a>
+	<li><a href="/ld32">ludum dare 32 (drums of the dead)</a>
+	<li><a href="music.html">music</a>
+	<!--<li><a href="/txt">txt</a>-->
+	<li><a href="/satellite">satellite TLE viewer</a>
+	</ul>
+	<h2>stuff</h2>
+
+	<p>
+	I made sound/music for these games by <a href="https://xem.github.io/">Maxime Euzi&egrave;re</a>
+	<ul>
+	<li><a href="http://js13kgames.com/entries/geoquiz">GeoQuiz</a>
+	<li><a href="http://js13kgames.com/entries/super-chrono-portal-maker">Super Chrono Portal Maker</a>
+	<li><a href="http://js13kgames.com/entries/lossst">LOSSST</a>
+	</ul>
+	</p>
+</div>
+
+</body>
+</html>

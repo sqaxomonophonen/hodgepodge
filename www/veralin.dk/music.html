@@ -1,0 +1,56 @@
+<!doctype HTML>
+<html>
+<head>
+
+
+<style>
+body {
+	background: black;
+	color: white;
+}
+
+#list {
+	margin-top: 5em;
+}
+
+#player {
+	position: fixed;
+	top: 0px;
+	width: 100%;
+}
+
+</style>
+
+<script src="musicdata.js"></script>
+<script>
+window.onload = function() {
+	let list = document.getElementById("list");
+	const N = MUSICDATA.length;
+	let play = (e) => {
+		let i = parseInt(e.target.getAttribute("data-index"), 10);
+		let m = MUSICDATA[i].replace("+","%2B");
+		let player = document.getElementById("player");
+		player.setAttribute("src", "http://veralin.dk/" + m); // FIXME local link
+	};
+	for (let i = 0; i < N; i++) {
+		let e0 = document.createElement("div");
+		let e1 = document.createElement("a");
+		e1.href = "javascript:void(0)";
+		e1.innerText = MUSICDATA[i];
+		e1.setAttribute("data-index", i);
+		e1.addEventListener("click", play);
+		e0.appendChild(e1);
+		list.appendChild(e0);
+	}
+}
+</script>
+</head>
+<body>
+
+<audio controls id="player"></audio>
+
+<div id="list">
+</div>
+
+</body>
+</html>
