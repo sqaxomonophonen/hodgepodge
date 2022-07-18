@@ -16,41 +16,4614 @@ body {
 #player {
 	position: fixed;
 	top: 0px;
+	display: flex;
 	width: 100%;
+}
+
+#player button {
+	display: inline-flex;
+}
+
+#player audio {
+	display: inline-flex;
+	flex-grow: 1
+}
+
+
+.songlink {
+	font-family: monospace;
+	font-size: 1.3em;
+	color: white;
+	display: block;
+}
+
+.songlink:hover {
+	background: #444;
+}
+
+.songlink:target {
+	color: black;
+	background: white;
+}
+
+cc {
+	display: none;
+	background: #023;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	margin-left: 1em;
+	font-family: sans;
+	color: #bbb;
+}
+
+.songlink:target + cc {
+	display: block;
+}
+
+.blyant {
+	color: #ff0;
+	background: #600;
+	margin-left: 2em;
+}
+
+.songlink:target .blyant {
+	color: #000;
+	background: #fff;
+}
+
+h1 {
+	margin-top: 2em;
+	border-top: 2px dotted white;
+}
+
+lyrics {
+	white-space: pre;
 }
 
 </style>
 
-<script src="musicdata.js"></script>
 <script>
-window.onload = function() {
-	let list = document.getElementById("list");
-	const N = MUSICDATA.length;
-	let play = (e) => {
-		let i = parseInt(e.target.getAttribute("data-index"), 10);
-		let m = MUSICDATA[i].replace("+","%2B");
-		let player = document.getElementById("player");
-		player.setAttribute("src", "http://veralin.dk/" + m); // FIXME local link
-	};
+
+let CURRENT_HREF;
+
+function set_bg() {
+	let canvas = document.createElement('canvas');
+	const W = 768;
+	const H = 768;
+	canvas.width = W;
+	canvas.height = H;
+
+	const ctx = canvas.getContext('2d');
+
+	ctx.globalCompositeOperation = "lighter";
+
+	ctx.fillStyle = '#000000';
+	ctx.fillRect(0, 0, W, H);
+
+	ctx.fillStyle = '#111111';
+	ctx.font = '65px serif';
+
+	const N = 444;
+	const S = "veralin.dk";
 	for (let i = 0; i < N; i++) {
-		let e0 = document.createElement("div");
-		let e1 = document.createElement("a");
-		e1.href = "javascript:void(0)";
-		e1.innerText = MUSICDATA[i];
-		e1.setAttribute("data-index", i);
-		e1.addEventListener("click", play);
-		e0.appendChild(e1);
-		list.appendChild(e0);
+		let x = Math.random()*W;
+		let y = Math.random()*H;
+		let r = Math.random()*2.0*Math.PI;
+		for (let dy = -1; dy <= 1; dy++) {
+			for (let dx = -1; dx <= 1; dx++) {
+				ctx.save();
+				ctx.translate(x+dx*W, y+dy*H);
+				ctx.rotate(r);
+				ctx.fillText(S[i%S.length],0,0);
+				ctx.restore();
+			}
+		}
 	}
+
+	document.body.style.backgroundImage = "url('" + canvas.toDataURL() + "')";
+}
+
+function play_a_song(id, type) {
+	let e = document.getElementById(id);
+	if (e === null) return;
+	let href = e.getAttribute("href");
+	href = href.replace(/\+/g, "%2b");
+	href = href.replace(/#/g, "%23");
+	href = "https://veralin.dk/" + href; // XXX only if local
+
+	CURRENT_HREF = href;
+
+	let ds = href.split(".");
+	let ext = ds[ds.length-1].toLowerCase();
+
+	switch (ext) {
+	case "ogg":
+	case "wav":
+	case "mp3":
+	case "aif": // probably not supported
+	case "flac": // probably not supported
+		if (document.getElementById("load_on_click").checked) {
+			document.getElementById("playeraudio").setAttribute("src", href);
+			if (document.getElementById("play_on_click").checked) {
+				document.getElementById("playeraudio").play();
+			}
+		}
+		break;
+	case "xm":
+		// TODO XMPlayer?
+		break;
+	case "mt2":
+	case "rns":
+	case "xrns":
+		// only download
+		break;
+	default:
+		console.log("unhandled ext: " + ext);
+	}
+}
+
+
+window.onload = function() {
+	set_bg();
+
+	XMPlayer.init();
+
+	if (window.location.hash.length >= 2) play_a_song(window.location.hash.slice(1));
+
+	let has_cc; has_cc = (x) => {
+		if (!x) return false;
+		let n = x.tagName;
+		if (n && n.toUpperCase() === "CC") return true;
+		return has_cc(x.nextSibling);
+	};
+
+	const install_audio_player = (x) => {
+		x.addEventListener("click", function (e) {
+			e.preventDefault();
+
+			play_a_song(x.id);
+			let hash = '#'+x.id;
+			window.history.pushState({}, '', hash);
+
+			// hack to update :target pseudo-class
+			// see: https://github.com/whatwg/html/issues/639
+			window.history.pushState({}, '', hash);
+			window.history.back();
+		});
+
+	};
+
+	// bless "song" class
+	let xs = document.getElementsByClassName("songlink");
+	let n = xs.length;
+	for (let i = 0; i < n; i++) {
+		let x = xs[i];
+
+		install_audio_player(x);
+
+		if (has_cc(x)) {
+			let blyant = document.createElement("span");
+			blyant.className = "blyant";
+			blyant.innerHTML = "&#9998;&#9998;&#9998;";
+			x.appendChild(blyant);
+		}
+	}
+
+	document.getElementById("download_button").addEventListener("click", (e) => {
+		let a = document.createElement("a");
+		a.href = CURRENT_HREF;
+		a.download = CURRENT_HREF;
+		a.click();
+	});
+
 }
 </script>
 </head>
 <body>
 
-<audio controls id="player"></audio>
-
-<div id="list">
+<div id="player">
+<button id="download_button" title="Download">D/L</button>
+<audio id="playeraudio" controls></audio>
 </div>
+
+<br/><br/>
+
+<p>
+Beware of: LOUDness (please protect your ears), cringyness (sowwy only hu-man),
+melancholy (oh the humanity), and offensive shit (fuck you). But otherwise
+please enjoy!
+</p>
+
+<p>
+<label><tt>Play on click</tt> <input type="checkbox" name="play_on_click" id="play_on_click" checked/></label>
+<br/>
+<label><tt>Load on click</tt> <input type="checkbox" name="load_on_click" id="load_on_click" checked/></label>
+</p>
+
+
+<h1>C64</h1>
+<p>
+Commodore 64 remixes/remakes. I also made these: <a href="https://remix.kwed.org/search/plasm303" target="_blank">https://remix.kwed.org/search/plasm303</a>.
+</p>
+
+<div class="song">
+<a class="songlink" href="music/c64/ACTION%20BIKER.wav" id="c64__ACTION_BIKER.wav">c64/ACTION BIKER.wav</a>
+<cc>
+Original by Rob Hubbard. <tt>MUSICIANS/H/Hubbard_Rob/Action_Biker.sid</tt> in HVSC.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/cybernoid1.wav" id="c64__cybernoid1.wav">c64/cybernoid1.wav</a>
+<cc>
+Original by Jeroen Tel. <tt>MUSICIANS/T/Tel_Jeroen/Cybernoid.sid</tt> in HVSC.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/fine.wav" id="c64__fine.wav">c64/fine.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/georg%20feil%20-%20synth%20sample%20%28stationary%20ark%29.wav" id="c64__georg_feil_-_synth_sample_(stationary_ark).wav">c64/georg feil - synth sample (stationary ark).wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/jeroen%20tel%20-%20hawkeye%20%28jazz%20n%20trash%29.mp3" id="c64__jeroen_tel_-_hawkeye_(jazz_n_trash).mp3">c64/jeroen tel - hawkeye (jazz n trash).mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/jeroen%20tel%20-%20remark%20music.wav" id="c64__jeroen_tel_-_remark_music.wav">c64/jeroen tel - remark music.wav</a>
+<cc>
+Original by Jeroen Tel. <tt>MUSICIANS/T/Tel_Jeroen/Remark_Music.sid</tt> in
+HVSC. Got rejected from remix.kwed.org for being "SID with drums", if I recall
+:-)
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/martin%20walker%20-%20armalyte-01.wav" id="c64__martin_walker_-_armalyte-01.wav">c64/martin walker - armalyte-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/martin%20walker%20-%20armalyte.wav" id="c64__martin_walker_-_armalyte.wav">c64/martin walker - armalyte.wav</a>
+<cc>
+Original by Martin Walker. <tt>MUSICIANS/W/Walker_Martin/Armalyte.sid</tt> in HVSC. From the Commodore C64 game "Armalyte".
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/remark.wav" id="c64__remark.wav">c64/remark.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/remark2.wav" id="c64__remark2.wav">c64/remark2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/rob%20hubbard%20-%20action%20biker.ogg" id="c64__rob_hubbard_-_action_biker.ogg">c64/rob hubbard - action biker.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/zakmc-01.wav" id="c64__zakmc-01.wav">c64/zakmc-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/zakmc-02.wav" id="c64__zakmc-02.wav">c64/zakmc-02.wav</a>
+<cc>
+Original by Matthew Kane. <tt>GAMES/S-Z/Zak_McKracken.sid</tt> in HVSC. From
+the "Zak McKracken" adventure game by LucasArts Games.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/c64/zakmc.wav" id="c64__zakmc.wav">c64/zakmc.wav</a>
+</div>
+
+<h1>Co-op</h1>
+
+<div class="song">
+<a class="songlink" href="music/coop/F#A_F#E.mp3" id="coop__F*A_F*E.mp3">coop/F#A_F#E.mp3</a>
+<cc>
+Made together with Tonemester Steffen Breum.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/coop/gofetch.aif" id="coop__gofetch.aif">coop/gofetch.aif</a>
+<cc>
+Made together with Mads Martin Jørgensen
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/coop/mza.wav" id="coop__mza.wav">coop/mza.wav</a>
+<cc>
+Made together with Dennis Haladyn.
+</cc>
+</div>
+
+<h1>Covers & Remixes</h1>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/001_dasboot.wav" id="covers&#43;rmx__001_dasboot.wav">covers&#43;rmx/001_dasboot.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/airwolf-02.wav" id="covers&#43;rmx__airwolf-02.wav">covers&#43;rmx/airwolf-02.wav</a>
+<cc>
+<marquee>&#128641;</marquee>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/autumn%20leaves2.ogg" id="covers&#43;rmx__autumn_leaves2.ogg">covers&#43;rmx/autumn leaves2.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/aw-01.mp3" id="covers&#43;rmx__aw-01.mp3">covers&#43;rmx/aw-01.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/aw.mp3" id="covers&#43;rmx__aw.mp3">covers&#43;rmx/aw.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/blackheart-01.wav" id="covers&#43;rmx__blackheart-01.wav">covers&#43;rmx/blackheart-01.wav</a>
+<cc>
+Cover of "Black Heart" by Calexico. Lead vocals by Nicholas James Ennis.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/blue%20bossa.wav" id="covers&#43;rmx__blue_bossa.wav">covers&#43;rmx/blue bossa.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/bluebossapossa.wav" id="covers&#43;rmx__bluebossapossa.wav">covers&#43;rmx/bluebossapossa.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/brazil.mp3" id="covers&#43;rmx__brazil.mp3">covers&#43;rmx/brazil.mp3</a>
+<cc>
+Cover of Aquarela do Brasil by Ary Barroso. I think it won a somethingawful
+Rockstar once (that time when all the good ones were out of town)
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/desk%20grotesque2.wav" id="covers&#43;rmx__desk_grotesque2.wav">covers&#43;rmx/desk grotesque2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/dexter.wav" id="covers&#43;rmx__dexter.wav">covers&#43;rmx/dexter.wav</a>
+<cc>
+Cover of Tiger Tunes - Dexter. Missing vocals.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/enjoythesilence.mp3" id="covers&#43;rmx__enjoythesilence.mp3">covers&#43;rmx/enjoythesilence.mp3</a>
+<cc>Depeche Mode</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/falloutmedley.mp3" id="covers&#43;rmx__falloutmedley.mp3">covers&#43;rmx/falloutmedley.mp3</a>
+<cc>
+Medley of "Maybe" by The Ink Spots and "A Kiss to Build a Dream On" by Louis
+Armstrong, known from Fallout 1 and 2.
+
+<lyrics>
+War never changes
+A kick in the eye will do
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/girls-03master.wav" id="covers&#43;rmx__girls-03master.wav">covers&#43;rmx/girls-03master.wav</a>
+<cc>
+Cover of "Girls Night Out" by The Knife. Lead vocals by Nicholas James Ennis.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/handthatfeeds.wav" id="covers&#43;rmx__handthatfeeds.wav">covers&#43;rmx/handthatfeeds.wav</a>
+<cc>Nine Inch Nails released the tracks for "The Hand That Feeds"</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/killmeplease.wav" id="covers&#43;rmx__killmeplease.wav">covers&#43;rmx/killmeplease.wav</a>
+<cc>In The Hall Of The Mountain King</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/kursk.ogg" id="covers&#43;rmx__kursk.ogg">covers&#43;rmx/kursk.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/lately.mp3" id="covers&#43;rmx__lately.mp3">covers&#43;rmx/lately.mp3</a>
+<cc>
+"Lately" by Steve Wonder (made for a somethingawful Rockstar)
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/loliday-01.wav" id="covers&#43;rmx__loliday-01.wav">covers&#43;rmx/loliday-01.wav</a>
+<cc>
+Cover of "Holiday in Cambodia" by Dead Kennedies. Lead vocals by Nicholas James Ennis.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/mexican%20piggyt.wav" id="covers&#43;rmx__mexican_piggyt.wav">covers&#43;rmx/mexican piggyt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/nogood.mp3" id="covers&#43;rmx__nogood.mp3">covers&#43;rmx/nogood.mp3</a>
+<cc>Depeche Mode</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/onemoretime.mp3" id="covers&#43;rmx__onemoretime.mp3">covers&#43;rmx/onemoretime.mp3</a>
+<cc>
+"Baby One More Time" by Britney Spears in 3/4. Oh cringe.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/onlymeat-01.wav" id="covers&#43;rmx__onlymeat-01.wav">covers&#43;rmx/onlymeat-01.wav</a>
+<cc>
+<lyrics>There is no you
+There is only meat
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/onlymeat.wav" id="covers&#43;rmx__onlymeat.wav">covers&#43;rmx/onlymeat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/onyl-01.wav" id="covers&#43;rmx__onyl-01.wav">covers&#43;rmx/onyl-01.wav</a>
+<cc>
+Nine Inch Nails released the tracks of "Only".
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/pyra.wav" id="covers&#43;rmx__pyra.wav">covers&#43;rmx/pyra.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/pyra2-02.wav" id="covers&#43;rmx__pyra2-02.wav">covers&#43;rmx/pyra2-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/pyramidsong.mp3" id="covers&#43;rmx__pyramidsong.mp3">covers&#43;rmx/pyramidsong.mp3</a>
+<cc>
+Radiohead
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/raven-02.ogg" id="covers&#43;rmx__raven-02.ogg">covers&#43;rmx/raven-02.ogg</a>
+<cc>
+Cover of "The Raven" by The Stranglers. Missing vocals.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/rigby.wav" id="covers&#43;rmx__rigby.wav">covers&#43;rmx/rigby.wav</a>
+<cc>
+im so sorry it seemed like a good idea at the time
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/robotman.mp3" id="covers&#43;rmx__robotman.mp3">covers&#43;rmx/robotman.mp3</a>
+<cc>
+Mashup of "Die Roboter" (The Robots) by Kraftwerk, and "Robot Man" by Scorpions.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/covers&#43;rmx/towerofsong.mp3" id="covers&#43;rmx__towerofsong.mp3">covers&#43;rmx/towerofsong.mp3</a>
+<cc>
+Cover of "Tower of Song" by Leonard Cohen. Vocals by Áine.
+</cc>
+</div>
+
+
+<h1>Cubase</h1>
+
+<div class="song">
+<a class="songlink" href="music/cubase/001_psmage.wav" id="cubase__001_psmage.wav">cubase/001_psmage.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/001_random%20triggering.wav" id="cubase__001_random_triggering.wav">cubase/001_random triggering.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/001_sold%20out.wav" id="cubase__001_sold_out.wav">cubase/001_sold out.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/009_001%20Audio%2001%2073%20ogg.mp3" id="cubase__009_001_Audio_01_73_ogg.mp3">cubase/009_001 Audio 01 73 ogg.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/3.wav" id="cubase__3.wav">cubase/3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/80es.wav" id="cubase__80es.wav">cubase/80es.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/80ies%20whatsit.ogg" id="cubase__80ies_whatsit.ogg">cubase/80ies whatsit.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/80ies%20whatsit.wav" id="cubase__80ies_whatsit.wav">cubase/80ies whatsit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/80ies%20whatsit2.ogg" id="cubase__80ies_whatsit2.ogg">cubase/80ies whatsit2.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/80ies.mp3" id="cubase__80ies.mp3">cubase/80ies.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/Audio%2001_54.ogg" id="cubase__Audio_01_54.ogg">cubase/Audio 01_54.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/HAR_DU_L%c3%98G%282%29.mp3" id="cubase__HAR_DU_LOEG(2).mp3">cubase/HAR_DU_LØG(2).mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/HAR_DU_L%c3%98G.mp3" id="cubase__HAR_DU_LOEG.mp3">cubase/HAR_DU_LØG.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/Mix%20Down.wav" id="cubase__Mix_Down.wav">cubase/Mix Down.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/Output%201-2-1.mp3" id="cubase__Output_1-2-1.mp3">cubase/Output 1-2-1.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/Output%201-2-2.mp3" id="cubase__Output_1-2-2.mp3">cubase/Output 1-2-2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/Output%201-2.mp3" id="cubase__Output_1-2.mp3">cubase/Output 1-2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/a.mp3" id="cubase__a.mp3">cubase/a.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/aepil%c3%b8g-01.wav" id="cubase__aepiloeg-01.wav">cubase/aepiløg-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/affald-01.wav" id="cubase__affald-01.wav">cubase/affald-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/all%20i%20see-01.wav" id="cubase__all_i_see-01.wav">cubase/all i see-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/all%20i%20see.mp3" id="cubase__all_i_see.mp3">cubase/all i see.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/all%20i%20see.wav" id="cubase__all_i_see.wav">cubase/all i see.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/all%20i%20see0.wav" id="cubase__all_i_see0.wav">cubase/all i see0.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/almostwhite.mp3" id="cubase__almostwhite.mp3">cubase/almostwhite.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ambient.wav" id="cubase__ambient.wav">cubase/ambient.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ant1-02.wav" id="cubase__ant1-02.wav">cubase/ant1-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/anthem-02.wav" id="cubase__anthem-02.wav">cubase/anthem-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/anthem.wav" id="cubase__anthem.wav">cubase/anthem.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/anticlimax.wav" id="cubase__anticlimax.wav">cubase/anticlimax.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/argh%20%281%29.ogg" id="cubase__argh_(1).ogg">cubase/argh (1).ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/argh.mp3" id="cubase__argh.mp3">cubase/argh.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/asia.mp3" id="cubase__asia.mp3">cubase/asia.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/audio%20audio.wav" id="cubase__audio_audio.wav">cubase/audio audio.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/aw2.mp3" id="cubase__aw2.mp3">cubase/aw2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/aware.wav" id="cubase__aware.wav">cubase/aware.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/aware2.ogg" id="cubase__aware2.ogg">cubase/aware2.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/beat.wav" id="cubase__beat.wav">cubase/beat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/beat01.wav" id="cubase__beat01.wav">cubase/beat01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/beatintro.wav" id="cubase__beatintro.wav">cubase/beatintro.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/blaaas.wav" id="cubase__blaaas.wav">cubase/blaaas.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/blahplng.wav" id="cubase__blahplng.wav">cubase/blahplng.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bleh-01.wav" id="cubase__bleh-01.wav">cubase/bleh-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bleh.wav" id="cubase__bleh.wav">cubase/bleh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/blind%20spot%20%28deep%20under%29.wav" id="cubase__blind_spot_(deep_under).wav">cubase/blind spot (deep under).wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/blistering.wav" id="cubase__blistering.wav">cubase/blistering.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/blob.mp3" id="cubase__blob.mp3">cubase/blob.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bloos.wav" id="cubase__bloos.wav">cubase/bloos.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/boomboom-01.mp3" id="cubase__boomboom-01.mp3">cubase/boomboom-01.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/build%20up.ogg" id="cubase__build_up.ogg">cubase/build up.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bum.mp3" id="cubase__bum.mp3">cubase/bum.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bum.wav" id="cubase__bum.wav">cubase/bum.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bumbumbum.ogg" id="cubase__bumbumbum.ogg">cubase/bumbumbum.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/bummelum.wav" id="cubase__bummelum.wav">cubase/bummelum.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/burn%20notepad.wav" id="cubase__burn_notepad.wav">cubase/burn notepad.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/burn-01.wav" id="cubase__burn-01.wav">cubase/burn-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/burn.wav" id="cubase__burn.wav">cubase/burn.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/canto.mp3" id="cubase__canto.mp3">cubase/canto.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/captain%20insanoe-01.wav" id="cubase__captain_insanoe-01.wav">cubase/captain insanoe-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/captain_insanoe.mp3" id="cubase__captain_insanoe.mp3">cubase/captain_insanoe.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/crap.mp3" id="cubase__crap.mp3">cubase/crap.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/cubase%20frustrate%20me.wav" id="cubase__cubase_frustrate_me.wav">cubase/cubase frustrate me.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/cubasearp.mp3" id="cubase__cubasearp.mp3">cubase/cubasearp.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/cubearp.mp3" id="cubase__cubearp.mp3">cubase/cubearp.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/dadum.ogg" id="cubase__dadum.ogg">cubase/dadum.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/damdidam.wav" id="cubase__damdidam.wav">cubase/damdidam.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/das-01.ogg" id="cubase__das-01.ogg">cubase/das-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/das.ogg" id="cubase__das.ogg">cubase/das.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/deep%20under%20something-02.ogg" id="cubase__deep_under_something-02.ogg">cubase/deep under something-02.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/delirium.mp3" id="cubase__delirium.mp3">cubase/delirium.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/droning.wav" id="cubase__droning.wav">cubase/droning.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/drunk1.wav" id="cubase__drunk1.wav">cubase/drunk1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/drunk2.wav" id="cubase__drunk2.wav">cubase/drunk2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/drunk3.wav" id="cubase__drunk3.wav">cubase/drunk3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/dum%20di%20dum-01.wav" id="cubase__dum_di_dum-01.wav">cubase/dum di dum-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/dum%20di%20dum.wav" id="cubase__dum_di_dum.wav">cubase/dum di dum.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/dumdidum.wav" id="cubase__dumdidum.wav">cubase/dumdidum.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/e-line.wav" id="cubase__e-line.wav">cubase/e-line.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eh.wav" id="cubase__eh.wav">cubase/eh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eh2.wav" id="cubase__eh2.wav">cubase/eh2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eh3.wav" id="cubase__eh3.wav">cubase/eh3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eh4.wav" id="cubase__eh4.wav">cubase/eh4.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ehm.wav" id="cubase__ehm.wav">cubase/ehm.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eline.wav" id="cubase__eline.wav">cubase/eline.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/enough.wav" id="cubase__enough.wav">cubase/enough.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/epil%c3%b8g-01.ogg" id="cubase__epiloeg-01.ogg">cubase/epiløg-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/epil%c3%b8g.ogg" id="cubase__epiloeg.ogg">cubase/epiløg.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/epil%c3%b8g.wav" id="cubase__epiloeg.wav">cubase/epiløg.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/epp01.2months17years.wav" id="cubase__epp01.2months17years.wav">cubase/epp01.2months17years.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/epp01.wav" id="cubase__epp01.wav">cubase/epp01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/er.ogg" id="cubase__er.ogg">cubase/er.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/er.wav" id="cubase__er.wav">cubase/er.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/erghks.wav" id="cubase__erghks.wav">cubase/erghks.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/eric%20in%20a%20dark%20alley.ogg" id="cubase__eric_in_a_dark_alley.ogg">cubase/eric in a dark alley.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/errrh.mp3" id="cubase__errrh.mp3">cubase/errrh.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/evenlessidea.wav" id="cubase__evenlessidea.wav">cubase/evenlessidea.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l-01.wav" id="cubase__evoel-01.wav">cubase/evøl-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l-02.wav" id="cubase__evoel-02.wav">cubase/evøl-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l-03.wav" id="cubase__evoel-03.wav">cubase/evøl-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l-04.wav" id="cubase__evoel-04.wav">cubase/evøl-04.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l-05.wav" id="cubase__evoel-05.wav">cubase/evøl-05.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ev%c3%b8l.wav" id="cubase__evoel.wav">cubase/evøl.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/first%20try.wav" id="cubase__first_try.wav">cubase/first try.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/flingflang.wav" id="cubase__flingflang.wav">cubase/flingflang.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/float_like_a_feather.wav" id="cubase__float_like_a_feather.wav">cubase/float_like_a_feather.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/flobber-01.wav" id="cubase__flobber-01.wav">cubase/flobber-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/flobber.wav" id="cubase__flobber.wav">cubase/flobber.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fl%c3%a6%c3%a6ng.wav" id="cubase__flaeaeng.wav">cubase/flææng.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fm7fx-01.wav" id="cubase__fm7fx-01.wav">cubase/fm7fx-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fm7fx.wav" id="cubase__fm7fx.wav">cubase/fm7fx.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fobberl.wav" id="cubase__fobberl.wav">cubase/fobberl.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/frackme-01.wav" id="cubase__frackme-01.wav">cubase/frackme-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/frackme.wav" id="cubase__frackme.wav">cubase/frackme.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuck.mp3" id="cubase__fuck.mp3">cubase/fuck.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuck2.mp3" id="cubase__fuck2.mp3">cubase/fuck2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuck3.mp3" id="cubase__fuck3.mp3">cubase/fuck3.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckedup.mp3" id="cubase__fuckedup.mp3">cubase/fuckedup.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckedup.wav" id="cubase__fuckedup.wav">cubase/fuckedup.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fucking%20fugly%20ugly.mp3" id="cubase__fucking_fugly_ugly.mp3">cubase/fucking fugly ugly.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckingfunk-01.wav" id="cubase__fuckingfunk-01.wav">cubase/fuckingfunk-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckingfunk.wav" id="cubase__fuckingfunk.wav">cubase/fuckingfunk.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckup-01.wav" id="cubase__fuckup-01.wav">cubase/fuckup-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/fuckup.wav" id="cubase__fuckup.wav">cubase/fuckup.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/funkstuff.wav" id="cubase__funkstuff.wav">cubase/funkstuff.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/gameloop.wav" id="cubase__gameloop.wav">cubase/gameloop.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/gitit-01.wav" id="cubase__gitit-01.wav">cubase/gitit-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/glyphz0r.wav" id="cubase__glyphz0r.wav">cubase/glyphz0r.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/gnn-01.wav" id="cubase__gnn-01.wav">cubase/gnn-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/gnn.wav" id="cubase__gnn.wav">cubase/gnn.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/gtr.wav" id="cubase__gtr.wav">cubase/gtr.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/guitar.wav" id="cubase__guitar.wav">cubase/guitar.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/har%20du%20l%c3%b8g%20to.wav" id="cubase__har_du_loeg_to.wav">cubase/har du løg to.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/har%20du%20l%c3%b8g%20x.wav" id="cubase__har_du_loeg_x.wav">cubase/har du løg x.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hare_due_l%c3%b8g%28x%29.mp3" id="cubase__hare_due_loeg(x).mp3">cubase/hare_due_løg(x).mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/havefun.mp3" id="cubase__havefun.mp3">cubase/havefun.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/heh.wav" id="cubase__heh.wav">cubase/heh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hehepop.mp3" id="cubase__hehepop.mp3">cubase/hehepop.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/herocrab-01.wav" id="cubase__herocrab-01.wav">cubase/herocrab-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/herocrab.wav" id="cubase__herocrab.wav">cubase/herocrab.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hfebeb.wav" id="cubase__hfebeb.wav">cubase/hfebeb.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hiatus%200.0.9.2%c3%9f.ogg" id="cubase__hiatus_0.0.9.2ss.ogg">cubase/hiatus 0.0.9.2ß.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hiatus.ogg" id="cubase__hiatus.ogg">cubase/hiatus.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hiatus12312.ogg" id="cubase__hiatus12312.ogg">cubase/hiatus12312.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hm%20hm%20hm.wav" id="cubase__hm_hm_hm.wav">cubase/hm hm hm.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hmm-edit.wav" id="cubase__hmm-edit.wav">cubase/hmm-edit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hms-01.wav" id="cubase__hms-01.wav">cubase/hms-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hms.wav" id="cubase__hms.wav">cubase/hms.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hort.wav" id="cubase__hort.wav">cubase/hort.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/hulk.wav" id="cubase__hulk.wav">cubase/hulk.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/i%20am%20so%20nu.mp3" id="cubase__i_am_so_nu.mp3">cubase/i am so nu.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ide%20vs%20aleph%20null.wav" id="cubase__ide_vs_aleph_null.wav">cubase/ide vs aleph null.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ignorance%20is%20bliss%20mer%20endda-01.wav" id="cubase__ignorance_is_bliss_mer_endda-01.wav">cubase/ignorance is bliss mer endda-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ignorance%20is%20bliss.mp3" id="cubase__ignorance_is_bliss.mp3">cubase/ignorance is bliss.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ignorance%20is%20bliss.ogg" id="cubase__ignorance_is_bliss.ogg">cubase/ignorance is bliss.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ignorance%20is%20bliss2-01.ogg" id="cubase__ignorance_is_bliss2-01.ogg">cubase/ignorance is bliss2-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ignorance%20is%20bliss2.ogg" id="cubase__ignorance_is_bliss2.ogg">cubase/ignorance is bliss2.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/indahood.wav" id="cubase__indahood.wav">cubase/indahood.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/industrial%20fun.wav" id="cubase__industrial_fun.wav">cubase/industrial fun.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/isthisus.wav" id="cubase__isthisus.wav">cubase/isthisus.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/it%20ends%20here%2066.ogg" id="cubase__it_ends_here_66.ogg">cubase/it ends here 66.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/it%20ends%20here.wav" id="cubase__it_ends_here.wav">cubase/it ends here.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/it%20ends%20here2.ogg" id="cubase__it_ends_here2.ogg">cubase/it ends here2.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/it%27s%20got%20a%20funky%20beat!.wav" id="cubase__it&#39;s_got_a_funky_beat!.wav">cubase/it&#39;s got a funky beat!.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/izitisit.wav" id="cubase__izitisit.wav">cubase/izitisit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/k9.wav" id="cubase__k9.wav">cubase/k9.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/k95.wav" id="cubase__k95.wav">cubase/k95.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/keke-01.wav" id="cubase__keke-01.wav">cubase/keke-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/keke.wav" id="cubase__keke.wav">cubase/keke.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/kryb-01.wav" id="cubase__kryb-01.wav">cubase/kryb-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/kyrie.wav" id="cubase__kyrie.wav">cubase/kyrie.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/last%20song-02.ogg" id="cubase__last_song-02.ogg">cubase/last song-02.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/last%20song-03.ogg" id="cubase__last_song-03.ogg">cubase/last song-03.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/last%20song.ogg" id="cubase__last_song.ogg">cubase/last song.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/laydown-03.wav" id="cubase__laydown-03.wav">cubase/laydown-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/lidt%20steneren.wav" id="cubase__lidt_steneren.wav">cubase/lidt steneren.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/lllllllllllll.wav" id="cubase__lllllllllllll.wav">cubase/lllllllllllll.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/lol-01.wav" id="cubase__lol-01.wav">cubase/lol-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/lol.wav" id="cubase__lol.wav">cubase/lol.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/loonie.wav" id="cubase__loonie.wav">cubase/loonie.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/loop.wav" id="cubase__loop.wav">cubase/loop.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/loop3.wav" id="cubase__loop3.wav">cubase/loop3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/lounge.wav" id="cubase__lounge.wav">cubase/lounge.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/medley.ogg" id="cubase__medley.ogg">cubase/medley.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/meingott.wav" id="cubase__meingott.wav">cubase/meingott.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mello-01.wav" id="cubase__mello-01.wav">cubase/mello-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mello-02.wav" id="cubase__mello-02.wav">cubase/mello-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mello.wav" id="cubase__mello.wav">cubase/mello.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/menigoot-01.wav" id="cubase__menigoot-01.wav">cubase/menigoot-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/menigoot-02.wav" id="cubase__menigoot-02.wav">cubase/menigoot-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/menigoot.wav" id="cubase__menigoot.wav">cubase/menigoot.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mhmm.mp3" id="cubase__mhmm.mp3">cubase/mhmm.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ministry%20of%20information-01.wav" id="cubase__ministry_of_information-01.wav">cubase/ministry of information-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ministry%20of%20information-02.wav" id="cubase__ministry_of_information-02.wav">cubase/ministry of information-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ministry%20of%20information-03.wav" id="cubase__ministry_of_information-03.wav">cubase/ministry of information-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ministry%20of%20information-04.wav" id="cubase__ministry_of_information-04.wav">cubase/ministry of information-04.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ministry%20of%20information.wav" id="cubase__ministry_of_information.wav">cubase/ministry of information.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/missed%20opportunity123.ogg" id="cubase__missed_opportunity123.ogg">cubase/missed opportunity123.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mockup.wav" id="cubase__mockup.wav">cubase/mockup.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/musicsite.wav" id="cubase__musicsite.wav">cubase/musicsite.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/mylove.wav" id="cubase__mylove.wav">cubase/mylove.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/naughty%20mam.wav" id="cubase__naughty_mam.wav">cubase/naughty mam.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/naughty-x-04.ogg" id="cubase__naughty-x-04.ogg">cubase/naughty-x-04.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/naughty.wav" id="cubase__naughty.wav">cubase/naughty.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/nej_du_har_ej.mp3" id="cubase__nej_du_har_ej.mp3">cubase/nej_du_har_ej.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/newdir-atmo.wav" id="cubase__newdir-atmo.wav">cubase/newdir-atmo.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/nickbeat.wav" id="cubase__nickbeat.wav">cubase/nickbeat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/nightfall.wav" id="cubase__nightfall.wav">cubase/nightfall.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/no%20one-01.wav" id="cubase__no_one-01.wav">cubase/no one-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/no%20one-02.wav" id="cubase__no_one-02.wav">cubase/no one-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/no%20one.wav" id="cubase__no_one.wav">cubase/no one.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/noget.wav" id="cubase__noget.wav">cubase/noget.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/noidea.wav" id="cubase__noidea.wav">cubase/noidea.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/noize.wav" id="cubase__noize.wav">cubase/noize.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/nonon3fg.wav" id="cubase__nonon3fg.wav">cubase/nonon3fg.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/nothappy.wav" id="cubase__nothappy.wav">cubase/nothappy.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/now%20what.wav" id="cubase__now_what.wav">cubase/now what.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/o.mp3" id="cubase__o.mp3">cubase/o.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ohwellohwell-02.wav" id="cubase__ohwellohwell-02.wav">cubase/ohwellohwell-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-01.ogg" id="cubase__oink16&amp;17-01.ogg">cubase/oink16&amp;17-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-02.ogg" id="cubase__oink16&amp;17-02.ogg">cubase/oink16&amp;17-02.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-03.ogg" id="cubase__oink16&amp;17-03.ogg">cubase/oink16&amp;17-03.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-04.ogg" id="cubase__oink16&amp;17-04.ogg">cubase/oink16&amp;17-04.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-05.ogg" id="cubase__oink16&amp;17-05.ogg">cubase/oink16&amp;17-05.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17-06.ogg" id="cubase__oink16&amp;17-06.ogg">cubase/oink16&amp;17-06.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/oink16&amp;17.ogg" id="cubase__oink16&amp;17.ogg">cubase/oink16&amp;17.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/old%20skool.mp3" id="cubase__old_skool.mp3">cubase/old skool.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/old%20skool2.mp3" id="cubase__old_skool2.mp3">cubase/old skool2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/onosdinner.ogg" id="cubase__onosdinner.ogg">cubase/onosdinner.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/op88888.wav" id="cubase__op88888.wav">cubase/op88888.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/opiate2312312%202.wav" id="cubase__opiate2312312_2.wav">cubase/opiate2312312 2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/opiate2312312%203.wav" id="cubase__opiate2312312_3.wav">cubase/opiate2312312 3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/opiate2312312.wav" id="cubase__opiate2312312.wav">cubase/opiate2312312.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/opiateriff-02.wav" id="cubase__opiateriff-02.wav">cubase/opiateriff-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/opiateriffv2.wav" id="cubase__opiateriffv2.wav">cubase/opiateriffv2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/orchestra-01.wav" id="cubase__orchestra-01.wav">cubase/orchestra-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/orchestra-02.mp3" id="cubase__orchestra-02.mp3">cubase/orchestra-02.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/orchestra-02.wav" id="cubase__orchestra-02.wav">cubase/orchestra-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/orchestra.mp3" id="cubase__orchestra.mp3">cubase/orchestra.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/outtro.wav" id="cubase__outtro.wav">cubase/outtro.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pain-01.wav" id="cubase__pain-01.wav">cubase/pain-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pain-02.wav" id="cubase__pain-02.wav">cubase/pain-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pain.wav" id="cubase__pain.wav">cubase/pain.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/parabol-01.wav" id="cubase__parabol-01.wav">cubase/parabol-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/parabol.wav" id="cubase__parabol.wav">cubase/parabol.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/party%20the%20fuck%20on.wav" id="cubase__party_the_fuck_on.wav">cubase/party the fuck on.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/party%20the%20fuck%20on2.wav" id="cubase__party_the_fuck_on2.wav">cubase/party the fuck on2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/phonecall2-01.wav" id="cubase__phonecall2-01.wav">cubase/phonecall2-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/phonecall2.wav" id="cubase__phonecall2.wav">cubase/phonecall2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/phony.wav" id="cubase__phony.wav">cubase/phony.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pjat.wav" id="cubase__pjat.wav">cubase/pjat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plams-ddkplaysyou.ogg" id="cubase__plams-ddkplaysyou.ogg">cubase/plams-ddkplaysyou.ogg</a>
+<cc>See "Dance Dance Karnov" elsewhere, second attempt, not nearly as popular.</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pleefewf-01.wav" id="cubase__pleefewf-01.wav">cubase/pleefewf-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plik.wav" id="cubase__plik.wav">cubase/plik.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff-01.wav" id="cubase__plingff-01.wav">cubase/plingff-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff-02.wav" id="cubase__plingff-02.wav">cubase/plingff-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff.wav" id="cubase__plingff.wav">cubase/plingff.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff3-01.ogg" id="cubase__plingff3-01.ogg">cubase/plingff3-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff3-01.wav" id="cubase__plingff3-01.wav">cubase/plingff3-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingff3.wav" id="cubase__plingff3.wav">cubase/plingff3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingplingplong.wav" id="cubase__plingplingplong.wav">cubase/plingplingplong.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/plingplong.wav" id="cubase__plingplong.wav">cubase/plingplong.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/poony-01.wav" id="cubase__poony-01.wav">cubase/poony-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pop-01.wav" id="cubase__pop-01.wav">cubase/pop-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pop.wav" id="cubase__pop.wav">cubase/pop.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pork.wav" id="cubase__pork.wav">cubase/pork.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pork2.wav" id="cubase__pork2.wav">cubase/pork2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ppg-ruski.wav" id="cubase__ppg-ruski.wav">cubase/ppg-ruski.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal%20scream-01.wav" id="cubase__primal_scream-01.wav">cubase/primal scream-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal%20scream-02.wav" id="cubase__primal_scream-02.wav">cubase/primal scream-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal%20scream-03.wav" id="cubase__primal_scream-03.wav">cubase/primal scream-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal%20scream.wav" id="cubase__primal_scream.wav">cubase/primal scream.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal-lead1-01.wav" id="cubase__primal-lead1-01.wav">cubase/primal-lead1-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal-lead1-02.wav" id="cubase__primal-lead1-02.wav">cubase/primal-lead1-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/primal-lead1.wav" id="cubase__primal-lead1.wav">cubase/primal-lead1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/projectingenforventninger-01.wav" id="cubase__projectingenforventninger-01.wav">cubase/projectingenforventninger-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/projectingenforventninger.wav" id="cubase__projectingenforventninger.wav">cubase/projectingenforventninger.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/projectlavnogetgodt.wav" id="cubase__projectlavnogetgodt.wav">cubase/projectlavnogetgodt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ps%20seq%20lead.wav" id="cubase__ps_seq_lead.wav">cubase/ps seq lead.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ps%20seq%20lead2.wav" id="cubase__ps_seq_lead2.wav">cubase/ps seq lead2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/psmage.ogg" id="cubase__psmage.ogg">cubase/psmage.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/pulver.ogg" id="cubase__pulver.ogg">cubase/pulver.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rain.mp3" id="cubase__rain.mp3">cubase/rain.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rain.wav" id="cubase__rain.wav">cubase/rain.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rain0.wav" id="cubase__rain0.wav">cubase/rain0.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rain2.wav" id="cubase__rain2.wav">cubase/rain2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/reaktor%20cool.wav" id="cubase__reaktor_cool.wav">cubase/reaktor cool.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/reaktormajix.wav" id="cubase__reaktormajix.wav">cubase/reaktormajix.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/retrometro.wav" id="cubase__retrometro.wav">cubase/retrometro.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ringadingdong.wav" id="cubase__ringadingdong.wav">cubase/ringadingdong.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rm-02.wav" id="cubase__rm-02.wav">cubase/rm-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/rm-1.wav" id="cubase__rm-1.wav">cubase/rm-1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sailing.wav" id="cubase__sailing.wav">cubase/sailing.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/say%20uh%20huh%20mmm%20hmm.wav" id="cubase__say_uh_huh_mmm_hmm.wav">cubase/say uh huh mmm hmm.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/scream-01.wav" id="cubase__scream-01.wav">cubase/scream-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/scream-02.wav" id="cubase__scream-02.wav">cubase/scream-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/scream.wav" id="cubase__scream.wav">cubase/scream.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/shootout.mp3" id="cubase__shootout.mp3">cubase/shootout.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/showdown%20at%205%20sample%20creek.wav" id="cubase__showdown_at_5_sample_creek.wav">cubase/showdown at 5 sample creek.wav</a>
+<cc>From a sample pack duel at somethingawful forums</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/showers.ogg" id="cubase__showers.ogg">cubase/showers.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sid1.wav" id="cubase__sid1.wav">cubase/sid1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/siluva.wav" id="cubase__siluva.wav">cubase/siluva.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/skummelt.mp3" id="cubase__skummelt.mp3">cubase/skummelt.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/slave%20of%20shit.wav" id="cubase__slave_of_shit.wav">cubase/slave of shit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sleeping%20hypno%20toad.mp3" id="cubase__sleeping_hypno_toad.mp3">cubase/sleeping hypno toad.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/smadr-01.wav" id="cubase__smadr-01.wav">cubase/smadr-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/smadr.wav" id="cubase__smadr.wav">cubase/smadr.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sniger.wav" id="cubase__sniger.wav">cubase/sniger.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sold%20out.mp3" id="cubase__sold_out.mp3">cubase/sold out.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sold_out.ogg" id="cubase__sold_out.ogg">cubase/sold_out.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/some%20kind%20of%20theme.wav" id="cubase__some_kind_of_theme.wav">cubase/some kind of theme.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/someday%20sunday.wav" id="cubase__someday_sunday.wav">cubase/someday sunday.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/someoldshit12.wav" id="cubase__someoldshit12.wav">cubase/someoldshit12.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/something%20is%20always%20enough-01.wav" id="cubase__something_is_always_enough-01.wav">cubase/something is always enough-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/something%20is%20always%20enough-02.wav" id="cubase__something_is_always_enough-02.wav">cubase/something is always enough-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/something%20is%20always%20enough-03.wav" id="cubase__something_is_always_enough-03.wav">cubase/something is always enough-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/something%20is%20always%20enough.wav" id="cubase__something_is_always_enough.wav">cubase/something is always enough.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/something%20something.wav" id="cubase__something_something.wav">cubase/something something.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sound%20of%20sound-01.ogg" id="cubase__sound_of_sound-01.ogg">cubase/sound of sound-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/spring3.mp3" id="cubase__spring3.mp3">cubase/spring3.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/st1.wav" id="cubase__st1.wav">cubase/st1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/starcomedown-01.wav" id="cubase__starcomedown-01.wav">cubase/starcomedown-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/starcomedown.wav" id="cubase__starcomedown.wav">cubase/starcomedown.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/strings.mp3" id="cubase__strings.mp3">cubase/strings.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/suck.wav" id="cubase__suck.wav">cubase/suck.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sumpling.wav" id="cubase__sumpling.wav">cubase/sumpling.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/sumpthing.mp3" id="cubase__sumpthing.mp3">cubase/sumpthing.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/synthhelvede.mp3" id="cubase__synthhelvede.mp3">cubase/synthhelvede.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/tambam.ogg" id="cubase__tambam.ogg">cubase/tambam.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/teh%20pling.wav" id="cubase__teh_pling.wav">cubase/teh pling.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thah%20blah-01.ogg" id="cubase__thah_blah-01.ogg">cubase/thah blah-01.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/the%20pjat.wav" id="cubase__the_pjat.wav">cubase/the pjat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/the%20skod%20the%20beginning.wav" id="cubase__the_skod_the_beginning.wav">cubase/the skod the beginning.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/theme.mp3" id="cubase__theme.mp3">cubase/theme.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/theme.wav" id="cubase__theme.wav">cubase/theme.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/theshkt.wav" id="cubase__theshkt.wav">cubase/theshkt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thing.wav" id="cubase__thing.wav">cubase/thing.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thingy-01.wav" id="cubase__thingy-01.wav">cubase/thingy-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thingy-02.wav" id="cubase__thingy-02.wav">cubase/thingy-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thingy.wav" id="cubase__thingy.wav">cubase/thingy.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/this%20is%20not%20jazz-edit.wav" id="cubase__this_is_not_jazz-edit.wav">cubase/this is not jazz-edit.wav</a>
+<cc>
+Ce n'est pas du jazz or something. My guitar teacher really liked it. My
+friend's dad really hated it. The lead sound is made by ring modulating two
+oscillators, which I play independently of each other (split keyboard) to
+produce all sorts of delicious inharmonic ugliness. Bass and drum fragments
+were sampled from records.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/this%20is%20not%20jazz.wav" id="cubase__this_is_not_jazz.wav">cubase/this is not jazz.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thisisus%20-%20placeholder.mp3" id="cubase__thisisus_-_placeholder.mp3">cubase/thisisus - placeholder.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thorgh-01.wav" id="cubase__thorgh-01.wav">cubase/thorgh-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/thorgh.wav" id="cubase__thorgh.wav">cubase/thorgh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ting%20=.wav" id="cubase__ting_=.wav">cubase/ting =.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trash%20for%20my%20-%201.wav" id="cubase__trash_for_my_-_1.wav">cubase/trash for my - 1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-01.wav" id="cubase__trashy_fun-01.wav">cubase/trashy fun-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-02.wav" id="cubase__trashy_fun-02.wav">cubase/trashy fun-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-03.wav" id="cubase__trashy_fun-03.wav">cubase/trashy fun-03.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-04.wav" id="cubase__trashy_fun-04.wav">cubase/trashy fun-04.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-05.wav" id="cubase__trashy_fun-05.wav">cubase/trashy fun-05.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun-06.wav" id="cubase__trashy_fun-06.wav">cubase/trashy fun-06.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/trashy%20fun.wav" id="cubase__trashy_fun.wav">cubase/trashy fun.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/troyawful-01.wav" id="cubase__troyawful-01.wav">cubase/troyawful-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/troyawful.wav" id="cubase__troyawful.wav">cubase/troyawful.wav</a>
+<cc>Voice recording shared on the somethingawful forums. Poor Troy.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/tube.wav" id="cubase__tube.wav">cubase/tube.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ugly.mp3" id="cubase__ugly.mp3">cubase/ugly.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/uhh-01.wav" id="cubase__uhh-01.wav">cubase/uhh-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/uhh.wav" id="cubase__uhh.wav">cubase/uhh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/ultimate.wav.mp3" id="cubase__ultimate.wav.mp3">cubase/ultimate.wav.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/up%20and%20up-04.ogg" id="cubase__up_and_up-04.ogg">cubase/up and up-04.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/w78jfg-01.wav" id="cubase__w78jfg-01.wav">cubase/w78jfg-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/w78jfg.wav" id="cubase__w78jfg.wav">cubase/w78jfg.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/well%20not%20really-01.wav" id="cubase__well_not_really-01.wav">cubase/well not really-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/well%20not%20really.wav" id="cubase__well_not_really.wav">cubase/well not really.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/well,%20it%20sucks.wav" id="cubase__well,_it_sucks.wav">cubase/well, it sucks.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/what%20is%20this.wav" id="cubase__what_is_this.wav">cubase/what is this.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/woot-01.wav" id="cubase__woot-01.wav">cubase/woot-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/woot-02.wav" id="cubase__woot-02.wav">cubase/woot-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/woot.wav" id="cubase__woot.wav">cubase/woot.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/wwff.wav" id="cubase__wwff.wav">cubase/wwff.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/yes%20i%27m%20drunk.wav" id="cubase__yes_i&#39;m_drunk.wav">cubase/yes i&#39;m drunk.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/yomomma.wav" id="cubase__yomomma.wav">cubase/yomomma.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/zoidiee.wav" id="cubase__zoidiee.wav">cubase/zoidiee.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/zorg.mp3" id="cubase__zorg.mp3">cubase/zorg.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/cubase/%c3%a6ble.wav" id="cubase__aeble.wav">cubase/æble.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/hodgepodge/db9major.aif" id="hodgepodge__db9major.aif">hodgepodge/db9major.aif</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/hodgepodge/dotd.mp3" id="hodgepodge__dotd.mp3">hodgepodge/dotd.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/01%20-%20undertr%c3%a6et-01.wav" id="sfh__01_-_undertraeet-01.wav">sfh/01 - undertræet-01.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/02.wav" id="sfh__02.wav">sfh/02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/03%20-%20et%20h%c3%b8jere%20sted.wav" id="sfh__03_-_et_hoejere_sted.wav">sfh/03 - et højere sted.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/04%20-%20stoppested.wav" id="sfh__04_-_stoppested.wav">sfh/04 - stoppested.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/05%20-%20dadum.wav" id="sfh__05_-_dadum.wav">sfh/05 - dadum.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/06%20-%20burn-02.wav" id="sfh__06_-_burn-02.wav">sfh/06 - burn-02.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/07%20-%20lidt%20fred.wav" id="sfh__07_-_lidt_fred.wav">sfh/07 - lidt fred.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/08%20-%20nummer%20meget.wav" id="sfh__08_-_nummer_meget.wav">sfh/08 - nummer meget.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/09%20-%20eventyr.wav" id="sfh__09_-_eventyr.wav">sfh/09 - eventyr.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/10%20-%20steps.wav" id="sfh__10_-_steps.wav">sfh/10 - steps.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/11%20-%20not%20for%20me.wav" id="sfh__11_-_not_for_me.wav">sfh/11 - not for me.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/12%20-%20go%20away.wav" id="sfh__12_-_go_away.wav">sfh/12 - go away.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/13%20-%20waiting.wav" id="sfh__13_-_waiting.wav">sfh/13 - waiting.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/14%20-%20wanting.wav" id="sfh__14_-_wanting.wav">sfh/14 - wanting.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/15%20-%20why.wav" id="sfh__15_-_why.wav">sfh/15 - why.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/16%20-%20when.wav" id="sfh__16_-_when.wav">sfh/16 - when.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/17%20-%20secrets.wav" id="sfh__17_-_secrets.wav">sfh/17 - secrets.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/18%20-%20this%20moment.wav" id="sfh__18_-_this_moment.wav">sfh/18 - this moment.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/19%20-%201.wav" id="sfh__19_-_1.wav">sfh/19 - 1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/20%20-%202.wav" id="sfh__20_-_2.wav">sfh/20 - 2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/21%20-%203.wav" id="sfh__21_-_3.wav">sfh/21 - 3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/22%20-%20sfh22.wav" id="sfh__22_-_sfh22.wav">sfh/22 - sfh22.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/23%20-%20sfh23.wav" id="sfh__23_-_sfh23.wav">sfh/23 - sfh23.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/sfh/24%20-%20sfh24.wav" id="sfh__24_-_sfh24.wav">sfh/24 - sfh24.wav</a>
+</div>
+
+<h1>Logic</h1>
+
+<div class="song">
+<a class="songlink" href="music/logic/02maskine.wav" id="logic__02maskine.wav">logic/02maskine.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/222.wav" id="logic__222.wav">logic/222.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/80sknips-2.wav" id="logic__80sknips-2.wav">logic/80sknips-2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/80sknips.wav" id="logic__80sknips.wav">logic/80sknips.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/babakakagaga.wav" id="logic__babakakagaga.wav">logic/babakakagaga.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/cute.wav" id="logic__cute.wav">logic/cute.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/dentone.wav" id="logic__dentone.wav">logic/dentone.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/dowemowe.wav" id="logic__dowemowe.wav">logic/dowemowe.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/eh33.wav" id="logic__eh33.wav">logic/eh33.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/environmental.wav" id="logic__environmental.wav">logic/environmental.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/exhibit.wav" id="logic__exhibit.wav">logic/exhibit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/farlane1.wav" id="logic__farlane1.wav">logic/farlane1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/farlane2.wav" id="logic__farlane2.wav">logic/farlane2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/fr.wav" id="logic__fr.wav">logic/fr.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/fragfrakfrac.wav" id="logic__fragfrakfrac.wav">logic/fragfrakfrac.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/harrowdown.wav" id="logic__harrowdown.wav">logic/harrowdown.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/ikset.wav" id="logic__ikset.wav">logic/ikset.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/ikset2.wav" id="logic__ikset2.wav">logic/ikset2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/kokken.wav" id="logic__kokken.wav">logic/kokken.wav</a>
+<cc>Jeg prøvede med charme men hun vil hellere have kokken</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/lambordastan.wav" id="logic__lambordastan.wav">logic/lambordastan.wav</a>
+<cc>Study in copyright infringement</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/laxity.wav" id="logic__laxity.wav">logic/laxity.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/li.wav" id="logic__li.wav">logic/li.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/lyd.wav" id="logic__lyd.wav">logic/lyd.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/missing.wav" id="logic__missing.wav">logic/missing.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/mwha.wav" id="logic__mwha.wav">logic/mwha.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/nejej.wav" id="logic__nejej.wav">logic/nejej.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/numbo.wav" id="logic__numbo.wav">logic/numbo.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/numboluft.wav" id="logic__numboluft.wav">logic/numboluft.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/o2d1.wav" id="logic__o2d1.wav">logic/o2d1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/o2d2.wav" id="logic__o2d2.wav">logic/o2d2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/o2d3.wav" id="logic__o2d3.wav">logic/o2d3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/only.wav" id="logic__only.wav">logic/only.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/pappop.wav" id="logic__pappop.wav">logic/pappop.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/pjanowhatever.wav" id="logic__pjanowhatever.wav">logic/pjanowhatever.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/pling.wav" id="logic__pling.wav">logic/pling.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/rmc6.wav" id="logic__rmc6.wav">logic/rmc6.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/seqnumber4123.wav" id="logic__seqnumber4123.wav">logic/seqnumber4123.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/sfh1.wav" id="logic__sfh1.wav">logic/sfh1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/sfh2.wav" id="logic__sfh2.wav">logic/sfh2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/skodmen.wav" id="logic__skodmen.wav">logic/skodmen.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/skraldkorrypt.wav" id="logic__skraldkorrypt.wav">logic/skraldkorrypt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/sumbeat.wav" id="logic__sumbeat.wav">logic/sumbeat.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/theme.wav" id="logic__theme.wav">logic/theme.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/thorgh.wav" id="logic__thorgh.wav">logic/thorgh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/twoteem.wav" id="logic__twoteem.wav">logic/twoteem.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/veralynkorrypt.wav" id="logic__veralynkorrypt.wav">logic/veralynkorrypt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/logic/we1rd.wav" id="logic__we1rd.wav">logic/we1rd.wav</a>
+</div>
+
+
+<h1>Lyrics by somethingawful forums, music by me</h1>
+<p>
+People posted song lyrics they had written, then other people recorded music
+from these lyrics. Sorry, some of these are quite offensive. Sorry, some of
+these are quite cringey. Sorry, I've lost the names of those who wrote the
+lyrics. Sorry, these were made in short amounts of time. Soooorry!
+</p>
+
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/arcticblast.mp3" id="lyrics-by-somethingawful-forums-music-by-me__arcticblast.mp3">lyrics-by-somethingawful-forums-music-by-me/arcticblast.mp3</a>
+<cc>
+<lyrics>Witness the power of steam
+If you know what I mean
+Now bear my Arctic Blast
+Now bear my Arctic Blast
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/awesomethread.mp3" id="lyrics-by-somethingawful-forums-music-by-me__awesomethread.mp3">lyrics-by-somethingawful-forums-music-by-me/awesomethread.mp3</a>
+<cc>
+<lyrics>Awesome thread
+Operator's "Wibble Wobble" from the last thread
+Remains on my playlists to this day
+And I've included it on more than one mixtape
+I think a lot of these songs from everyone
+Not just Operator
+Are going to be favorite of mine for a while
+I'm actually thinking of burning all the songs
+From this thread onto a CD and mocking up
+Some cover art for it all or something
+If I do I'll post it
+And others should do the same
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/barbiedolls.wav" id="lyrics-by-somethingawful-forums-music-by-me__barbiedolls.wav">lyrics-by-somethingawful-forums-music-by-me/barbiedolls.wav</a>
+<cc>
+<lyrics>Barbie dolls and shotgun shells
+Fallen to the sand
+The river calls from ten feet away
+They'll never find the evidence
+
+I saw the shoe hanging from a branch
+It rolled in the current from dusk to dawn
+The dog wants to catch it
+But he keeps falling in
+
+Who called the police
+They won't go away
+They're asking the wrong questions
+And they know about the gun
+
+I hope the car makes it up this hill
+I hope I can make it home
+I'd rather leave the sights I've seen
+Down in that big old gorge
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/becasue.mp3" id="lyrics-by-somethingawful-forums-music-by-me__becasue.mp3">lyrics-by-somethingawful-forums-music-by-me/becasue.mp3</a>
+<cc>
+<lyrics>I'm hooked on the drugs
+And I like where I am
+I sway by the fire
+Yet I sit on a lamb
+The way I look
+Isn't the way I feel
+If I could
+I would fuck an eel
+
+I like hotdogs becasue they look like a penis
+Slowly roasting on a fire and a dripping like semen
+And I like it
+And I like it
+I love it in my mouth
+And I like it
+And I like it
+I love it in my mouth
+And I like it
+And I like it
+
+These days go by fast
+Becasue I'm gay
+The internet is real
+Some may say
+You're gay I say
+So fuck you
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/bleedingrainbow.mp3" id="lyrics-by-somethingawful-forums-music-by-me__bleedingrainbow.mp3">lyrics-by-somethingawful-forums-music-by-me/bleedingrainbow.mp3</a>
+<cc>
+<lyrics>Gabriel
+In the sky
+Sees with
+Immortal eyes
+Take a look
+In Satan's book
+Bleeding rainbow
+
+I can kill
+Anything
+Death
+Death to all
+Do you hear them call
+Bleeding rainbow
+
+I strike
+The heart of god
+And taste the blood
+Biblical flood
+Bleeding rainbow
+Bleeding rainbow
+Bleeding rainbow
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/boomboom.mp3" id="lyrics-by-somethingawful-forums-music-by-me__boomboom.mp3">lyrics-by-somethingawful-forums-music-by-me/boomboom.mp3</a>
+<cc>
+<lyrics>To live without love
+Is like living in hell
+And I like girls who have
+Their own gravity well
+But baby there's a line
+And you've gone and crossed it
+That boner I had for you
+Damn gone and lost it
+
+You're 200 pounds
+Too much a woman for me
+Your fries were supersized
+And dessert was free
+
+If there's one thing I like
+It's a big girl in bed
+I'm always well laid
+When my sweetie's well fed
+But honey there's a point
+Where pleasure becomes pain
+Just getting you here
+Took a forklift and crane
+
+You're 200 pounds
+Too much a woman for me
+Your fries were supersized
+And dessert was free
+You're 200 pounds
+Too much a woman for me
+Or else I ain't enough
+Of a man
+
+*SOLO*
+
+If my pa was alive
+He'd say "Son stop your bitchin'
+That girl is a queen
+Get your ass in the kitchen"
+I wouldn't be here now
+If given up had he
+So pass me the chicken wings
+And make room for daddy
+
+You're 200 pounds
+...etc
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/daiseys.mp3" id="lyrics-by-somethingawful-forums-music-by-me__daiseys.mp3">lyrics-by-somethingawful-forums-music-by-me/daiseys.mp3</a>
+<cc>
+<lyrics>My darling little honey
+Who moped around
+And groped around
+And smiled at me all funny
+Where did it all go wrong
+
+As if a bunch of daiseys
+Dressed like a goth
+I pushed her off
+Into the path of a Mercedes
+I'm writing you this song
+
+...
+
+The beauty of a flower
+Which blooms in May
+On that same day
+I began my rise to power
+Her death was opportune
+
+My latest inquisition
+To oust the proles
+Who shun their roles
+And argue their position
+Comes into effect in June
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/eyeball%20mastered.wav" id="lyrics-by-somethingawful-forums-music-by-me__eyeball_mastered.wav">lyrics-by-somethingawful-forums-music-by-me/eyeball mastered.wav</a>
+<cc>
+<lyrics>So I sat down to have some tea
+It tasted terrible
+Woe is me
+So I go to find out what the cause might be
+When something jumped
+Out and fucking attacked me
+
+There's a fucking eyeball in my teapot
+There's a fucking eyeball in my teapot
+And it decided to beat the shit out of me
+
+I decided that it was the time for revenge
+So I explained to it a challenge
+Me and it were to duel at dawn
+But instead of a revolver
+It brought McFarlane's Spawn
+
+There's a fucking eyeball in my teapot
+There's a fucking eyeball in my teapot
+And it brought Spawn to beat shit out of me
+
+Yes that goddamn eyeball
+Had thought it was so smart
+So I held the teapot up to my ass
+And ripped a great big fart
+I heard it cough
+I heard it moan
+It would be better off
+On death row
+I closed the lid
+I held it shut
+As it screamed to me
+I was a fucking cunt
+
+There's a fucking eyeball in my teapot
+There's a fucking eyeball in my teapot
+And I fucking gassed it with the fumes from inside of me
+There's a fucking eyeball in my teapot
+There's a fucking eyeball in my teapot
+And I fucking gassed it with the fumes from inside of me
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/eyeball.mp3" id="lyrics-by-somethingawful-forums-music-by-me__eyeball.mp3">lyrics-by-somethingawful-forums-music-by-me/eyeball.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/fuse.mp3" id="lyrics-by-somethingawful-forums-music-by-me__fuse.mp3">lyrics-by-somethingawful-forums-music-by-me/fuse.mp3</a>
+<cc>
+<lyrics>Time goes by
+The clock is ticking
+Counting the seconds
+Until the end
+I watch the ashes
+Fall from him
+My smoldering
+Little friend
+
+With a deep breath
+And a heavy sigh
+I soon accept my fate
+The fuse runs out
+The time has come
+That's it for my cigarette break
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/ghosthobo.mp3" id="lyrics-by-somethingawful-forums-music-by-me__ghosthobo.mp3">lyrics-by-somethingawful-forums-music-by-me/ghosthobo.mp3</a>
+<cc>
+<lyrics>Children who don't eat their vegetables
+Are a dirty and vile breed
+It is said that a monster will come in the night
+And carry them off to feed
+
+And children who live to scream and yell
+Shall spend eternity in the depths of hell
+Demons ripping off flesh and tearing into bone
+As they cry for their mothers in the dark alone
+And for the children who won't brush their teeth
+In creeps the ghost hobo without making a peep
+He'll clip of their fingers and cut off their feet
+Then ride away swiftly on his box car fleet
+
+So children remember
+Whether you're there or here
+All of your time should be spent
+Living in fear
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/kitsune.mp3" id="lyrics-by-somethingawful-forums-music-by-me__kitsune.mp3">lyrics-by-somethingawful-forums-music-by-me/kitsune.mp3</a>
+<cc>
+<lyrics>You will call me Kitsune
+Not a dog
+
+(wait did I "write" this?)
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/massmedia.mp3" id="lyrics-by-somethingawful-forums-music-by-me__massmedia.mp3">lyrics-by-somethingawful-forums-music-by-me/massmedia.mp3</a>
+<cc>
+<lyrics>These are the difference between similar terms from "intro to mass media"
+I wish the assholes in my class would learn the difference
+Mass media targets the general public which is unidentified and anonymous
+Point-to-point communications target a specific location or locations
+Convergence is the coming together of services and technologies
+Conglomeration is the merging of companies in related businesses
+Consolidation is the purchase of companies by a company in the same business
+Mass media uses technology, sends (?) content, targets the general public,
+targets locations other than its origin, has relatively simultaneous delivery,
+delivers content of general interest, and is affordable
+Some mass medias are print, newspapers and magazines, electronic, either
+wired cable TV and internet, or wireless broadcast, AM and FM radio,
+VHF and UHF TV and satellite
+Point-to-point communications can be wired or wireless
+Some examples are telephone services, relay satellites, and walkie-talkies
+I really hope this will help the kids learn the difference
+Because that one bitch who asked a question about the first week's notes
+every day in class really pissed me off
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/melissa.mp3" id="lyrics-by-somethingawful-forums-music-by-me__melissa.mp3">lyrics-by-somethingawful-forums-music-by-me/melissa.mp3</a>
+<cc>
+<lyrics>Beef curtains
+Meat rags
+Fish taco
+Box
+
+This is everything I did with Melissa
+I liked to come on her tits
+This is everything I did with Melissa
+I was the first one to do this
+
+Cum rag
+Meat wallet
+Cooter
+Twat
+
+This is everything I did with Melissa
+I liked to come on her tits
+This is everything I did with Melissa
+I was the first one to do this
+
+I hope when you kiss her lips
+That you know they were on my dick
+I hope that you can taste my sperm
+When you lick her tits
+My old cum rag is your new girlfriend
+
+This is everything...
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/min2hrs.mp3" id="lyrics-by-somethingawful-forums-music-by-me__min2hrs.mp3">lyrics-by-somethingawful-forums-music-by-me/min2hrs.mp3</a>
+<cc>
+<lyrics>Minutes to hours
+Long live the night
+Drink of your blood
+Won't go down without a fight
+And while the weaklings they all slop
+Not the few the proud with eight odd cups
+In their stomach slushing turning
+Twilight to starlight they watch the night turning
+And in their eyes a godlike burning
+Never give up
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/moremoremore.mp3" id="lyrics-by-somethingawful-forums-music-by-me__moremoremore.mp3">lyrics-by-somethingawful-forums-music-by-me/moremoremore.mp3</a>
+<cc>
+<lyrics>Live by the sword
+Then die die die
+Pick up my shield and run to the battlefield
+And live live live
+Drink their blood
+Then spit it on my decaying corpse
+More more more
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/objection.mp3" id="lyrics-by-somethingawful-forums-music-by-me__objection.mp3">lyrics-by-somethingawful-forums-music-by-me/objection.mp3</a>
+<cc>
+<lyrics>My enemy in front of me
+My aides to my side
+I must cross-examine
+What you just testified
+You're accused of murder
+But why can't you see
+That lies on the stand
+Will make you guilty
+
+(whoa) These tears of rejection
+(whoa) I must make a connection
+(whoa) You strive for perfection
+(whoa) And so here's my OBJECTION (beep beep bepp)
+
+A sudden revelation
+The court has gone nuts
+When something smells
+It's usually the Butz
+The king of prosecutors
+Edgeworth's award
+I must add this
+To the court record
+
+(whoa) These tears of rejection
+...
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/onegaydragon.mp3" id="lyrics-by-somethingawful-forums-music-by-me__onegaydragon.mp3">lyrics-by-somethingawful-forums-music-by-me/onegaydragon.mp3</a>
+<cc>
+<lyrics>Sit by me my friends
+And I'll tell you all a tale
+The strangest you will hear
+Unless the story fails
+Of course you all have heard
+Of the mighty beast the dragon
+But tell me have you heard
+Of the dragon that went fagging
+
+He was one gay dragon
+Mythological queer
+From the strangest tale
+That you ever did hear
+
+This dragon was ashamed
+He tried to hide his gayness
+He never was discovered
+When checking dragon anus
+If the other dragons knew
+They'd all call him a lamer
+But he couldn't hide it long
+Cause this dragon was a flamer
+
+He was one gay dragon
+Mythological queer
+From the strangest tale
+That you ever did hear
+
+So one day with his friends
+He came out of the closet
+He told them of how much he'd love
+To make a butt deposit
+The dragons laughed him out of town
+He cried and flew away
+Cause noone could appreciate
+A dragon who is gay
+
+He was one gay dragon
+Mythological queer
+From the strangest tale
+That you ever did hear
+
+He soon got his revenge
+When he found a faggot knight
+He sold out his old friends
+And he didn't give a shite
+He eventually settled
+With a friendly homo griffin
+And they had a happy ending
+When they both got to yiffin
+
+He was one gay dragon
+Mythological queer
+From the strangest tale
+That you ever did hear
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/oranges.mp3" id="lyrics-by-somethingawful-forums-music-by-me__oranges.mp3">lyrics-by-somethingawful-forums-music-by-me/oranges.mp3</a>
+<cc>
+<lyrics>Just working at the orange ranch
+Yes sir this is what I do
+Working at the orange ranch
+Is that a problem for you
+
+This is my job what can I say
+It's all work and no play
+But in the end it's all okay
+Since I get to touch oranges all fucking day
+
+All day long oranges oranges
+I fondle my oranges oranges
+All day long
+
+Some day I'd like to move on
+Maybe fondle some other delicious fruits
+But that's the future oh my son
+So lets all go nuts at the orange ranch
+
+Just working at the orange ranch
+Yes sir that's what we'll do
+Working at the orange ranch
+Is that a problem for you
+
+All day long oranges oranges
+I fondle my oranges oranges
+All day long
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/quotedotdot.mp3" id="lyrics-by-somethingawful-forums-music-by-me__quotedotdot.mp3">lyrics-by-somethingawful-forums-music-by-me/quotedotdot.mp3</a>
+<cc>
+<lyrics>"quimbling..."
+A quiet hallway
+The semblence of a mystery
+In the distance I can hear the wind
+
+"worfling..."
+A door closes
+Quilt me a girly padding
+While I cower in the shed
+
+Unearth my mountains of memory
+The power of passion that resides inside of me
+In the kitchen a trembling mass
+This is not the future of my power
+
+*BITCHIN' SOLO* (sic)
+
+"grabble..."
+I pull my hands back
+From where they were on my face
+When I suddenly became frightned
+
+Where is the window to my pain...
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/serpentssong.mp3" id="lyrics-by-somethingawful-forums-music-by-me__serpentssong.mp3">lyrics-by-somethingawful-forums-music-by-me/serpentssong.mp3</a>
+<cc>
+<lyrics>Riding on a steed of darkest midnight
+Riding forth towards the quest that I might
+See the beauteous valleys of home once more
+And bring the darkness to light
+
+The mightiest foe in the land
+Must be fought with sword in hand
+Protecting the kingdom in my eyes I see (?)
+I'll fight onward towards destiny
+
+Can you see the world is full of misery
+The shadow has crept up in our minds
+Stole our eyes made us blind
+Can you see life will bring forth harmony
+The sun will come out and vanguish the foe
+And joy will reign forever more
+
+The serpent rears it head again
+To strike with fire and flame
+Fighting onward as any man should
+I will not die in vain
+The swing of the sword mighty and strong
+Hits home ending the serpent's song
+The shadow in my mind has been defeated
+And the quest at long last completed
+
+Can you see the world is full of misery
+...
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/tearblurredsight.mp3" id="lyrics-by-somethingawful-forums-music-by-me__tearblurredsight.mp3">lyrics-by-somethingawful-forums-music-by-me/tearblurredsight.mp3</a>
+<cc>
+<lyrics>I find myself writing a different song
+I'd already planned a much better one
+Things don't turn out as you plan
+Least not for this pityful man
+
+I was blinded by my belief
+That I couldn't be happy with another's grief
+But just the thought of your sweet lips
+Sends shivers down to my fingertips
+
+Playing the field oh it never works
+If you meet the most perfect girl first
+Only with hindsight can I see
+That I was a fool and will always be
+
+From day one I should have seen
+Sweet beautiful and eighteen
+I should have seen it straight away
+That we would share ten amazing days
+
+Ten days is all it takes to know you're right
+Ten days is all it takes to see the light
+
+I should have listened that first day
+But your doubts I kissed away
+At the time all seemed right
+Ten days later tear blurred sight
+
+Having someone to spoil again
+Till the release of hidden pain
+I'd do anything for you
+Every word I write is true
+
+At your door one sunday I arrive
+Feeling pumped and so alive
+Only to be told we need to talk
+That night I walked my longest walk
+
+Arriving home to other's laughter
+I've become a futile actor
+Motivation I cannot find
+Cause I can't get you out of my mind
+
+Ten days is all it takes to know you're right
+Ten days is all it takes to see the light
+Ten days is all it takes for your first fight
+Ten days is all it takes to change your life
+
+Ten days and I hide in my covers
+Your heart it belongs to another
+Ten days and I can't get to sleep
+Your heart I don't get to keep
+
+Ten days and I don't understand
+But I feel so good when you hold my hand
+Ten days and I'm still confused
+My body aches and my heart is bruised
+
+Ten days is all it takes to know you're right
+Ten days is all it takes to see the light
+Ten days is all it takes for your first fight
+Ten days is all it takes to change your life
+
+(NOTE: I remember he said he knew it was very long, and we didn't have to record everything, but I did it anyway)
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/teletubbies.mp3" id="lyrics-by-somethingawful-forums-music-by-me__teletubbies.mp3">lyrics-by-somethingawful-forums-music-by-me/teletubbies.mp3</a>
+<cc>
+<lyrics>The baby looks down
+On the green rolling hills
+While the rabbits still snuffle and play
+The flowers still grow
+Because they don't know
+What happened here yesterday
+
+The Teletubbies are dead my friend
+Tinky Winky was stabbed in bed
+Then Laa-Laa came to a gruesome end
+Dipsy and Po were suffocated
+
+All the Tubby Custard
+Was slowly goes stale
+The Noo-Noo was alone and ashamed
+The handbag and ball
+Hat scooter and all
+Will never be played with again
+
+The Teletubbies are dead my friend
+Tinky Winky was stabbed in bed
+Then Laa-Laa came to a gruesome end
+Dipsy and Po were suffocated
+
+Oh it was late at night
+And the stars were bright
+In the night garden a plot was hatched
+Its inhabitants chose
+To slaughter their Tubby foes
+To murder and steal all their cash
+
+Now the baby looks down at the empty home
+Where the rabbits still snuffle and play
+While the loudspeaker shouts
+And they'll never find out
+What happened here yesterday
+
+The Teletubbies are dead my friend
+...
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/tonight.mp3" id="lyrics-by-somethingawful-forums-music-by-me__tonight.mp3">lyrics-by-somethingawful-forums-music-by-me/tonight.mp3</a>
+<cc>
+<lyrics>Tonight is the night
+Tonight is the night
+
+Tonight is the night
+We won't stand it anymore
+Tonight is the night
+We're gonna get hardcore
+
+Not again what a lame excuse
+A nation supported by US military aid
+Ten shades of green
+To put one in an Arab's bean
+Every citizen required to kill
+To fulfil an empty promise
+
+Tonight is the night
+Tonight is the night
+We won't stand it anymore
+
+One kill and they bring ten more
+Ha excessive force
+To cure the source
+Ten mothers crying and ten fathers grabbing their gun
+Destroy a ??? nation because of one
+
+You won't kill in our names anymore
+Sending the Israellis tax money
+It's an option no more
+An armory purchased
+Haha ??? bodies
+
+Tonight is the night
+Tonight is the night
+We won't stand it anymore
+Tonight is the night
+We're gonna get hardcore
+
+Leaked a secret plan to nuke the entire middle east
+Instead of standing up and duking it out like men
+We're the only ones that can kill with immunity
+Fuck the Arab community
+You better change your way of thinking
+Cause soon you'll be outnumbered
+Numb to the realities around you
+
+Killing isn't a solution to the social pollution
+A second-class citizen
+A minority
+But watch as that minority becomes the majority
+Ha we'll see who has the real authority
+A second generation holocaust
+A jewish nazi bashing a muslim
+Because we give them the cash and support them
+
+No we won't fucking stand it anymore
+We're gonna get hardcore
+We won't stand it anymore
+We're gonna get hardcore
+
+Tonight is the night
+
+We'll support you no more
+Sympathetic and empathetic to your cause no more
+You've burned your last bridge
+You've killed your last person
+It's time to instill some social justice
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/lyrics-by-somethingawful-forums-music-by-me/wow.mp3" id="lyrics-by-somethingawful-forums-music-by-me__wow.mp3">lyrics-by-somethingawful-forums-music-by-me/wow.mp3</a>
+<cc>
+<lyrics>World of Warcraft
+You wondrous game
+Of role playing
+Of role playing
+For it is in my bedroom
+On the computer
+That I am staying
+
+I'll never leave
+Not even to pee
+I've got a bedpan
+And it's right next to me
+
+And when my roommates
+Express their concern
+I'll shun them to hell
+And forever they'll burn
+
+Because you should not
+Ever fuck with me
+I've been playing for months
+And I'm level sixty
+
+And I'll cast a dark spell on you
+Force you to leave
+You'll never take my precious
+World of Warcraft from me
+</lyrics>
+</cc>
+</div>
+
+
+
+<h1>Tracker</h1>
+
+<p>
+Made with trackers: FastTracker II, MadTracker 2 and Renoise. Most of these
+probably from late 90s to early 2000s.
+</p>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/01017.XM" id="tracker__compo__01017.XM">tracker/compo/01017.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/03%20-%20binaural%20therapy.wav" id="tracker__compo__03_-_binaural_therapy.wav">tracker/compo/03 - binaural therapy.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/08048.xm" id="tracker__compo__08048.xm">tracker/compo/08048.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/10%20-%20b52.wav" id="tracker__compo__10_-_b52.wav">tracker/compo/10 - b52.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/13%20-%20moo%20moo.wav" id="tracker__compo__13_-_moo_moo.wav">tracker/compo/13 - moo moo.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/19%20-%20this%20is%20me.wav" id="tracker__compo__19_-_this_is_me.wav">tracker/compo/19 - this is me.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/20%20-%20hey%20mr%20taleban%20man.wav" id="tracker__compo__20_-_hey_mr_taleban_man.wav">tracker/compo/20 - hey mr taleban man.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/25%20-%20layer%20cake.wav" id="tracker__compo__25_-_layer_cake.wav">tracker/compo/25 - layer cake.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/3.XM" id="tracker__compo__3.XM">tracker/compo/3.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/31337.XM" id="tracker__compo__31337.XM">tracker/compo/31337.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/69696.XM" id="tracker__compo__69696.XM">tracker/compo/69696.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/ARSE.xm" id="tracker__compo__ARSE.xm">tracker/compo/ARSE.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/B52.XM" id="tracker__compo__B52.XM">tracker/compo/B52.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/Bornholm.xm" id="tracker__compo__Bornholm.xm">tracker/compo/Bornholm.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/H.XM" id="tracker__compo__H.XM">tracker/compo/H.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/MAD2LATE.XM" id="tracker__compo__MAD2LATE.XM">tracker/compo/MAD2LATE.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/N.XM" id="tracker__compo__N.XM">tracker/compo/N.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/PLA_BIN.XM" id="tracker__compo__PLA_BIN.XM">tracker/compo/PLA_BIN.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/Untitled.xm" id="tracker__compo__Untitled.xm">tracker/compo/Untitled.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/again.xm" id="tracker__compo__again.xm">tracker/compo/again.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/antitechno.XM" id="tracker__compo__antitechno.XM">tracker/compo/antitechno.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/ebonstar3.XM" id="tracker__compo__ebonstar3.XM">tracker/compo/ebonstar3.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/game-tvman3.XM" id="tracker__compo__game-tvman3.XM">tracker/compo/game-tvman3.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/moo%20moo.xm" id="tracker__compo__moo_moo.xm">tracker/compo/moo moo.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/pla-tap.xm" id="tracker__compo__pla-tap.xm">tracker/compo/pla-tap.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plams%20-%20hey%20mr%20taleban%20man.xm" id="tracker__compo__plams_-_hey_mr_taleban_man.xm">tracker/compo/plams - hey mr taleban man.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm%20-%20ctsm.xm" id="tracker__compo__plasm_-_ctsm.xm">tracker/compo/plasm - ctsm.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm%20-%20echo%20or%20not%20to%20do.xm" id="tracker__compo__plasm_-_echo_or_not_to_do.xm">tracker/compo/plasm - echo or not to do.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm%20-%20please%20don%27t%20put%20your%20hands%20in%20the%20air.xm" id="tracker__compo__plasm_-_please_don&#39;t_put_your_hands_in_the_air.xm">tracker/compo/plasm - please don&#39;t put your hands in the air.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm%20-%20tick%20tick.xm" id="tracker__compo__plasm_-_tick_tick.xm">tracker/compo/plasm - tick tick.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm-e-line.xm" id="tracker__compo__plasm-e-line.xm">tracker/compo/plasm-e-line.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm-layer%20cake.xm" id="tracker__compo__plasm-layer_cake.xm">tracker/compo/plasm-layer cake.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm-smpte%20blues.xm" id="tracker__compo__plasm-smpte_blues.xm">tracker/compo/plasm-smpte blues.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plasm.bliss.xm" id="tracker__compo__plasm.bliss.xm">tracker/compo/plasm.bliss.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plassem.xm" id="tracker__compo__plassem.xm">tracker/compo/plassem.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/plassm-myass.xm" id="tracker__compo__plassm-myass.xm">tracker/compo/plassm-myass.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/shit.XM" id="tracker__compo__shit.XM">tracker/compo/shit.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t01_tap.xm" id="tracker__compo__t01_tap.xm">tracker/compo/t01_tap.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t02_m2l.xm" id="tracker__compo__t02_m2l.xm">tracker/compo/t02_m2l.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t03_bin.xm" id="tracker__compo__t03_bin.xm">tracker/compo/t03_bin.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t04_08048.xm" id="tracker__compo__t04_08048.xm">tracker/compo/t04_08048.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t05_31337.xm" id="tracker__compo__t05_31337.xm">tracker/compo/t05_31337.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t06_69696.xm" id="tracker__compo__t06_69696.xm">tracker/compo/t06_69696.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t07_n.xm" id="tracker__compo__t07_n.xm">tracker/compo/t07_n.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t08_01017.xm" id="tracker__compo__t08_01017.xm">tracker/compo/t08_01017.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t09_h.xm" id="tracker__compo__t09_h.xm">tracker/compo/t09_h.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t10_b52.xm" id="tracker__compo__t10_b52.xm">tracker/compo/t10_b52.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t11_echo.xm" id="tracker__compo__t11_echo.xm">tracker/compo/t11_echo.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t12_bornholm.xm" id="tracker__compo__t12_bornholm.xm">tracker/compo/t12_bornholm.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t13_moo.xm" id="tracker__compo__t13_moo.xm">tracker/compo/t13_moo.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t14_ticktock.xm" id="tracker__compo__t14_ticktock.xm">tracker/compo/t14_ticktock.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t15_again.xm" id="tracker__compo__t15_again.xm">tracker/compo/t15_again.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t16_smpteblues.xm" id="tracker__compo__t16_smpteblues.xm">tracker/compo/t16_smpteblues.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t17_please.xm" id="tracker__compo__t17_please.xm">tracker/compo/t17_please.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t18_plassem.xm" id="tracker__compo__t18_plassem.xm">tracker/compo/t18_plassem.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t19_thisisme.mp3" id="tracker__compo__t19_thisisme.mp3">tracker/compo/t19_thisisme.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t20_talebanman.xm" id="tracker__compo__t20_talebanman.xm">tracker/compo/t20_talebanman.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t21_bliss.xm" id="tracker__compo__t21_bliss.xm">tracker/compo/t21_bliss.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t22_ctsm.xm" id="tracker__compo__t22_ctsm.xm">tracker/compo/t22_ctsm.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t23_myass.xm" id="tracker__compo__t23_myass.xm">tracker/compo/t23_myass.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t24_eline.xm" id="tracker__compo__t24_eline.xm">tracker/compo/t24_eline.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t25_untitled.xm" id="tracker__compo__t25_untitled.xm">tracker/compo/t25_untitled.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/compo/t26_layercake.xm" id="tracker__compo__t26_layercake.xm">tracker/compo/t26_layercake.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUE-xm.mt2" id="tracker__mt2__BLUE-xm.mt2">tracker/mt2/BLUE-xm.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUE-xm.xm" id="tracker__mt2__BLUE-xm.xm">tracker/mt2/BLUE-xm.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUE.MT2" id="tracker__mt2__BLUE.MT2">tracker/mt2/BLUE.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUE2.MT2" id="tracker__mt2__BLUE2.MT2">tracker/mt2/BLUE2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUE3.MT2" id="tracker__mt2__BLUE3.MT2">tracker/mt2/BLUE3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/BLUEZ.xm" id="tracker__mt2__BLUEZ.xm">tracker/mt2/BLUEZ.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/DEMO.MT2" id="tracker__mt2__DEMO.MT2">tracker/mt2/DEMO.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/FLUFFER.mt2" id="tracker__mt2__FLUFFER.mt2">tracker/mt2/FLUFFER.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/NOTAGAIN.mt2" id="tracker__mt2__NOTAGAIN.mt2">tracker/mt2/NOTAGAIN.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/PIS.MT2" id="tracker__mt2__PIS.MT2">tracker/mt2/PIS.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/Slt2.mt2" id="tracker__mt2__Slt2.mt2">tracker/mt2/Slt2.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/Untitled.mt2" id="tracker__mt2__Untitled.mt2">tracker/mt2/Untitled.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/WHAT%20NOW.MT2" id="tracker__mt2__WHAT_NOW.MT2">tracker/mt2/WHAT NOW.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/WHAT%20NOW2.MT2" id="tracker__mt2__WHAT_NOW2.MT2">tracker/mt2/WHAT NOW2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/a%20warm%20place.MT2" id="tracker__mt2__a_warm_place.MT2">tracker/mt2/a warm place.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/aargghargerreaheg.MT2" id="tracker__mt2__aargghargerreaheg.MT2">tracker/mt2/aargghargerreaheg.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ahahahaha.wav" id="tracker__mt2__ahahahaha.wav">tracker/mt2/ahahahaha.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ahahhahahaha.MT2" id="tracker__mt2__ahahhahahaha.MT2">tracker/mt2/ahahhahahaha.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ambience.MT2" id="tracker__mt2__ambience.MT2">tracker/mt2/ambience.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ambient.MT2" id="tracker__mt2__ambient.MT2">tracker/mt2/ambient.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ambient.wav" id="tracker__mt2__ambient.wav">tracker/mt2/ambient.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ambient2.MT2" id="tracker__mt2__ambient2.MT2">tracker/mt2/ambient2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/antitechno.XM" id="tracker__mt2__antitechno.XM">tracker/mt2/antitechno.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/arab.MT2" id="tracker__mt2__arab.MT2">tracker/mt2/arab.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/argh.MT2" id="tracker__mt2__argh.MT2">tracker/mt2/argh.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/arghstep.MT2" id="tracker__mt2__arghstep.MT2">tracker/mt2/arghstep.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/arghstep.wav" id="tracker__mt2__arghstep.wav">tracker/mt2/arghstep.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/armani.MT2" id="tracker__mt2__armani.MT2">tracker/mt2/armani.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/beautiful%20illusion.MT2" id="tracker__mt2__beautiful_illusion.MT2">tracker/mt2/beautiful illusion.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/befri%20bornholm.MT2" id="tracker__mt2__befri_bornholm.MT2">tracker/mt2/befri bornholm.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/bigbeat.MT2" id="tracker__mt2__bigbeat.MT2">tracker/mt2/bigbeat.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/blah.MT2" id="tracker__mt2__blah.MT2">tracker/mt2/blah.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/blind.MT2" id="tracker__mt2__blind.MT2">tracker/mt2/blind.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/boingee.MT2" id="tracker__mt2__boingee.MT2">tracker/mt2/boingee.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/boller.MT2" id="tracker__mt2__boller.MT2">tracker/mt2/boller.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/bossa.MT2" id="tracker__mt2__bossa.MT2">tracker/mt2/bossa.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/bowling%20trole.MT2" id="tracker__mt2__bowling_trole.MT2">tracker/mt2/bowling trole.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/bum.MT2" id="tracker__mt2__bum.MT2">tracker/mt2/bum.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/bum2.MT2" id="tracker__mt2__bum2.MT2">tracker/mt2/bum2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/c64jukebox.MT2" id="tracker__mt2__c64jukebox.MT2">tracker/mt2/c64jukebox.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/chicago.MT2" id="tracker__mt2__chicago.MT2">tracker/mt2/chicago.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/come2me.XM" id="tracker__mt2__come2me.XM">tracker/mt2/come2me.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/cooparse.WAV" id="tracker__mt2__cooparse.WAV">tracker/mt2/cooparse.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/cooparse.ogg" id="tracker__mt2__cooparse.ogg">tracker/mt2/cooparse.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/dnb.MT2" id="tracker__mt2__dnb.MT2">tracker/mt2/dnb.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/dnb.wav" id="tracker__mt2__dnb.wav">tracker/mt2/dnb.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/drug%20deficiency.MT2" id="tracker__mt2__drug_deficiency.MT2">tracker/mt2/drug deficiency.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/dum%20leg.MT2" id="tracker__mt2__dum_leg.MT2">tracker/mt2/dum leg.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ebonstar.XM" id="tracker__mt2__ebonstar.XM">tracker/mt2/ebonstar.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ebonstar2.XM" id="tracker__mt2__ebonstar2.XM">tracker/mt2/ebonstar2.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ebonstar3.XM" id="tracker__mt2__ebonstar3.XM">tracker/mt2/ebonstar3.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/eh.MT2" id="tracker__mt2__eh.MT2">tracker/mt2/eh.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/epiano2.MT2" id="tracker__mt2__epiano2.MT2">tracker/mt2/epiano2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/excuse%20me.MT2" id="tracker__mt2__excuse_me.MT2">tracker/mt2/excuse me.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/excuse%20me2.MT2" id="tracker__mt2__excuse_me2.MT2">tracker/mt2/excuse me2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fis-e.MT2" id="tracker__mt2__fis-e.MT2">tracker/mt2/fis-e.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/foft.MT2" id="tracker__mt2__foft.MT2">tracker/mt2/foft.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/freakish.MT2" id="tracker__mt2__freakish.MT2">tracker/mt2/freakish.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuck%20off.MT2" id="tracker__mt2__fuck_off.MT2">tracker/mt2/fuck off.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuck.MT2" id="tracker__mt2__fuck.MT2">tracker/mt2/fuck.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuckstep.MT2" id="tracker__mt2__fuckstep.MT2">tracker/mt2/fuckstep.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuckstep.ogg" id="tracker__mt2__fuckstep.ogg">tracker/mt2/fuckstep.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuckstep.wav" id="tracker__mt2__fuckstep.wav">tracker/mt2/fuckstep.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/funny%20relief.MT2" id="tracker__mt2__funny_relief.MT2">tracker/mt2/funny relief.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/fuqd.MT2" id="tracker__mt2__fuqd.MT2">tracker/mt2/fuqd.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/game-tvman.XM" id="tracker__mt2__game-tvman.XM">tracker/mt2/game-tvman.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/game-tvman2.XM" id="tracker__mt2__game-tvman2.XM">tracker/mt2/game-tvman2.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/game-tvman3.XM" id="tracker__mt2__game-tvman3.XM">tracker/mt2/game-tvman3.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/guitarpis.MT2" id="tracker__mt2__guitarpis.MT2">tracker/mt2/guitarpis.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/happybday.MT2" id="tracker__mt2__happybday.MT2">tracker/mt2/happybday.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/hawkeye%20fucker.MT2" id="tracker__mt2__hawkeye_fucker.MT2">tracker/mt2/hawkeye fucker.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/house.MT2" id="tracker__mt2__house.MT2">tracker/mt2/house.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/hw.MT2" id="tracker__mt2__hw.MT2">tracker/mt2/hw.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/indushell.MT2" id="tracker__mt2__indushell.MT2">tracker/mt2/indushell.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/indussssss.MT2" id="tracker__mt2__indussssss.MT2">tracker/mt2/indussssss.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/insane.MT2" id="tracker__mt2__insane.MT2">tracker/mt2/insane.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/jingle.MT2" id="tracker__mt2__jingle.MT2">tracker/mt2/jingle.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/jingle2.MT2" id="tracker__mt2__jingle2.MT2">tracker/mt2/jingle2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/jt-house.MT2" id="tracker__mt2__jt-house.MT2">tracker/mt2/jt-house.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/jt-house3.MT2" id="tracker__mt2__jt-house3.MT2">tracker/mt2/jt-house3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/killme-for-ehgdad.MT2" id="tracker__mt2__killme-for-ehgdad.MT2">tracker/mt2/killme-for-ehgdad.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/killme.MT2" id="tracker__mt2__killme.MT2">tracker/mt2/killme.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/leviathan.MT2" id="tracker__mt2__leviathan.MT2">tracker/mt2/leviathan.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lort%20ogs%c3%a5.MT2" id="tracker__mt2__lort_ogsaa.MT2">tracker/mt2/lort også.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lort-sml.MT2" id="tracker__mt2__lort-sml.MT2">tracker/mt2/lort-sml.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lort.MT2" id="tracker__mt2__lort.MT2">tracker/mt2/lort.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lort.wav" id="tracker__mt2__lort.wav">tracker/mt2/lort.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lovesong.MT2" id="tracker__mt2__lovesong.MT2">tracker/mt2/lovesong.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/lovesong.wav" id="tracker__mt2__lovesong.wav">tracker/mt2/lovesong.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/mesterjacob.MT2" id="tracker__mt2__mesterjacob.MT2">tracker/mt2/mesterjacob.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/mre.XM" id="tracker__mt2__mre.XM">tracker/mt2/mre.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/nej.MT2" id="tracker__mt2__nej.MT2">tracker/mt2/nej.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/no%20relief.MT2" id="tracker__mt2__no_relief.MT2">tracker/mt2/no relief.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/noo.MT2" id="tracker__mt2__noo.MT2">tracker/mt2/noo.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/noo2.MT2" id="tracker__mt2__noo2.MT2">tracker/mt2/noo2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/noo2.wav" id="tracker__mt2__noo2.wav">tracker/mt2/noo2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/nos-ch64.MT2" id="tracker__mt2__nos-ch64.MT2">tracker/mt2/nos-ch64.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/oblivion.MT2" id="tracker__mt2__oblivion.MT2">tracker/mt2/oblivion.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ond%20techno.MT2" id="tracker__mt2__ond_techno.MT2">tracker/mt2/ond techno.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ond.MT2" id="tracker__mt2__ond.MT2">tracker/mt2/ond.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ondskabens%20tonegenerator.MT2" id="tracker__mt2__ondskabens_tonegenerator.MT2">tracker/mt2/ondskabens tonegenerator.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ondskabens%20tonegenerator2.MT2" id="tracker__mt2__ondskabens_tonegenerator2.MT2">tracker/mt2/ondskabens tonegenerator2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ondskabens%20tonegenerator3.MT2" id="tracker__mt2__ondskabens_tonegenerator3.MT2">tracker/mt2/ondskabens tonegenerator3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ondton.wav" id="tracker__mt2__ondton.wav">tracker/mt2/ondton.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/phone.MT2" id="tracker__mt2__phone.MT2">tracker/mt2/phone.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/plasm-layer%20cake.xm" id="tracker__mt2__plasm-layer_cake.xm">tracker/mt2/plasm-layer cake.xm</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/plipplip.MT2" id="tracker__mt2__plipplip.MT2">tracker/mt2/plipplip.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/pop%20tekno.MT2" id="tracker__mt2__pop_tekno.MT2">tracker/mt2/pop tekno.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ppg%20c64.MT2" id="tracker__mt2__ppg_c64.MT2">tracker/mt2/ppg c64.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/ppg%20cybernoid%201.MT2" id="tracker__mt2__ppg_cybernoid_1.MT2">tracker/mt2/ppg cybernoid 1.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/res.MT2" id="tracker__mt2__res.MT2">tracker/mt2/res.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/saviour.MT2" id="tracker__mt2__saviour.MT2">tracker/mt2/saviour.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/setmefree-backup.MT2" id="tracker__mt2__setmefree-backup.MT2">tracker/mt2/setmefree-backup.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/setmefree.MT2" id="tracker__mt2__setmefree.MT2">tracker/mt2/setmefree.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/shit.XM" id="tracker__mt2__shit.XM">tracker/mt2/shit.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/skodhip.MT2" id="tracker__mt2__skodhip.MT2">tracker/mt2/skodhip.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/sobsucksavage.MT2" id="tracker__mt2__sobsucksavage.MT2">tracker/mt2/sobsucksavage.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/sobsucksavage2.MT2" id="tracker__mt2__sobsucksavage2.MT2">tracker/mt2/sobsucksavage2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/sobsucksavage3.MT2" id="tracker__mt2__sobsucksavage3.MT2">tracker/mt2/sobsucksavage3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/spinning%20wheel.MT2" id="tracker__mt2__spinning_wheel.MT2">tracker/mt2/spinning wheel.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/stoj.MT2" id="tracker__mt2__stoj.MT2">tracker/mt2/stoj.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/stop.MT2" id="tracker__mt2__stop.MT2">tracker/mt2/stop.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/strange%20shit.MT2" id="tracker__mt2__strange_shit.MT2">tracker/mt2/strange shit.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/sukkers%c3%b8dt.MT2" id="tracker__mt2__sukkersoedt.MT2">tracker/mt2/sukkersødt.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/tag%20dig%20tid.MT2" id="tracker__mt2__tag_dig_tid.MT2">tracker/mt2/tag dig tid.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/technoman.MT2" id="tracker__mt2__technoman.MT2">tracker/mt2/technoman.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/technoman2.MT2" id="tracker__mt2__technoman2.MT2">tracker/mt2/technoman2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/technosjov.MT2" id="tracker__mt2__technosjov.MT2">tracker/mt2/technosjov.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/tema.MT2" id="tracker__mt2__tema.MT2">tracker/mt2/tema.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/the%20wedding%20song.MT2" id="tracker__mt2__the_wedding_song.MT2">tracker/mt2/the wedding song.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/the%20world%20inside.MT2" id="tracker__mt2__the_world_inside.MT2">tracker/mt2/the world inside.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/too%20fucking%202.MT2" id="tracker__mt2__too_fucking_2.MT2">tracker/mt2/too fucking 2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/too%20fucking%20happy.MT2" id="tracker__mt2__too_fucking_happy.MT2">tracker/mt2/too fucking happy.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/totalt%20industrial%20maand.MT2" id="tracker__mt2__totalt_industrial_maand.MT2">tracker/mt2/totalt industrial maand.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/trip2.MT2" id="tracker__mt2__trip2.MT2">tracker/mt2/trip2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/trip2.wav" id="tracker__mt2__trip2.wav">tracker/mt2/trip2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/triphop.MT2" id="tracker__mt2__triphop.MT2">tracker/mt2/triphop.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/t%c3%a6kno.MT2" id="tracker__mt2__taekno.MT2">tracker/mt2/tækno.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/uglyness.MT2" id="tracker__mt2__uglyness.MT2">tracker/mt2/uglyness.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/uhu%c2%bd.MT2" id="tracker__mt2__uhu1/2.MT2">tracker/mt2/uhu½.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/urghhop.MT2" id="tracker__mt2__urghhop.MT2">tracker/mt2/urghhop.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/urghhop.wav" id="tracker__mt2__urghhop.wav">tracker/mt2/urghhop.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/vienna%20spirito%20clearatora.MT2" id="tracker__mt2__vienna_spirito_clearatora.MT2">tracker/mt2/vienna spirito clearatora.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/weed%20on%20need.MT2" id="tracker__mt2__weed_on_need.MT2">tracker/mt2/weed on need.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/weed%20on%20need2.MT2" id="tracker__mt2__weed_on_need2.MT2">tracker/mt2/weed on need2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/why.MT2" id="tracker__mt2__why.MT2">tracker/mt2/why.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/why.wav" id="tracker__mt2__why.wav">tracker/mt2/why.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/wrong%20way.MT2" id="tracker__mt2__wrong_way.MT2">tracker/mt2/wrong way.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/wrong%20way2.MT2" id="tracker__mt2__wrong_way2.MT2">tracker/mt2/wrong way2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/wrong%20way3.MT2" id="tracker__mt2__wrong_way3.MT2">tracker/mt2/wrong way3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/xwav1.MT2" id="tracker__mt2__xwav1.MT2">tracker/mt2/xwav1.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/xwav2.MT2" id="tracker__mt2__xwav2.MT2">tracker/mt2/xwav2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/yellow%20cake.MT2" id="tracker__mt2__yellow_cake.MT2">tracker/mt2/yellow cake.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3%20-%20ideer.MT2" id="tracker__mt2__oehh3_-_ideer.MT2">tracker/mt2/øhh3 - ideer.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3%20fx1.MT2" id="tracker__mt2__oehh3_fx1.MT2">tracker/mt2/øhh3 fx1.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3-2.MT2" id="tracker__mt2__oehh3-2.MT2">tracker/mt2/øhh3-2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3-3.MT2" id="tracker__mt2__oehh3-3.MT2">tracker/mt2/øhh3-3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3-4.MT2" id="tracker__mt2__oehh3-4.MT2">tracker/mt2/øhh3-4.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/mt2/%c3%b8hh3.MT2" id="tracker__mt2__oehh3.MT2">tracker/mt2/øhh3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/old/DUMBASS.wav" id="tracker__old__DUMBASS.wav">tracker/old/DUMBASS.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/old/HSOUND.wav" id="tracker__old__HSOUND.wav">tracker/old/HSOUND.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/old/WTFISLUV.XM" id="tracker__old__WTFISLUV.XM">tracker/old/WTFISLUV.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/old/WTFISLUV.wav" id="tracker__old__WTFISLUV.wav">tracker/old/WTFISLUV.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/463.WAV" id="tracker__previews__463.WAV">tracker/previews/463.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/ambient.wav" id="tracker__previews__ambient.wav">tracker/previews/ambient.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/bk1017.mp3" id="tracker__previews__bk1017.mp3">tracker/previews/bk1017.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/bwha.mp3" id="tracker__previews__bwha.mp3">tracker/previews/bwha.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/cybernoid1.wav" id="tracker__previews__cybernoid1.wav">tracker/previews/cybernoid1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/dum%20leg.mp3" id="tracker__previews__dum_leg.mp3">tracker/previews/dum leg.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/fis.wav" id="tracker__previews__fis.wav">tracker/previews/fis.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/flightpath.wav" id="tracker__previews__flightpath.wav">tracker/previews/flightpath.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/fuck.wav" id="tracker__previews__fuck.wav">tracker/previews/fuck.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/funny.wav" id="tracker__previews__funny.wav">tracker/previews/funny.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/funny2.wav" id="tracker__previews__funny2.wav">tracker/previews/funny2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/jt-house.wav" id="tracker__previews__jt-house.wav">tracker/previews/jt-house.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/noo.wav" id="tracker__previews__noo.wav">tracker/previews/noo.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/piano2.mp3" id="tracker__previews__piano2.mp3">tracker/previews/piano2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/shove.wav" id="tracker__previews__shove.wav">tracker/previews/shove.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/tag%20dig%20tid.WAV" id="tracker__previews__tag_dig_tid.WAV">tracker/previews/tag dig tid.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/uku.wav" id="tracker__previews__uku.wav">tracker/previews/uku.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/yours%20truly.mp3" id="tracker__previews__yours_truly.mp3">tracker/previews/yours truly.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/previews/%c3%b8h.mp3" id="tracker__previews__oeh.mp3">tracker/previews/øh.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/PLASTEK/Kopi%20af%20plastek!.wav" id="tracker__releases__PLASTEK__Kopi_af_plastek!.wav">tracker/releases/PLASTEK/Kopi af plastek!.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/PLASTEK/PLASTEK.XM" id="tracker__releases__PLASTEK__PLASTEK.XM">tracker/releases/PLASTEK/PLASTEK.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/anticlimax/NOS-ATC.mt2" id="tracker__releases__anticlimax__NOS-ATC.mt2">tracker/releases/anticlimax/NOS-ATC.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/anticlimax/anticlimax.WAV" id="tracker__releases__anticlimax__anticlimax.WAV">tracker/releases/anticlimax/anticlimax.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/ehh2/plasm%20-%20ehh2.mp3" id="tracker__releases__ehh2__plasm_-_ehh2.mp3">tracker/releases/ehh2/plasm - ehh2.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/excuse%20me/excuse%20me.wav" id="tracker__releases__excuse_me__excuse_me.wav">tracker/releases/excuse me/excuse me.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/explodingstar/mt2/rmx.MT2" id="tracker__releases__explodingstar__mt2__rmx.MT2">tracker/releases/explodingstar/mt2/rmx.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/explodingstar/mt2/rmx2.MT2" id="tracker__releases__explodingstar__mt2__rmx2.MT2">tracker/releases/explodingstar/mt2/rmx2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/explodingstar/mt2/rmx3.MT2" id="tracker__releases__explodingstar__mt2__rmx3.MT2">tracker/releases/explodingstar/mt2/rmx3.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/explodingstar/mt2/rmx4.MT2" id="tracker__releases__explodingstar__mt2__rmx4.MT2">tracker/releases/explodingstar/mt2/rmx4.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/explodingstar/with%20fade.wav" id="tracker__releases__explodingstar__with_fade.wav">tracker/releases/explodingstar/with fade.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/foolproof/in%20my%20life2.wav" id="tracker__releases__foolproof__in_my_life2.wav">tracker/releases/foolproof/in my life2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/foolproof/plasm%20-%20foolproof.mp3" id="tracker__releases__foolproof__plasm_-_foolproof.mp3">tracker/releases/foolproof/plasm - foolproof.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/getting%20nowhere/GENOFUL.XM" id="tracker__releases__getting_nowhere__GENOFUL.XM">tracker/releases/getting nowhere/GENOFUL.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/getting%20nowhere/NOS-GENO.XM" id="tracker__releases__getting_nowhere__NOS-GENO.XM">tracker/releases/getting nowhere/NOS-GENO.XM</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/getting%20nowhere/geno.wav" id="tracker__releases__getting_nowhere__geno.wav">tracker/releases/getting nowhere/geno.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/karma%20overload/karma%20overload2%20-%20wav.wav" id="tracker__releases__karma_overload__karma_overload2_-_wav.wav">tracker/releases/karma overload/karma overload2 - wav.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/mr.%20e%27s%20theme/mre.wav" id="tracker__releases__mr._e&#39;s_theme__mre.wav">tracker/releases/mr. e&#39;s theme/mre.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/no%20common%20sense/S8B.mt2" id="tracker__releases__no_common_sense__S8B.mt2">tracker/releases/no common sense/S8B.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/no%20common%20sense/SENSE3.mt2" id="tracker__releases__no_common_sense__SENSE3.mt2">tracker/releases/no common sense/SENSE3.mt2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/no%20common%20sense/no%20common%20sense%20-%20edit.wav" id="tracker__releases__no_common_sense__no_common_sense_-_edit.wav">tracker/releases/no common sense/no common sense - edit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/nos-exec/nogood3.WAV" id="tracker__releases__nos-exec__nogood3.WAV">tracker/releases/nos-exec/nogood3.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/now%20what/WHAT%20NOW2.MT2" id="tracker__releases__now_what__WHAT_NOW2.MT2">tracker/releases/now what/WHAT NOW2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/now%20what/master2.wav" id="tracker__releases__now_what__master2.wav">tracker/releases/now what/master2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/primal%20scream/plasm%20-%20primal%20scream.mp3" id="tracker__releases__primal_scream__plasm_-_primal_scream.mp3">tracker/releases/primal scream/plasm - primal scream.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/primal%20scream/primal%20scream.wav" id="tracker__releases__primal_scream__primal_scream.wav">tracker/releases/primal scream/primal scream.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/pseudo%20comfort/main.MT2" id="tracker__releases__pseudo_comfort__main.MT2">tracker/releases/pseudo comfort/main.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/pseudo%20comfort/plasm%20-%20pseudo%20comfort%20edit%28wav%29.wav" id="tracker__releases__pseudo_comfort__plasm_-_pseudo_comfort_edit(wav).wav">tracker/releases/pseudo comfort/plasm - pseudo comfort edit(wav).wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/pseudo%20comfort/test.MT2" id="tracker__releases__pseudo_comfort__test.MT2">tracker/releases/pseudo comfort/test.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/silent%20tears/master.wav" id="tracker__releases__silent_tears__master.wav">tracker/releases/silent tears/master.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/spying%20upon%20a%20mirror/spyingupon.wav" id="tracker__releases__spying_upon_a_mirror__spyingupon.wav">tracker/releases/spying upon a mirror/spyingupon.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/the%20sad%20cliche/master.wav" id="tracker__releases__the_sad_cliche__master.wav">tracker/releases/the sad cliche/master.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/the%20sad%20cliche/technoman2.MT2" id="tracker__releases__the_sad_cliche__technoman2.MT2">tracker/releases/the sad cliche/technoman2.MT2</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/xwav2%20this%20is%20why/this%20is%20me.WAV" id="tracker__releases__xwav2_this_is_why__this_is_me.WAV">tracker/releases/xwav2 this is why/this is me.WAV</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/releases/%c3%b8hh3%20part2/%c3%b8hh%203%20-%20part%202.wav" id="tracker__releases__oehh3_part2__oehh_3_-_part_2.wav">tracker/releases/øhh3 part2/øhh 3 - part 2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/berceuse/berceuse%20-%20edit.wav" id="tracker__renoise__berceuse__berceuse_-_edit.wav">tracker/renoise/berceuse/berceuse - edit.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/berceuse/berceuse.wav" id="tracker__renoise__berceuse__berceuse.wav">tracker/renoise/berceuse/berceuse.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/berceuse/you%20wish.rns" id="tracker__renoise__berceuse__you_wish.rns">tracker/renoise/berceuse/you wish.rns</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/berceuse/you%20wish.wav" id="tracker__renoise__berceuse__you_wish.wav">tracker/renoise/berceuse/you wish.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/lolpunkt/lolpunkt.wav" id="tracker__renoise__lolpunkt__lolpunkt.wav">tracker/renoise/lolpunkt/lolpunkt.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/lolpunkt/lolpunkt.xrns" id="tracker__renoise__lolpunkt__lolpunkt.xrns">tracker/renoise/lolpunkt/lolpunkt.xrns</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/my%20belongings/my%20belongings.rns" id="tracker__renoise__my_belongings__my_belongings.rns">tracker/renoise/my belongings/my belongings.rns</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/renoise/my%20belongings/my%20belongings.wav" id="tracker__renoise__my_belongings__my_belongings.wav">tracker/renoise/my belongings/my belongings.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/01%20-%20Freedom.wav" id="tracker__toneless__01_-_Freedom.wav">tracker/toneless/01 - Freedom.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/02%20-%20What%20the%20fuck%20is%20love.wav" id="tracker__toneless__02_-_What_the_fuck_is_love.wav">tracker/toneless/02 - What the fuck is love.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/03%20-%20Toneless.wav" id="tracker__toneless__03_-_Toneless.wav">tracker/toneless/03 - Toneless.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/04.wav" id="tracker__toneless__04.wav">tracker/toneless/04.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/05%20-%20Electric%20Boogie.wav" id="tracker__toneless__05_-_Electric_Boogie.wav">tracker/toneless/05 - Electric Boogie.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/06%20-%20Oh%20Susanna%20RMX.wav" id="tracker__toneless__06_-_Oh_Susanna_RMX.wav">tracker/toneless/06 - Oh Susanna RMX.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/07%20-%20Rondo%20pour%20Amigo.wav" id="tracker__toneless__07_-_Rondo_pour_Amigo.wav">tracker/toneless/07 - Rondo pour Amigo.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/08%20-%20Times%20of%20war.wav" id="tracker__toneless__08_-_Times_of_war.wav">tracker/toneless/08 - Times of war.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/09%20-%20%c3%98hh.wav" id="tracker__toneless__09_-_OEhh.wav">tracker/toneless/09 - Øhh.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/10%20-%20Blank%20Minded.wav" id="tracker__toneless__10_-_Blank_Minded.wav">tracker/toneless/10 - Blank Minded.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/11%20-%20Dome.wav" id="tracker__toneless__11_-_Dome.wav">tracker/toneless/11 - Dome.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/tracker/toneless/12%20-%20The%20girl%20from%20hubulululu.wav" id="tracker__toneless__12_-_The_girl_from_hubulululu.wav">tracker/toneless/12 - The girl from hubulululu.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%201.wav" id="toneless__Track_1.wav">toneless/Track 1.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%202.wav" id="toneless__Track_2.wav">toneless/Track 2.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%203.wav" id="toneless__Track_3.wav">toneless/Track 3.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%204.wav" id="toneless__Track_4.wav">toneless/Track 4.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%205.wav" id="toneless__Track_5.wav">toneless/Track 5.wav</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/toneless/Track%206.wav" id="toneless__Track_6.wav">toneless/Track 6.wav</a>
+</div>
+
+<h1>Old veralin.dk site</h1>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215468000.flac" id="veralin.dk__1215468000.flac">veralin.dk/1215468000.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215468000.mp3" id="veralin.dk__1215468000.mp3">veralin.dk/1215468000.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215468000.ogg" id="veralin.dk__1215468000.ogg">veralin.dk/1215468000.ogg (En tynd rød tråd)</a>
+<cc>"En tynd rød tråd"</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215727200.flac" id="veralin.dk__1215727200.flac">veralin.dk/1215727200.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215727200.mp3" id="veralin.dk__1215727200.mp3">veralin.dk/1215727200.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1215727200.ogg" id="veralin.dk__1215727200.ogg">veralin.dk/1215727200.ogg</a>
+<cc>Re-release of "This is not jazz"</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216072800.flac" id="veralin.dk__1216072800.flac">veralin.dk/1216072800.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216072800.mp3" id="veralin.dk__1216072800.mp3">veralin.dk/1216072800.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216072800.ogg" id="veralin.dk__1216072800.ogg">veralin.dk/1216072800.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216332000.flac" id="veralin.dk__1216332000.flac">veralin.dk/1216332000.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216332000.mp3" id="veralin.dk__1216332000.mp3">veralin.dk/1216332000.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216332000.ogg" id="veralin.dk__1216332000.ogg">veralin.dk/1216332000.ogg (Sly Sly Sly)</a>
+<cc>
+(based on "moremoremore" seen elsewhere here)
+<lyrics>
+
+Spalt en tung ion
+Man finder kvarkgluon
+Og Higgs' boson
+
+Spil på Lotto og
+Få syv rigtige
+Tre uger i træk
+
+Det er bare held held held
+
+Men hvad kan man da også stille op med noget der kan
+Afbøje og
+Opsluge
+Lys
+</lyrics>
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216677600.flac" id="veralin.dk__1216677600.flac">veralin.dk/1216677600.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216677600.mp3" id="veralin.dk__1216677600.mp3">veralin.dk/1216677600.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216677600.ogg" id="veralin.dk__1216677600.ogg">veralin.dk/1216677600.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216936800.flac" id="veralin.dk__1216936800.flac">veralin.dk/1216936800.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216936800.mp3" id="veralin.dk__1216936800.mp3">veralin.dk/1216936800.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1216936800.ogg" id="veralin.dk__1216936800.ogg">veralin.dk/1216936800.ogg</a>
+<cc>Different version of "float like a feather"</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1217541600.flac" id="veralin.dk__1217541600.flac">veralin.dk/1217541600.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1217541600.mp3" id="veralin.dk__1217541600.mp3">veralin.dk/1217541600.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1217541600.ogg" id="veralin.dk__1217541600.ogg">veralin.dk/1217541600.ogg (Moo Moo)</a>
+<cc>Re-release of "moo moo"</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218146400.flac" id="veralin.dk__1218146400.flac">veralin.dk/1218146400.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218146400.mp3" id="veralin.dk__1218146400.mp3">veralin.dk/1218146400.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218146400.ogg" id="veralin.dk__1218146400.ogg">veralin.dk/1218146400.ogg (Dance Dance Karnov)</a>
+<cc>Richard "Lowtax" Kyanka was making a Dance Dance Revolution / Karnov mashup
+game and was asking the somethingawful forums for music. Had to fit a specific
+pattern to match up with gameplay: 4 bars intro; 4 parts of 8 bars; 4 parts of
+8 bars; outro. He never finished the game, but rather liked this track if I
+recall? :) Also see: "ddkplaysyou".
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218751200.flac" id="veralin.dk__1218751200.flac">veralin.dk/1218751200.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218751200.mp3" id="veralin.dk__1218751200.mp3">veralin.dk/1218751200.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1218751200.ogg" id="veralin.dk__1218751200.ogg">veralin.dk/1218751200.ogg (mhmm)</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219356000.flac" id="veralin.dk__1219356000.flac">veralin.dk/1219356000.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219356000.mp3" id="veralin.dk__1219356000.mp3">veralin.dk/1219356000.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219356000.ogg" id="veralin.dk__1219356000.ogg">veralin.dk/1219356000.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219960800.flac" id="veralin.dk__1219960800.flac">veralin.dk/1219960800.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219960800.mp3" id="veralin.dk__1219960800.mp3">veralin.dk/1219960800.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1219960800.ogg" id="veralin.dk__1219960800.ogg">veralin.dk/1219960800.ogg</a>
+<cc>Theme overstays its welcome, but I rather like what happens around 2:30.
+</cc>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1220565600.flac" id="veralin.dk__1220565600.flac">veralin.dk/1220565600.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1220565600.mp3" id="veralin.dk__1220565600.mp3">veralin.dk/1220565600.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1220565600.ogg" id="veralin.dk__1220565600.ogg">veralin.dk/1220565600.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221170400.flac" id="veralin.dk__1221170400.flac">veralin.dk/1221170400.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221170400.mp3" id="veralin.dk__1221170400.mp3">veralin.dk/1221170400.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221170400.ogg" id="veralin.dk__1221170400.ogg">veralin.dk/1221170400.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221775200.flac" id="veralin.dk__1221775200.flac">veralin.dk/1221775200.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221775200.mp3" id="veralin.dk__1221775200.mp3">veralin.dk/1221775200.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1221775200.ogg" id="veralin.dk__1221775200.ogg">veralin.dk/1221775200.ogg</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1222380000.flac" id="veralin.dk__1222380000.flac">veralin.dk/1222380000.flac</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1222380000.mp3" id="veralin.dk__1222380000.mp3">veralin.dk/1222380000.mp3</a>
+</div>
+
+<div class="song">
+<a class="songlink" href="music/veralin.dk/1222380000.ogg" id="veralin.dk__1222380000.ogg">veralin.dk/1222380000.ogg</a>
+</div>
+
+<br/> <br/> <br/> <br/>
 
 </body>
 </html>
