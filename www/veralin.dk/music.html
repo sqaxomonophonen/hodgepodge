@@ -2,6 +2,7 @@
 <html>
 <head>
 
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
 <style>
 body {
@@ -165,8 +166,6 @@ function play_a_song(id, type) {
 
 window.onload = function() {
 	set_bg();
-
-	XMPlayer.init();
 
 	if (window.location.hash.length >= 2) play_a_song(window.location.hash.slice(1));
 
