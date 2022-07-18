@@ -137,16 +137,22 @@ function play_a_song(id, type) {
 	let ds = href.split(".");
 	let ext = ds[ds.length-1].toLowerCase();
 
+	let sel = document.getElementById("audio_click_pref");
+	let clickpref = parseInt(sel.options[sel.selectedIndex].value, 10);
+
 	switch (ext) {
 	case "ogg":
 	case "wav":
 	case "mp3":
 	case "aif": // probably not supported
 	case "flac": // probably not supported
-		if (document.getElementById("load_on_click").checked) {
-			document.getElementById("playeraudio").setAttribute("src", href);
-			if (document.getElementById("play_on_click").checked) {
-				document.getElementById("playeraudio").play();
+		{
+			if (clickpref >= 1) {
+				let audio = document.getElementById("playeraudio");
+				audio.setAttribute("src", href);
+				if (clickpref >= 2) {
+					audio.play();
+				}
 			}
 		}
 		break;
@@ -233,10 +239,14 @@ melancholy (oh the humanity), and offensive shit (fuck you). But otherwise
 please enjoy!
 </p>
 
-<p>
-<label><tt>Play on click</tt> <input type="checkbox" name="play_on_click" id="play_on_click" checked/></label>
 <br/>
-<label><tt>Load on click</tt> <input type="checkbox" name="load_on_click" id="load_on_click" checked/></label>
+
+<p>
+<select id="audio_click_pref" name="audio_click_pref">
+<option value="2">Play on click</option>
+<option value="1">Load on click (no autoplay)</option>
+<option value="0">Don't disturb player on click</option>
+</select>
 </p>
 
 
@@ -3181,7 +3191,7 @@ World of Warcraft from me
 
 <p>
 Made with trackers: FastTracker II, MadTracker 2 and Renoise. Most of these
-probably from late 90s to early 2000s.
+probably from mid/late 90s to early 2000s.
 </p>
 
 <div class="song">
