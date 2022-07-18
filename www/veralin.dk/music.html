@@ -74,11 +74,20 @@ cc {
 
 h1 {
 	margin-top: 2em;
-	border-top: 2px dotted white;
+	border-top: 1px solid white;
 }
 
 lyrics {
 	white-space: pre;
+}
+
+#main {
+	margin-left: 4em;
+	margin-right: 4em;
+}
+
+a {
+	color: #ccc;
 }
 
 </style>
@@ -124,13 +133,16 @@ function set_bg() {
 	document.body.style.backgroundImage = "url('" + canvas.toDataURL() + "')";
 }
 
-function play_a_song(id, type) {
+function play_a_song(id) {
 	let e = document.getElementById(id);
 	if (e === null) return;
 	let href = e.getAttribute("href");
+	if (!href) return;
 	href = href.replace(/\+/g, "%2b");
 	href = href.replace(/#/g, "%23");
-	href = "https://veralin.dk/" + href; // XXX only if local
+	if (window.location.href.indexOf("//veralin.dk") === -1) {
+		href = "https://veralin.dk/" + href;
+	}
 
 	CURRENT_HREF = href;
 
@@ -231,6 +243,8 @@ window.onload = function() {
 <audio id="playeraudio" controls></audio>
 </div>
 
+<div id="main">
+
 <br/><br/>
 
 <p>
@@ -249,8 +263,12 @@ please enjoy!
 </select>
 </p>
 
+<p>
+Jump to: <a href="#section_c64">C64</a> &bull; <a href="#section_coop">Co-op</a> &bull; <a href="#section_cvrrmx">Covers/rmx</a> &bull; <a href="#section_cubase">Cubase</a> &bull; <a href="#section_logic">Logic</a> &bull; <a href="#section_sa">Lyrics by somethingawful forums, songs by me</a> &bull; <a href="#section_tracker">Tracker</a> &bull; <a href="#section_veralin">Old veralin.dk site</a>
+</p>
 
-<h1>C64</h1>
+
+<h1 id="section_c64">C64</h1>
 <p>
 Commodore 64 remixes/remakes. I also made these: <a href="https://remix.kwed.org/search/plasm303" target="_blank">https://remix.kwed.org/search/plasm303</a>.
 </p>
@@ -329,7 +347,7 @@ the "Zak McKracken" adventure game by LucasArts Games.
 <a class="songlink" href="music/c64/zakmc.wav" id="c64__zakmc.wav">c64/zakmc.wav</a>
 </div>
 
-<h1>Co-op</h1>
+<h1 id="section_coop">Co-op</h1>
 
 <div class="song">
 <a class="songlink" href="music/coop/F#A_F#E.mp3" id="coop__F*A_F*E.mp3">coop/F#A_F#E.mp3</a>
@@ -352,7 +370,7 @@ Made together with Dennis Haladyn.
 </cc>
 </div>
 
-<h1>Covers & Remixes</h1>
+<h1 id="section_cvrrmx">Covers & Remixes</h1>
 
 <div class="song">
 <a class="songlink" href="music/covers&#43;rmx/001_dasboot.wav" id="covers&#43;rmx__001_dasboot.wav">covers&#43;rmx/001_dasboot.wav</a>
@@ -544,7 +562,7 @@ Cover of "Tower of Song" by Leonard Cohen. Vocals by Áine.
 </div>
 
 
-<h1>Cubase</h1>
+<h1 id="section_cubase">Cubase</h1>
 
 <div class="song">
 <a class="songlink" href="music/cubase/001_psmage.wav" id="cubase__001_psmage.wav">cubase/001_psmage.wav</a>
@@ -2165,7 +2183,7 @@ were sampled from records.
 <a class="songlink" href="music/sfh/24%20-%20sfh24.wav" id="sfh__24_-_sfh24.wav">sfh/24 - sfh24.wav</a>
 </div>
 
-<h1>Logic</h1>
+<h1 id="section_logic">Logic</h1>
 
 <div class="song">
 <a class="songlink" href="music/logic/02maskine.wav" id="logic__02maskine.wav">logic/02maskine.wav</a>
@@ -2358,7 +2376,7 @@ were sampled from records.
 </div>
 
 
-<h1>Lyrics by somethingawful forums, music by me</h1>
+<h1 id="section_sa">Lyrics by somethingawful forums, music by me</h1>
 <p>
 People posted song lyrics they had written, then other people recorded music
 from these lyrics. Sorry, some of these are quite offensive. Sorry, some of
@@ -3187,7 +3205,7 @@ World of Warcraft from me
 
 
 
-<h1>Tracker</h1>
+<h1 id="section_tracker">Tracker</h1>
 
 <p>
 Made with trackers: FastTracker II, MadTracker 2 and Renoise. Most of these
@@ -4003,7 +4021,7 @@ probably from mid/late 90s to early 2000s.
 </div>
 
 <div class="song">
-<a class="songlink" href="music/tracker/mt2/uhu%c2%bd.MT2" id="tracker__mt2__uhu1/2.MT2">tracker/mt2/uhu½.MT2</a>
+<a class="songlink" href="music/tracker/mt2/uhu%c2%bd.MT2" id="tracker__mt2__uhu12.MT2">tracker/mt2/uhu½.MT2</a>
 </div>
 
 <div class="song">
@@ -4418,7 +4436,7 @@ probably from mid/late 90s to early 2000s.
 <a class="songlink" href="music/toneless/Track%206.wav" id="toneless__Track_6.wav">toneless/Track 6.wav</a>
 </div>
 
-<h1>Old veralin.dk site</h1>
+<h1 id="section_veralin">Old veralin.dk site</h1>
 
 <div class="song">
 <a class="songlink" href="music/veralin.dk/1215468000.flac" id="veralin.dk__1215468000.flac">veralin.dk/1215468000.flac</a>
@@ -4540,9 +4558,9 @@ Lys
 <a class="songlink" href="music/veralin.dk/1218146400.ogg" id="veralin.dk__1218146400.ogg">veralin.dk/1218146400.ogg (Dance Dance Karnov)</a>
 <cc>Richard "Lowtax" Kyanka was making a Dance Dance Revolution / Karnov mashup
 game and was asking the somethingawful forums for music. Had to fit a specific
-pattern to match up with gameplay: 4 bars intro; 4 parts of 8 bars; 4 parts of
-8 bars; outro. He never finished the game, but rather liked this track if I
-recall? :) Also see: "ddkplaysyou".
+pattern to match up with gameplay: 4 bars intro; 4 parts of 8 bars; 4 bars
+interlude; 4 parts of 8 bars; outtro. He never finished the game, but rather
+liked this track if I recall? :) Also see: "ddkplaysyou".
 </cc>
 </div>
 
@@ -4633,6 +4651,8 @@ recall? :) Also see: "ddkplaysyou".
 </div>
 
 <br/> <br/> <br/> <br/>
+
+</div>
 
 </body>
 </html>
