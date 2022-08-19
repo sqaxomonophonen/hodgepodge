@@ -25,31 +25,19 @@ body {
 const deg2rad = (deg) => deg / 180 * Math.PI;
 const m4ati = (col, row) => row + col*4;
 
-const m4identity = () => {
-	let m = [];
-	for (let col = 0; col < 4; col++) {
-		for (let row = 0; row < 4; row++) {
-			m.push(row == col ? 1 : 0);
-		}
-	}
-	return m;
-};
+const m4zero = () => [0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0];
 
-const m4zero = () => {
-	var m = [];
-	for (var col = 0; col < 4; col++) {
-		for (var row = 0; row < 4; row++) {
-			m.push(0);
-		}
-	}
+const m4identity = () => {
+	let m = m4zero();
+	for (let x = 0; x < 4; x++) m[m4ati(x,x)] = 1;
 	return m;
 };
 
 const m4mul = (a, b) => {
-	let m = [];
+	let m = m4zero();
 	for (let col = 0; col < 4; col++) {
 		for (let row = 0; row < 4; row++) {
-			m.push(v4dot(m4row(a,row), m4col(b,col)));
+			m[m4ati(col,row)] = v4dot(m4row(a,row), m4col(b,col));
 		}
 	}
 	return m;
@@ -121,6 +109,87 @@ const m4col = (m4, col) => {
 		v4.push(m4[m4ati(col, row)]);
 	}
 	return v4;
+};
+
+const m4sub3 = (m, delcol, delrow, col, row) => {
+	if (col >= delcol) col++;
+	if (row >= delrow) row++;
+	return m[m4ati(col, row)];
+};
+
+const m4minors = (m) => {
+	let r = m4identity();
+	for (let row = 0; row < 4; row++) {
+		for (let col = 0; col < 4; col++) {
+			let det = 0;
+			for (let x = 0; x < 3; x++) {
+				let s = 1;
+				for (let i = 0; i < 3; i++) {
+					s *= m4sub3(m, col, row, (i+x+6)%3, i);
+				}
+				det += s;
+
+				let t = 1;
+				for (let i = 0; i < 3; i++) {
+					t *= m4sub3(m, col, row,  (-i+x+6)%3, i);
+				}
+				det -= t;
+			}
+			r[m4ati(col,row)] = det;
+		}
+	}
+	return r;
+};
+
+const m4cofactors = (m) => {
+	let m2 = m4minors(m);
+	for (let row = 0; row < 4; row++) {
+		for (let col = 0; col < 4; col++) {
+			if ((col+row)&1 > 0) {
+				m2[m4ati(col,row)] *= -1;
+			}
+		}
+	}
+	return m2;
+};
+
+const m4transpose = (m) => {
+	let r = m4zero();
+	for (let row = 0; row < 4; row++) {
+		for (let col = 0; col < 4; col++) {
+			r[m4ati(row,col)] = m[m4ati(col,row)];
+		}
+	}
+	return r;
+};
+
+
+const m4adjugate = (m) => m4transpose(m4cofactors(m));
+const m4determinant = (m) => {
+	let det = 0;
+	for (let x = 0; x < 4; x++) {
+		let s = 1;
+		for (let i = 0; i < 4; i++) {
+			//s *= mat44_at(a, (i+x)&3, i);
+
+			s *= m[m4ati((i+x)%4, i)];
+		}
+		det += s;
+
+		let t = 1;
+		for (let i = 0; i < 4; i++) {
+			t *= m[m4ati((-i+x+4)%4, i)];
+		}
+		det -= t;
+	}
+	return det;
+};
+
+const m4inverse = (m) => {
+	let r = m4adjugate(m);
+	let det = m4determinant(m);
+	let scalar = 1/det;
+	return r.map(x=>x*scalar);
 };
 
 const vndot = (n,a,b) => {
@@ -370,20 +439,16 @@ window.onload = () => {
 		let R = 16;
 		let W = width * R;
 		let H = height;
-		let W0 = -W/2;
-		let W1 = W/2;
-		let H0 = -H/2;
-		let H1 = H/2;
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
 			// x,y,z,   u,v,
 
-			W0,H0,0,   0,0,
-			W1,H0,0,   R,0,
-			W1,H1,0,   R,1,
+			0,0,0,   0,0,
+			W,0,0,   R,0,
+			W,H,0,   R,1,
 
-			W0,H0,0,   0,0,
-			W1,H1,0,   R,1,
-			W0,H1,0,   0,1,
+			0,0,0,   0,0,
+			W,H,0,   R,1,
+			0,H,0,   0,1,
 
 		]), gl.STATIC_DRAW);
 
@@ -494,17 +559,21 @@ window.onload = () => {
 	})();
 
 	let rot0 = 0.0;
+	let rot1 = 0.0;
 	let distance = 1500;
 
 	let is_cursoring = false;
+	let cursoring_fade = 0;
 
 	let set_cursoring = (p) => {
 		is_cursoring = p;
 
 		if (p) {
 			document.body.requestPointerLock();
+			cursoring_fade = 0;
 		} else {
 			document.exitPointerLock();
+			rot0 = rot1 = 0;
 		}
 	};
 
@@ -524,7 +593,9 @@ window.onload = () => {
 		if (is_cursoring) {
 			let dx = e.movementX;
 			let dy = e.movementY;
-			rot0 += dx*0.03; // XXX not really
+			const sens = 0.03;
+			rot0 += dx * sens;
+			rot1 += dy * sens;
 		}
 	});
 
@@ -550,8 +621,9 @@ window.onload = () => {
 
 			let projection = m4perspective(65, width/height, 5, 40000);
 			let view = m4identity();
-			view = m4mul(view, m4translation([0,0,-distance]));
+			view = m4mul(view, m4rotation([1,0,0], rot1));
 			view = m4mul(view, m4rotation([0,1,0], rot0));
+			view = m4mul(view, m4translation([0,0,-distance]));
 			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
@@ -563,15 +635,18 @@ window.onload = () => {
 
 			gl.drawArrays(gl.TRIANGLES, 0, stage.n_vertices);
 
-			//rot0 += 0.1;
-
 			if (is_cursoring) {
+
+				let iview = m4inverse(view);
+				console.log(m4col(iview,3));
+
+
 				cursor.shader.enable();
 				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
 				cursor.shader.setup_vertex_attrib_pointers();
 				cursor.shader.set_uniform_matrix("u_tx", tx);
-				cursor.shader.set_uniform_v4("u_color_outside", [0.0,  0.0,  0.0,  0.8]);
-				cursor.shader.set_uniform_v4("u_color_inside",  [0.6,  0.5,  0.2,  0.0]);
+				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.8], cursoring_fade));
+				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.6,  0.5,  0.2,  0.0], cursoring_fade));
 				let xfar = 100000;
 				let yfar = 10000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
@@ -579,6 +654,8 @@ window.onload = () => {
 				cursor.shader.set_uniform_v2("u_inner_p0", [-300,-100]);
 				cursor.shader.set_uniform_v2("u_inner_p1", [300,100]);
 				gl.drawArrays(gl.TRIANGLES, 0, cursor.n_vertices);
+
+				cursoring_fade = Math.min(1.0, cursoring_fade + 0.15);
 			}
 
 			request_animation_frame(loop);
