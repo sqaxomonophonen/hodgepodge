@@ -270,6 +270,7 @@ window.onload = () => {
 			},
 			set_uniform_matrix: (name, value) => gl.uniformMatrix4fv(uniform(name), false, new Float32Array(value)),
 			set_uniform_float: (name, value) => gl.uniform1f(uniform(name), value),
+			set_uniform_v2: (name, value) => gl.uniform2f(uniform(name), value[0], value[1]),
 			set_uniform_v3: (name, value) => gl.uniform3f(uniform(name), value[0], value[1], value[2]),
 			set_uniform_int: (name, value) => gl.uniform1i(uniform(name), value),
 			enable: () => {
@@ -332,39 +333,34 @@ window.onload = () => {
 		gl.generateMipmap(gl.TEXTURE_2D);
 
 		let shader = mk_shader(`
+			attribute vec3 a_position;
+			attribute vec2 a_uv;
 
-attribute vec3 a_position;
-attribute vec2 a_uv;
+			varying vec2 v_uv;
 
-varying vec2 v_uv;
+			uniform mat4 u_tx;
 
-uniform mat4 u_projection;
-uniform mat4 u_view;
-
-void main(void)
-{
-	v_uv = a_uv;
-	gl_Position = u_projection * u_view * vec4(a_position,1);
-}
-
+			void main(void)
+			{
+				v_uv = a_uv;
+				gl_Position = u_tx * vec4(a_position,1);
+			}
 		`, `
+			precision mediump float;
 
-precision mediump float;
+			varying vec2 v_uv;
 
-varying vec2 v_uv;
+			uniform sampler2D u_texture;
 
-uniform sampler2D u_texture;
-
-void main(void)
-{
-	float s = texture2D(u_texture, v_uv).r;
-	//gl_FragColor = vec4(0.0, 0.0, 0.0, s);
-	gl_FragColor = mix(
-		vec4(0.0, 0.0, 0.2, 1.0),
-		vec4(1.0, 1.0, 1.0, 1.0),
-		s);
-}
-
+			void main(void)
+			{
+				float s = texture2D(u_texture, v_uv).r;
+				//gl_FragColor = vec4(0.0, 0.0, 0.0, s);
+				gl_FragColor = mix(
+					vec4(0.0, 0.0, 0.2, 1.0),
+					vec4(1.0, 1.0, 1.0, 1.0),
+					s);
+			}
 		`, [
 			["a_position",3],
 			["a_uv",2],
@@ -398,13 +394,111 @@ void main(void)
 			texture: texture,
 			shader: shader,
 			buffer: buffer,
+			n_vertices: 6,
 		};
 	};
 
 	let stage = mk_stage(1<<13, 1<<11);
 
+	let cursor = (() => {
+
+		let mk_vs = (inside, indices) => {
+			let vs = [];
+			for (const index of indices) {
+				vs.push(index);
+				vs.push(inside ? 1 : 0);
+			}
+			return vs;
+		};
+
+		// 0----------1
+		// |\        /|
+		// | 2------3 |
+		// | |      | |
+		// | |      | |
+		// | 4------5 |
+		// |/        \|
+		// 6----------7
+
+		let vertices = [
+			...(mk_vs(false, [
+				0,1,3,  0,3,2,
+				1,7,5,  1,5,3,
+				4,5,7,  4,7,6,
+				0,2,4,  0,4,6,
+			])),
+			...(mk_vs(true, [
+				2,3,5,  2,5,4,
+			])),
+		];
+
+		let buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+		
+		let shader = mk_shader(`
+			attribute float a_index;
+			attribute float a_inside;
+
+			uniform mat4 u_tx;
+			uniform vec2 u_outer_p0;
+			uniform vec2 u_outer_p1;
+			uniform vec2 u_inner_p0;
+			uniform vec2 u_inner_p1;
+
+			varying float v_inside;
+
+			void main(void)
+			{
+				v_inside = a_inside;
+				vec2 pos = vec2(0,0);
+				if (a_index == 0.0) {
+					pos = vec2( u_outer_p0.x, u_outer_p0.y );
+				} else if (a_index == 1.0) {
+					pos = vec2( u_outer_p1.x, u_outer_p0.y );
+				} else if (a_index == 2.0) {
+					pos = vec2( u_inner_p0.x, u_inner_p0.y );
+				} else if (a_index == 3.0) {
+					pos = vec2( u_inner_p1.x, u_inner_p0.y );
+				} else if (a_index == 4.0) {
+					pos = vec2( u_inner_p0.x, u_inner_p1.y );
+				} else if (a_index == 5.0) {
+					pos = vec2( u_inner_p1.x, u_inner_p1.y );
+				} else if (a_index == 6.0) {
+					pos = vec2( u_outer_p0.x, u_outer_p1.y );
+				} else if (a_index == 7.0) {
+					pos = vec2( u_outer_p1.x, u_outer_p1.y );
+				}
+				gl_Position = u_tx * vec4(pos,0,1);
+			}
+		`, `
+			precision mediump float;
+
+			varying float v_inside;
+
+			void main(void)
+			{
+				gl_FragColor = mix(
+					vec4(0.0, 0.0, 0.0, 0.8),
+					vec4(0.6, 0.5, 0.2, 0.0),
+					v_inside);
+			}
+		`, [
+			["a_index",1],
+			["a_inside",1],
+		]);
+
+		return {
+			shader: shader,
+			buffer: buffer,
+			n_vertices: vertices.length / 2,
+		};
+	})();
+
 	let rot0 = 0.0;
 	let distance = 1500;
+
+	let is_cursoring = true;
 
 	const begin_loop = () => {
 		gl.enable(gl.BLEND);
@@ -412,8 +506,9 @@ void main(void)
 			gl.ONE, gl.ONE_MINUS_SRC_ALPHA,
 			gl.ONE, gl.ZERO,
 		);
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthMask(true);
+
+		gl.disable(gl.DEPTH_TEST);
+		//gl.depthMask(true);
 		gl.disable(gl.CULL_FACE);
 		gl.clearColor(0, 0.0, 0, 1.0);
 
@@ -429,15 +524,29 @@ void main(void)
 			let view = m4identity();
 			view = m4mul(view, m4translation([0,0,-distance]));
 			view = m4mul(view, m4rotation([0,1,0], rot0));
+			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
 			gl.bindBuffer(gl.ARRAY_BUFFER, stage.buffer);
 			stage.shader.setup_vertex_attrib_pointers();
-			stage.shader.set_uniform_matrix("u_projection", projection);
-			stage.shader.set_uniform_matrix("u_view", view);
-			gl.drawArrays(gl.TRIANGLES, 0, 6);
+			stage.shader.set_uniform_matrix("u_tx", tx);
+			gl.drawArrays(gl.TRIANGLES, 0, stage.n_vertices);
 
 			rot0 += 0.1;
+
+			if (is_cursoring) {
+				cursor.shader.enable();
+				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
+				cursor.shader.setup_vertex_attrib_pointers();
+				cursor.shader.set_uniform_matrix("u_tx", tx);
+				let xfar = 100000;
+				let yfar = 10000;
+				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
+				cursor.shader.set_uniform_v2("u_outer_p1", [xfar,yfar]);
+				cursor.shader.set_uniform_v2("u_inner_p0", [-200,-100]);
+				cursor.shader.set_uniform_v2("u_inner_p1", [200,100]);
+				gl.drawArrays(gl.TRIANGLES, 0, cursor.n_vertices);
+			}
 
 			request_animation_frame(loop);
 		})();
