@@ -496,7 +496,37 @@ window.onload = () => {
 	let rot0 = 0.0;
 	let distance = 1500;
 
-	let is_cursoring = true;
+	let is_cursoring = false;
+
+	let set_cursoring = (p) => {
+		is_cursoring = p;
+
+		if (p) {
+			document.body.requestPointerLock();
+		} else {
+			document.exitPointerLock();
+		}
+	};
+
+	window.addEventListener("contextmenu", (e) => { e.preventDefault(); });
+
+	window.addEventListener("mousedown", (e) => {
+		let b = e.button;
+		if (!is_cursoring && b === 2) {
+			set_cursoring(true);
+		} else if (is_cursoring && b === 0) {
+			set_cursoring(false);
+		}
+		e.preventDefault();
+	});
+
+	window.addEventListener("mousemove", (e) => {
+		if (is_cursoring) {
+			let dx = e.movementX;
+			let dy = e.movementY;
+			rot0 += dx*0.03; // XXX not really
+		}
+	});
 
 	const begin_loop = () => {
 		gl.enable(gl.BLEND);
@@ -533,7 +563,7 @@ window.onload = () => {
 
 			gl.drawArrays(gl.TRIANGLES, 0, stage.n_vertices);
 
-			rot0 += 0.1;
+			//rot0 += 0.1;
 
 			if (is_cursoring) {
 				cursor.shader.enable();
@@ -546,8 +576,8 @@ window.onload = () => {
 				let yfar = 10000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
 				cursor.shader.set_uniform_v2("u_outer_p1", [xfar,yfar]);
-				cursor.shader.set_uniform_v2("u_inner_p0", [-200,-100]);
-				cursor.shader.set_uniform_v2("u_inner_p1", [200,100]);
+				cursor.shader.set_uniform_v2("u_inner_p0", [-300,-100]);
+				cursor.shader.set_uniform_v2("u_inner_p1", [300,100]);
 				gl.drawArrays(gl.TRIANGLES, 0, cursor.n_vertices);
 			}
 
