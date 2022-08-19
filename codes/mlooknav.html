@@ -272,6 +272,7 @@ window.onload = () => {
 			set_uniform_float: (name, value) => gl.uniform1f(uniform(name), value),
 			set_uniform_v2: (name, value) => gl.uniform2f(uniform(name), value[0], value[1]),
 			set_uniform_v3: (name, value) => gl.uniform3f(uniform(name), value[0], value[1], value[2]),
+			set_uniform_v4: (name, value) => gl.uniform4f(uniform(name), value[0], value[1], value[2], value[3]),
 			set_uniform_int: (name, value) => gl.uniform1i(uniform(name), value),
 			enable: () => {
 				gl.useProgram(prg);
@@ -350,22 +351,19 @@ window.onload = () => {
 
 			varying vec2 v_uv;
 
+			uniform vec4 u_color_bg;
+			uniform vec4 u_color_fg;
 			uniform sampler2D u_texture;
 
 			void main(void)
 			{
 				float s = texture2D(u_texture, v_uv).r;
-				//gl_FragColor = vec4(0.0, 0.0, 0.0, s);
-				gl_FragColor = mix(
-					vec4(0.0, 0.0, 0.2, 1.0),
-					vec4(1.0, 1.0, 1.0, 1.0),
-					s);
+				gl_FragColor = mix(u_color_bg, u_color_fg, s);
 			}
 		`, [
 			["a_position",3],
 			["a_uv",2],
 		]);
-
 
 		let buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -435,7 +433,7 @@ window.onload = () => {
 		let buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-		
+
 		let shader = mk_shader(`
 			attribute float a_index;
 			attribute float a_inside;
@@ -474,14 +472,14 @@ window.onload = () => {
 		`, `
 			precision mediump float;
 
+			uniform vec4 u_color_outside;
+			uniform vec4 u_color_inside;
+
 			varying float v_inside;
 
 			void main(void)
 			{
-				gl_FragColor = mix(
-					vec4(0.0, 0.0, 0.0, 0.8),
-					vec4(0.6, 0.5, 0.2, 0.0),
-					v_inside);
+				gl_FragColor = mix(u_color_outside, u_color_inside, v_inside);
 			}
 		`, [
 			["a_index",1],
@@ -530,6 +528,9 @@ window.onload = () => {
 			gl.bindBuffer(gl.ARRAY_BUFFER, stage.buffer);
 			stage.shader.setup_vertex_attrib_pointers();
 			stage.shader.set_uniform_matrix("u_tx", tx);
+			stage.shader.set_uniform_v4("u_color_bg", [0.0,  0.0,  0.2,  1.0]);
+			stage.shader.set_uniform_v4("u_color_fg", [1.0,  1.0,  1.0,  1.0]);
+
 			gl.drawArrays(gl.TRIANGLES, 0, stage.n_vertices);
 
 			rot0 += 0.1;
@@ -539,6 +540,8 @@ window.onload = () => {
 				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
 				cursor.shader.setup_vertex_attrib_pointers();
 				cursor.shader.set_uniform_matrix("u_tx", tx);
+				cursor.shader.set_uniform_v4("u_color_outside", [0.0,  0.0,  0.0,  0.8]);
+				cursor.shader.set_uniform_v4("u_color_inside",  [0.6,  0.5,  0.2,  0.0]);
 				let xfar = 100000;
 				let yfar = 10000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
