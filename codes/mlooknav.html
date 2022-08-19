@@ -23,7 +23,10 @@ body {
 <script>
 
 const deg2rad = (deg) => deg / 180 * Math.PI;
-const m4ati = (col, row) => row + col*4;
+const m4ati = (col, row) => {
+	if (col < 0 || col >= 4 || row < 0 || row >= 4) throw new Error("index out of range: " + JSON.stringify([col,row]));
+	return row + col*4;
+}
 
 const m4zero = () => [0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0];
 
@@ -118,7 +121,7 @@ const m4sub3 = (m, delcol, delrow, col, row) => {
 };
 
 const m4minors = (m) => {
-	let r = m4identity();
+	let r = m4zero();
 	for (let row = 0; row < 4; row++) {
 		for (let col = 0; col < 4; col++) {
 			let det = 0;
@@ -131,7 +134,7 @@ const m4minors = (m) => {
 
 				let t = 1;
 				for (let i = 0; i < 3; i++) {
-					t *= m4sub3(m, col, row,  (-i+x+6)%3, i);
+					t *= m4sub3(m, col, row, (-i+x+6)%3, i);
 				}
 				det -= t;
 			}
@@ -165,13 +168,12 @@ const m4transpose = (m) => {
 
 
 const m4adjugate = (m) => m4transpose(m4cofactors(m));
+
 const m4determinant = (m) => {
 	let det = 0;
 	for (let x = 0; x < 4; x++) {
 		let s = 1;
 		for (let i = 0; i < 4; i++) {
-			//s *= mat44_at(a, (i+x)&3, i);
-
 			s *= m[m4ati((i+x)%4, i)];
 		}
 		det += s;
@@ -257,8 +259,15 @@ const vnsub = (n,a,b) => {
 const v3add = (a,b) => vnadd(3,a,b);
 const v2add = (a,b) => vnadd(2,a,b);
 const v2sub = (a,b) => vnsub(2,a,b);
+const v3sub = (a,b) => vnsub(3,a,b);
 const vscale = (v, scalar) => v.map(function (v) { return v * scalar; });
 
+const v3fromv4 = (v4) => vscale(v4.slice(0,3), 1/v4[3]);
+
+const plane_line_intersection = (p0, n, l0, l) => {
+	let d = v3dot(v3sub(p0, l0), n) / v3dot(l,n);
+	return v3add(l0, vscale(l, d));
+};
 
 window.onload = () => {
 	const panic = (m) => { throw new Error(m); }
@@ -558,9 +567,11 @@ window.onload = () => {
 		};
 	})();
 
-	let rot0 = 0.0;
-	let rot1 = 0.0;
-	let distance = 1500;
+	let mlook_rotx = 0.0;
+	let mlook_roty = 0.0;
+	let mlook_p0 = [0,0];
+	let mlook_new_p0;
+	let distance = 1500; // configurable?
 
 	let is_cursoring = false;
 	let cursoring_fade = 0;
@@ -573,7 +584,8 @@ window.onload = () => {
 			cursoring_fade = 0;
 		} else {
 			document.exitPointerLock();
-			rot0 = rot1 = 0;
+			mlook_rotx = mlook_roty = 0;
+			mlook_p0 = mlook_new_p0;
 		}
 	};
 
@@ -594,8 +606,8 @@ window.onload = () => {
 			let dx = e.movementX;
 			let dy = e.movementY;
 			const sens = 0.03;
-			rot0 += dx * sens;
-			rot1 += dy * sens;
+			mlook_rotx += dx * sens;
+			mlook_roty += dy * sens;
 		}
 	});
 
@@ -621,9 +633,9 @@ window.onload = () => {
 
 			let projection = m4perspective(65, width/height, 5, 40000);
 			let view = m4identity();
-			view = m4mul(view, m4rotation([1,0,0], rot1));
-			view = m4mul(view, m4rotation([0,1,0], rot0));
-			view = m4mul(view, m4translation([0,0,-distance]));
+			view = m4mul(view, m4rotation([1,0,0], mlook_roty));
+			view = m4mul(view, m4rotation([0,1,0], mlook_rotx));
+			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-distance]));
 			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
@@ -638,8 +650,15 @@ window.onload = () => {
 			if (is_cursoring) {
 
 				let iview = m4inverse(view);
-				console.log(m4col(iview,3));
+				let origin = v3fromv4(m4col(iview,3));
+				let direction = m4col(iview,2).slice(0,3);
 
+				let pp = plane_line_intersection(
+					[0,0,0], // point on plane
+					[0,0,1], // plane normal
+					origin,
+					direction
+				);
 
 				cursor.shader.enable();
 				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
@@ -651,8 +670,14 @@ window.onload = () => {
 				let yfar = 10000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
 				cursor.shader.set_uniform_v2("u_outer_p1", [xfar,yfar]);
-				cursor.shader.set_uniform_v2("u_inner_p0", [-300,-100]);
-				cursor.shader.set_uniform_v2("u_inner_p1", [300,100]);
+
+				mlook_new_p0 = pp.slice(0,2);
+				let hh = [width/2, height/2];
+				let ip0 = v2sub(mlook_new_p0, hh);
+				let ip1 = v2add(mlook_new_p0, hh);
+
+				cursor.shader.set_uniform_v2("u_inner_p0", ip0);
+				cursor.shader.set_uniform_v2("u_inner_p1", ip1);
 				gl.drawArrays(gl.TRIANGLES, 0, cursor.n_vertices);
 
 				cursoring_fade = Math.min(1.0, cursoring_fade + 0.15);
