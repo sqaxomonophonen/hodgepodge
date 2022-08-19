@@ -2,9 +2,12 @@
 <html>
 <head>
 
+<title>mlooknav</title>
+
 <style>
 
 body {
+	background: black;
 	margin: 0px;
 }
 
@@ -323,6 +326,8 @@ window.onload = () => {
 
 		let texture = gl.createTexture();
 		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 		gl.generateMipmap(gl.TEXTURE_2D);
 
@@ -353,7 +358,11 @@ uniform sampler2D u_texture;
 void main(void)
 {
 	float s = texture2D(u_texture, v_uv).r;
-	gl_FragColor = vec4(0, 0, 0, s);
+	//gl_FragColor = vec4(0.0, 0.0, 0.0, s);
+	gl_FragColor = mix(
+		vec4(0.0, 0.0, 0.2, 1.0),
+		vec4(1.0, 1.0, 1.0, 1.0),
+		s);
 }
 
 		`, [
@@ -364,18 +373,23 @@ void main(void)
 
 		let buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		let W = width;
+		let R = 16;
+		let W = width * R;
 		let H = height;
+		let W0 = -W/2;
+		let W1 = W/2;
+		let H0 = -H/2;
+		let H1 = H/2;
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
 			// x,y,z,   u,v,
 
-			0,0,0,   0,0,
-			W,0,0,   1,0,
-			W,H,0,   1,1,
+			W0,H0,0,   0,0,
+			W1,H0,0,   R,0,
+			W1,H1,0,   R,1,
 
-			0,0,0,   0,0,
-			W,H,0,   1,1,
-			0,H,0,   0,1,
+			W0,H0,0,   0,0,
+			W1,H1,0,   R,1,
+			W0,H1,0,   0,1,
 
 		]), gl.STATIC_DRAW);
 
@@ -387,16 +401,12 @@ void main(void)
 		};
 	};
 
-	let stage = mk_stage(1<<13, 1<<10);
+	let stage = mk_stage(1<<13, 1<<11);
 
 	let rot0 = 0.0;
-	let distance = 1000;
+	let distance = 1500;
 
 	const begin_loop = () => {
-		//gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		//gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		//gl.bindTexture(gl.TEXTURE_2D, null);
-
 		gl.enable(gl.BLEND);
 		gl.blendFuncSeparate(
 			gl.ONE, gl.ONE_MINUS_SRC_ALPHA,
@@ -405,7 +415,7 @@ void main(void)
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthMask(true);
 		gl.disable(gl.CULL_FACE);
-		gl.clearColor(0, 0, 1, 1.0);
+		gl.clearColor(0, 0.0, 0, 1.0);
 
 		(function loop() {
 			let width = canvas.offsetWidth;
@@ -415,7 +425,7 @@ void main(void)
 			gl.viewport(0, 0, width, height);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			let projection = m4perspective(65, width/height ,5, 40000);
+			let projection = m4perspective(65, width/height, 5, 40000);
 			let view = m4identity();
 			view = m4mul(view, m4translation([0,0,-distance]));
 			view = m4mul(view, m4rotation([0,1,0], rot0));
@@ -427,7 +437,7 @@ void main(void)
 			stage.shader.set_uniform_matrix("u_view", view);
 			gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-			rot0 += 1.0;
+			rot0 += 0.1;
 
 			request_animation_frame(loop);
 		})();
