@@ -310,6 +310,7 @@ window.onload = () => {
 	let gl = canvas.getContext('webgl');
 	if (!gl) panic("no webgl context");
 
+	let aniso = gl.getExtension('EXT_texture_filter_anisotropic')
 
 	const mk_shader = (vsrc, fsrc, attributes) => {
 		let create_shader = function (type, src) {
@@ -398,6 +399,10 @@ window.onload = () => {
 		gl.bindTexture(gl.TEXTURE_2D, texture);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		if (aniso) {
+			const max = gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+			gl.texParameteri(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, max);
+		}
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 		gl.generateMipmap(gl.TEXTURE_2D);
 
@@ -604,6 +609,8 @@ window.onload = () => {
 	let mlook_new_p0;
 	let scale = 1.0;
 	let distance = 1600;
+
+	window.set_distance = (d) => distance=d;
 
 	let is_cursoring = false;
 	let cursoring_fade = 0;
