@@ -25,10 +25,27 @@ body {
 	color: yellow;
 }
 
+#trythis {
+	display: none;
+}
+
+#dbgtxt {
+	position: absolute;
+	background: rgba(0,0,0,  0.8);
+	border-radius: 0.3em;
+	color: white;
+	padding: 0.5em;
+	margin: 0.5em;
+
+	display: none;
+}
+
 </style>
 
 
 <script>
+
+const lerp = (a,b,t) => a+(b-a)*t;
 
 const deg2rad = (deg) => deg / 180 * Math.PI;
 const m4ati = (col, row) => {
@@ -374,7 +391,73 @@ window.onload = () => {
 		};
 	};
 
-	const mk_stage = (width, height) => {
+	const _mk_src_stage = (src, width, height, DU, DV) => {
+		let texture = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+		gl.generateMipmap(gl.TEXTURE_2D);
+
+		let shader = mk_shader(`
+			attribute vec3 a_position;
+			attribute vec2 a_uv;
+
+			varying vec2 v_uv;
+
+			uniform mat4 u_tx;
+			uniform float u_scale;
+
+			void main(void)
+			{
+				v_uv = a_uv;
+				gl_Position = u_tx * vec4(a_position*u_scale,1);
+			}
+		`, `
+			precision mediump float;
+
+			varying vec2 v_uv;
+
+			uniform sampler2D u_texture;
+
+			void main(void)
+			{
+				gl_FragColor = texture2D(u_texture, v_uv);
+			}
+		`, [
+			["a_position",3],
+			["a_uv",2],
+		]);
+
+		let buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		let U = DU !== undefined ? DU : 1;
+		let V = DV !== undefined ? DV : 1;
+		let W = width * U;
+		let H = height * V;
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+			// x,y,z,   u,v,
+
+			0,0,0,   0,V,
+			W,0,0,   U,V,
+			W,H,0,   U,0,
+
+			0,0,0,   0,V,
+			W,H,0,   U,0,
+			0,H,0,   0,0,
+
+		]), gl.STATIC_DRAW);
+
+		return {
+			src: src,
+			texture: texture,
+			shader: shader,
+			buffer: buffer,
+			n_vertices: 6,
+		};
+	};
+
+	const mk_lettersoup_stage = (width, height) => {
 		const mk_src = (width, height) => {
 			let canvas = document.createElement('canvas');
 			canvas.width = width;
@@ -388,9 +471,9 @@ window.onload = () => {
 			ctx.fillRect(0, 0, width, height);
 
 			ctx.fillStyle = '#ffffff';
-			ctx.font = '65px serif';
+			ctx.font = '75px serif';
 
-			const N = 4000;
+			const N = 500;
 			const S = "0123456789ABCDEF";
 			for (let i = 0; i < N; i++) {
 				let x = Math.random()*width;
@@ -410,75 +493,13 @@ window.onload = () => {
 			return canvas;
 		};
 
-		let src = mk_src(width, height);
-
-		let texture = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-		gl.generateMipmap(gl.TEXTURE_2D);
-
-		let shader = mk_shader(`
-			attribute vec3 a_position;
-			attribute vec2 a_uv;
-
-			varying vec2 v_uv;
-
-			uniform mat4 u_tx;
-
-			void main(void)
-			{
-				v_uv = a_uv;
-				gl_Position = u_tx * vec4(a_position,1);
-			}
-		`, `
-			precision mediump float;
-
-			varying vec2 v_uv;
-
-			uniform vec4 u_color_bg;
-			uniform vec4 u_color_fg;
-			uniform sampler2D u_texture;
-
-			void main(void)
-			{
-				float s = texture2D(u_texture, v_uv).r;
-				gl_FragColor = mix(u_color_bg, u_color_fg, s);
-			}
-		`, [
-			["a_position",3],
-			["a_uv",2],
-		]);
-
-		let buffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		let R = 16;
-		let W = width * R;
-		let H = height;
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-			// x,y,z,   u,v,
-
-			0,0,0,   0,0,
-			W,0,0,   R,0,
-			W,H,0,   R,1,
-
-			0,0,0,   0,0,
-			W,H,0,   R,1,
-			0,H,0,   0,1,
-
-		]), gl.STATIC_DRAW);
-
-		return {
-			src: src,
-			texture: texture,
-			shader: shader,
-			buffer: buffer,
-			n_vertices: 6,
-		};
+		return _mk_src_stage(mk_src(width, height), width, height, 8, 4);
 	};
 
-	let stage = mk_stage(1<<13, 1<<11);
+	const mk_img_stage = (img) => _mk_src_stage(img, img.width, img.height);
+
+	//let stage = mk_lettersoup_stage(1<<11, 1<<10);
+	let stage = mk_img_stage(document.getElementById("trythis"));
 
 	let cursor = (() => {
 
@@ -577,9 +598,14 @@ window.onload = () => {
 
 	let mlook_rotx = 0.0;
 	let mlook_roty = 0.0;
-	let mlook_p0 = [0,0];
+	let mlook_p0 = [1000,1000];
 	let mlook_new_p0;
-	let distance = 1500; // configurable?
+	let scale = 1.0;
+
+	let [ distance, fovy0, fovy1 ] = (() => {
+		return [1700,31,34];
+		//return [1200,43,46];
+	})();
 
 	let is_cursoring = false;
 	let cursoring_fade = 0;
@@ -600,12 +626,7 @@ window.onload = () => {
 	window.addEventListener("contextmenu", (e) => { e.preventDefault(); });
 
 	window.addEventListener("mousedown", (e) => {
-		let b = e.button;
-		if (!is_cursoring && b === 2) {
-			set_cursoring(true);
-		} else if (is_cursoring && b === 0) {
-			set_cursoring(false);
-		}
+		set_cursoring(!is_cursoring);
 		e.preventDefault();
 	});
 
@@ -613,10 +634,37 @@ window.onload = () => {
 		if (is_cursoring) {
 			let dx = e.movementX;
 			let dy = e.movementY;
-			const sens = 0.03;
+			const sens = 0.06;
 			mlook_rotx += dx * sens;
 			mlook_roty += dy * sens;
+
+			const clamp = (x,x0,x1) => Math.min(Math.max(x0,x),x1);
+			const LIM = 84;
+			mlook_rotx = clamp(mlook_rotx, -LIM, LIM);
+			mlook_roty = clamp(mlook_roty, -LIM, LIM);
 		}
+	});
+
+	window.addEventListener("wheel", (e) => {
+		let dy = e.deltaY;
+
+		const STEP = 1.02;
+		let mul = 1.0;
+		if (dy < 0) {
+			mul *= STEP;
+		} else if (dy > 0) {
+			mul /= STEP;
+		}
+
+		scale *= mul;
+		let dd = [0,0];
+		if (is_cursoring) {
+			// kinda works? hehe?
+			dd = v2sub(mlook_new_p0, mlook_p0);
+		}
+		mlook_p0 = v2sub(vscale(v2add(mlook_p0,dd), mul), dd);
+
+		e.preventDefault();
 	});
 
 	const begin_loop = () => {
@@ -639,7 +687,8 @@ window.onload = () => {
 			gl.viewport(0, 0, width, height);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			let projection = m4perspective(65, width/height, 5, 40000);
+			let fovy = lerp(fovy0, fovy1, cursoring_fade);
+			let projection = m4perspective(fovy, width/height, 5, 40000);
 			let view = m4identity();
 			view = m4mul(view, m4rotation([1,0,0], mlook_roty));
 			view = m4mul(view, m4rotation([0,1,0], mlook_rotx));
@@ -650,8 +699,7 @@ window.onload = () => {
 			gl.bindBuffer(gl.ARRAY_BUFFER, stage.buffer);
 			stage.shader.setup_vertex_attrib_pointers();
 			stage.shader.set_uniform_matrix("u_tx", tx);
-			stage.shader.set_uniform_v4("u_color_bg", [0.0,  0.0,  0.2,  1.0]);
-			stage.shader.set_uniform_v4("u_color_fg", [1.0,  1.0,  1.0,  1.0]);
+			stage.shader.set_uniform_float("u_scale", scale);
 
 			gl.drawArrays(gl.TRIANGLES, 0, stage.n_vertices);
 
@@ -672,15 +720,16 @@ window.onload = () => {
 				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
 				cursor.shader.setup_vertex_attrib_pointers();
 				cursor.shader.set_uniform_matrix("u_tx", tx);
-				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.8], cursoring_fade));
-				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.6,  0.5,  0.2,  0.0], cursoring_fade));
-				let xfar = 100000;
-				let yfar = 10000;
+				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.2], cursoring_fade));
+				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.1,  0.1,  0.0,  0.0], cursoring_fade));
+				let xfar = 1000000;
+				let yfar = 1000000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
 				cursor.shader.set_uniform_v2("u_outer_p1", [xfar,yfar]);
 
 				mlook_new_p0 = pp.slice(0,2);
 				let hh = [width/2, height/2];
+
 				let ip0 = v2sub(mlook_new_p0, hh);
 				let ip1 = v2add(mlook_new_p0, hh);
 
@@ -688,8 +737,13 @@ window.onload = () => {
 				cursor.shader.set_uniform_v2("u_inner_p1", ip1);
 				gl.drawArrays(gl.TRIANGLES, 0, cursor.n_vertices);
 
-				cursoring_fade = Math.min(1.0, cursoring_fade + 0.15);
+				cursoring_fade = Math.min(1.0, cursoring_fade + 0.2);
+			} else {
+				cursoring_fade = 0;
 			}
+
+			document.getElementById("dbgtxt").innerText =
+				"rx:"+mlook_rotx + "  ry:"+mlook_roty;
 
 			request_animation_frame(loop);
 		})();
@@ -703,5 +757,7 @@ window.onload = () => {
 <body>
 <canvas id="canvas"></canvas>
 <div id="cross">&times;</div>
+<img id="trythis" src="8k.png"/>
+<div id="dbgtxt"></div>
 </body>
 </html>
