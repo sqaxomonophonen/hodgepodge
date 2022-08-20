@@ -48,6 +48,8 @@ body {
 const lerp = (a,b,t) => a+(b-a)*t;
 
 const deg2rad = (deg) => deg / 180 * Math.PI;
+const rad2deg = (rad) => rad / Math.PI * 180;
+
 const m4ati = (col, row) => {
 	if (col < 0 || col >= 4 || row < 0 || row >= 4) throw new Error("index out of range: " + JSON.stringify([col,row]));
 	return row + col*4;
@@ -601,11 +603,7 @@ window.onload = () => {
 	let mlook_p0 = [1000,1000];
 	let mlook_new_p0;
 	let scale = 1.0;
-
-	let [ distance, fovy0, fovy1 ] = (() => {
-		return [1700,31,34];
-		//return [1200,43,46];
-	})();
+	let distance = 1300;
 
 	let is_cursoring = false;
 	let cursoring_fade = 0;
@@ -656,6 +654,13 @@ window.onload = () => {
 			mul /= STEP;
 		}
 
+		/*
+		if (is_cursoring) {
+			distance *= mul;
+			return;
+		}
+		*/
+
 		scale *= mul;
 		let dd = [0,0];
 		if (is_cursoring) {
@@ -687,12 +692,16 @@ window.onload = () => {
 			gl.viewport(0, 0, width, height);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			let fovy = lerp(fovy0, fovy1, cursoring_fade);
-			let projection = m4perspective(fovy, width/height, 5, 40000);
+			let znear = 5;
+			let zfar = 40000;
+			let dy = ((height / distance) * znear) / 2;
+			let dx = dy * (width/height);
+			let projection =  m4frustum(-dx, dx, -dy, dy, znear, zfar);
+
 			let view = m4identity();
 			view = m4mul(view, m4rotation([1,0,0], mlook_roty));
 			view = m4mul(view, m4rotation([0,1,0], mlook_rotx));
-			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-distance]));
+			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-(distance + distance*0.2*cursoring_fade)]));
 			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
