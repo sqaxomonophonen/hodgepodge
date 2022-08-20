@@ -603,7 +603,7 @@ window.onload = () => {
 	let mlook_p0 = [1000,1000];
 	let mlook_new_p0;
 	let scale = 1.0;
-	let distance = 1300;
+	let distance = 1600;
 
 	let is_cursoring = false;
 	let cursoring_fade = 0;
@@ -701,7 +701,7 @@ window.onload = () => {
 			let view = m4identity();
 			view = m4mul(view, m4rotation([1,0,0], mlook_roty));
 			view = m4mul(view, m4rotation([0,1,0], mlook_rotx));
-			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-(distance + distance*0.2*cursoring_fade)]));
+			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-(distance + distance*0.1*cursoring_fade)]));
 			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
