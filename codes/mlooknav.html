@@ -298,6 +298,27 @@ const plane_line_intersection = (p0, n, l0, l) => {
 	return v3add(l0, vscale(l, d));
 };
 
+const decode_hash = () => {
+	let xs = document.location.hash.slice(1).split(",");
+	const maybe_int = (x) => x === undefined ? undefined : parseInt(x,10);
+	const maybe_float = (x) => x === undefined ? undefined : parseFloat(x);
+	return {
+		src: xs[0],
+		px: maybe_int(xs[1]),
+		py: maybe_int(xs[2]),
+		scale: maybe_float(xs[3]),
+	}
+};
+
+const set_hash = (o) => {
+	let xs = [];
+	xs.push(o.src);
+	if (o.px !== undefined) xs.push(o.px);
+	if (o.py !== undefined) xs.push(o.py);
+	if (o.scale !== undefined) xs.push(o.scale);
+	document.location.hash = "#" + xs.join(",");
+};
+
 const boot = (src, src_width, src_height) => {
 	const panic = (m) => { throw new Error(m); }
 
@@ -608,9 +629,19 @@ const boot = (src, src_width, src_height) => {
 
 	let mlook_rotx = 0.0;
 	let mlook_roty = 0.0;
-	let mlook_p0 = [1000,1000];
+	let hh = decode_hash();
+	let mlook_p0 = [hh.px || 0,hh.py || 0];
+
+	let update_hash = () => {
+		let hh = decode_hash();
+		hh.px = mlook_p0[0]|0;
+		hh.py = mlook_p0[1]|0;
+		hh.scale = scale;
+		set_hash(hh);
+	};
+
 	let mlook_new_p0;
-	let scale = 1.0;
+	let scale = hh.scale || 1.0;
 	let distance = 1600;
 
 	window.set_distance = (d) => distance=d;
@@ -628,6 +659,7 @@ const boot = (src, src_width, src_height) => {
 			document.exitPointerLock();
 			mlook_rotx = mlook_roty = 0;
 			mlook_p0 = mlook_new_p0;
+			update_hash();
 		}
 	};
 
@@ -678,6 +710,7 @@ const boot = (src, src_width, src_height) => {
 			dd = v2sub(mlook_new_p0, mlook_p0);
 		}
 		mlook_p0 = v2sub(vscale(v2add(mlook_p0,dd), mul), dd);
+		update_hash();
 
 		e.preventDefault();
 	});
@@ -773,7 +806,7 @@ const boot = (src, src_width, src_height) => {
 
 window.onload = () => {
 	let img = new Image();
-	img.src = document.location.hash.slice(1);
+	img.src = decode_hash().src;
 	img.addEventListener("load", () => {
 		document.getElementById("loading").style.display = 'none';
 		boot(img, img.width, img.height);
