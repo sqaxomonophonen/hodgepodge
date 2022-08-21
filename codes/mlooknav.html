@@ -708,7 +708,7 @@ window.onload = () => {
 			let view = m4identity();
 			view = m4mul(view, m4rotation([1,0,0], mlook_roty));
 			view = m4mul(view, m4rotation([0,1,0], mlook_rotx));
-			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-(distance + distance*0.1*cursoring_fade)]));
+			view = m4mul(view, m4translation([-mlook_p0[0],-mlook_p0[1],-(distance + distance*0.15*cursoring_fade)]));
 			let tx = m4mul(projection, view);
 
 			stage.shader.enable();
@@ -737,7 +737,7 @@ window.onload = () => {
 				cursor.shader.setup_vertex_attrib_pointers();
 				cursor.shader.set_uniform_matrix("u_tx", tx);
 				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.35], cursoring_fade));
-				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.0,  0.0,  0.0,  0.0], cursoring_fade));
+				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.05,  0.05,  0.05,  0.0], 1-cursoring_fade));
 				let xfar = 1000000;
 				let yfar = 1000000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
