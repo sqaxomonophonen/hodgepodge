@@ -25,8 +25,10 @@ body {
 	color: yellow;
 }
 
-#trythis {
-	display: none;
+#loading {
+	color: white;
+	font-size: 2em;
+	margin: 1em;
 }
 
 #dbgtxt {
@@ -296,7 +298,7 @@ const plane_line_intersection = (p0, n, l0, l) => {
 	return v3add(l0, vscale(l, d));
 };
 
-window.onload = () => {
+const boot = (src, src_width, src_height) => {
 	const panic = (m) => { throw new Error(m); }
 
 	const request_animation_frame = (
@@ -394,7 +396,7 @@ window.onload = () => {
 		};
 	};
 
-	const _mk_src_stage = (src, width, height, DU, DV) => {
+	const mk_src_stage = (src, width, height, DU, DV) => {
 		let texture = gl.createTexture();
 		gl.bindTexture(gl.TEXTURE_2D, texture);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
@@ -500,13 +502,14 @@ window.onload = () => {
 			return canvas;
 		};
 
-		return _mk_src_stage(mk_src(width, height), width, height, 8, 4);
+		return mk_src_stage(mk_src(width, height), width, height, 8, 4);
 	};
 
-	const mk_img_stage = (img) => _mk_src_stage(img, img.width, img.height);
+	const mk_img_stage = (img) => mk_src_stage(img, img.width, img.height);
 
 	//let stage = mk_lettersoup_stage(1<<11, 1<<10);
-	let stage = mk_img_stage(document.getElementById("trythis"));
+	//let stage = mk_img_stage(document.getElementById("trythis"));
+	let stage = mk_src_stage(src, src_width, src_height);
 
 	let cursor = (() => {
 
@@ -767,13 +770,23 @@ window.onload = () => {
 
 	begin_loop();
 };
+
+window.onload = () => {
+	let img = new Image();
+	img.src = document.location.hash.slice(1);
+	img.addEventListener("load", () => {
+		document.getElementById("loading").style.display = 'none';
+		boot(img, img.width, img.height);
+	});
+}
+
 </script>
 
 </head>
 <body>
 <canvas id="canvas"></canvas>
+<div id="loading">Loading...</div>
 <div id="cross">&times;</div>
-<img id="trythis" src="8k.png"/>
 <div id="dbgtxt"></div>
 </body>
 </html>
