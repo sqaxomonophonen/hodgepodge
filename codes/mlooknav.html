@@ -736,8 +736,8 @@ window.onload = () => {
 				gl.bindBuffer(gl.ARRAY_BUFFER, cursor.buffer);
 				cursor.shader.setup_vertex_attrib_pointers();
 				cursor.shader.set_uniform_matrix("u_tx", tx);
-				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.2], cursoring_fade));
-				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.1,  0.1,  0.0,  0.0], cursoring_fade));
+				cursor.shader.set_uniform_v4("u_color_outside", vscale([0.0,  0.0,  0.0,  0.35], cursoring_fade));
+				cursor.shader.set_uniform_v4("u_color_inside",  vscale([0.0,  0.0,  0.0,  0.0], cursoring_fade));
 				let xfar = 1000000;
 				let yfar = 1000000;
 				cursor.shader.set_uniform_v2("u_outer_p0", [-xfar,-yfar]);
