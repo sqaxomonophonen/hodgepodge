@@ -49,9 +49,12 @@ a:hover {
 }
 
 #input_show {
-	width: 6em;
+	width: 5em;
 }
 
+#input_subtract {
+	width: 4em;
+}
 .comment {
 	color: gray;
 	font-size: 0.8em;
@@ -265,8 +268,10 @@ window.onload = () => {
 	};
 
 	let t0 = Date.now();
+	let last_subtract = t0;
 	setInterval(() => {
-		let dt = Date.now() - t0;
+		let now = Date.now();
+		let dt = now - t0;
 		let zpad = (x) => {
 			x += "";
 			while (x.length < 2) x = "0"+x;
@@ -283,6 +288,24 @@ window.onload = () => {
 		let hh = zpad(dt);
 
 		document.getElementById("duration").innerText = hh + ":" + mm + ":" + ss;
+
+		let subsec = parseInt(document.getElementById("input_subtract").value, 10);
+		if (subsec > 0 && (now - last_subtract)/1000 > subsec) {
+			for (let name in servers) {
+				let server = servers[name];
+				let del = [];
+				for (let key in server) {
+					if (key[0] === "_") continue;
+					let s = server[key]
+					s.hits--;
+					if (s.hits <= 0) del.push(key);
+				}
+				for (let key of del) delete server[key];
+			}
+			last_subtract = now;
+			if (is_rendering) render();
+		}
+
 	}, 200);
 };
 
@@ -295,8 +318,9 @@ window.onload = () => {
 	<label>Server: <input id="input_server" value="en.wikipedia.org"/></label>
 	<button id="button_server">...</button>
 	<label>Show: <input type="number" id="input_show" value="100"/></label>
-	<button id="button_reset">Clear data / start over</button>
+	<button id="button_reset">Clear data</button>
 	<button id="button_startstop"></button>
+	Subtract 1 every <input id="input_subtract" type="number" value="0"/> second(s).
 	<span title="number of edits shown/received" class="comment" id="notes">
 		<span id="note_n_total" title="number of edits received in total"></span>
 		<span id="note_n_filtered" title="number of edits shown"></span>
