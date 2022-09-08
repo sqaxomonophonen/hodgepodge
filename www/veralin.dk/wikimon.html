@@ -1,0 +1,235 @@
+<!doctype HTML>
+<html>
+<head>
+<title>wikimon</title>
+
+
+<style>
+
+body {
+	background: black;
+	color: white;
+}
+
+#controls {
+}
+
+.column_count {
+	width: 5em;
+	background: #005;
+	position: relative;
+}
+
+.datatable {
+	font-size: 1.2em;
+	width: 100%;
+}
+
+.count {
+	position: absolute;
+	left: 50%;
+}
+
+.bar {
+	background-color: #038;
+	height: 1em;
+}
+
+a {
+	color: white;
+	text-decoration: none;
+	display: inline-block;
+	width: 100%;
+
+}
+
+a:hover {
+	background: white;
+	color: black;
+}
+
+#input_show {
+	width: 6em;
+}
+
+.comment {
+	color: gray;
+	font-size: 0.8em;
+}
+
+#notes {
+	font-weight: bolder;
+	color: #08f;
+}
+
+#duration {
+	color: #084;
+}
+
+</style>
+
+<script>
+
+window.onload = () => {
+	const input_server = document.getElementById("input_server");
+
+	let serial = 0;
+
+	let n_events_filtered, n_events_total;
+	let keys;
+	const reset = () => {
+		keys = {};
+		n_events_filtered = 0;
+		n_events_total = 0;
+	};
+
+	reset();
+
+	let is_rendering = true;
+
+	const render = () => {
+		let display = document.getElementById("display");
+		display.innerHTML = "";
+
+		let xs = [];
+		let max_hits = 0;
+		for (let key in keys) {
+			let value = keys[key];
+			if (value.hits > max_hits) max_hits = value.hits;
+			xs.push({
+				key: key,
+				hits: value.hits,
+				title: value.title,
+				serial: value.serial,
+			});
+		}
+		xs.sort((a,b) => {
+			let d0 = b.hits-a.hits;
+			if (d0 !== 0) return d0;
+			return b.serial-a.serial;
+		});
+
+
+		let table = document.createElement("table");
+		table.setAttribute("class", "datatable");
+
+		let MAX = parseInt(document.getElementById("input_show").value, 10);
+		if (!MAX) MAX = 100;
+		const N = xs.length;
+		for (let i = 0; i < N; i++) {
+			if (i >= MAX) break;
+			let x = xs[i];
+			let tr = document.createElement("tr");
+
+			let td0 = document.createElement("td");
+
+			let span0 = document.createElement("span");
+			span0.innerText = x.hits;
+			span0.setAttribute("class", "count");
+			td0.appendChild(span0);
+
+			let bar0 = document.createElement("div");
+			bar0.setAttribute("class", "bar");
+			td0.appendChild(bar0);
+			bar0.style.width = (Math.round(100*(x.hits / max_hits))|0) + "%";
+
+			td0.setAttribute("class", "column_count");
+			tr.appendChild(td0);
+
+			let td1 = document.createElement("td");
+			let a1 = document.createElement("a");
+			a1.setAttribute("href", x.key);
+			a1.setAttribute("target", "_blank");
+			a1.setAttribute("rel", "noopener noreferrer");
+			a1.innerText = x.title;
+			td1.appendChild(a1);
+			td1.setAttribute("class", "column_title");
+			tr.appendChild(td1);
+
+			table.appendChild(tr);
+		}
+
+		display.appendChild(table);
+	};
+
+	const handle_data = (data) => {
+		let key = data.meta.uri;
+		if (!keys[key]) keys[key] = {hits: 0, title: data.title, serial: serial++};
+		keys[key].hits++;
+
+		if (is_rendering) render();
+	};
+
+	document.getElementById("button_reset").addEventListener("click", () => {
+		reset();
+		render();
+	});
+
+	let set_is_rendering = (p) => {
+		is_rendering = p;
+		let e = document.getElementById("button_startstop").innerText = is_rendering ? "Pause" : "Resume";
+	};
+	set_is_rendering(true);
+	document.getElementById("button_startstop").addEventListener("click", () => set_is_rendering(!is_rendering));
+
+	const url = 'https://stream.wikimedia.org/v2/stream/recentchange';
+	const es = new EventSource(url);
+
+	//es.onopen = () => { console.info('Opened connection.'); };
+	es.onerror = (ev) => { console.error('Encountered error', ev); };
+
+	let last_server;
+	es.onmessage = (ev) => {
+		const data = JSON.parse(ev.data);
+		n_events_total++;
+		if (data.server_name === input_server.value.trim()) {
+			if (data.server_name !== last_server) {
+				reset();
+				last_server = data.server_name;
+			}
+			n_events_filtered++;
+			handle_data(data);
+		}
+		document.getElementById("notes").innerText = n_events_filtered + "/" + n_events_total;
+	};
+
+	let t0 = Date.now();
+	setInterval(() => {
+		let dt = Date.now() - t0;
+		let zpad = (x) => {
+			x += "";
+			while (x.length < 2) x = "0"+x;
+			return x;
+		};
+
+		dt = (dt/1000)|0;
+		let ss = zpad(dt % 60);
+
+		dt = (dt/60)|0;
+		let mm = zpad(dt % 60);
+
+		dt = (dt/60)|0;
+		let hh = zpad(dt);
+
+		document.getElementById("duration").innerText = hh + ":" + mm + ":" + ss;
+	}, 200);
+};
+
+
+</script>
+</head>
+
+<body>
+<div id="controls">
+	<label>Server: <input id="input_server" value="en.wikipedia.org"/></label>
+	<label>Show: <input type="number" id="input_show" value="100"/></label>
+	<button id="button_reset">Clear data / start over</button>
+	<button id="button_startstop"></button>
+	<span class="comment" id="notes"></span>
+	<span class="comment" id="duration"></span>
+	<span class="comment">(data is fetched directly from wikipedia)</span>
+</div>
+<div id="display">
+</div>
+</body>
+</html>
