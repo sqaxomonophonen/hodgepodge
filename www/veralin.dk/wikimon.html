@@ -53,7 +53,7 @@ a:hover {
 }
 
 #input_subtract {
-	width: 4em;
+	width: 5em;
 }
 .comment {
 	color: gray;
@@ -153,7 +153,7 @@ window.onload = () => {
 			let td0 = document.createElement("td");
 
 			let span0 = document.createElement("span");
-			span0.innerText = x.hits;
+			span0.innerText = x.hits.toFixed(1);
 			span0.setAttribute("class", "count");
 			td0.appendChild(span0);
 
@@ -289,15 +289,15 @@ window.onload = () => {
 
 		document.getElementById("duration").innerText = hh + ":" + mm + ":" + ss;
 
-		let subsec = parseInt(document.getElementById("input_subtract").value, 10);
-		if (subsec > 0 && (now - last_subtract)/1000 > subsec) {
+		let subtract = parseFloat(document.getElementById("input_subtract").value);
+		if (subtract > 0 && (now - last_subtract)/1000 > 1) {
 			for (let name in servers) {
 				let server = servers[name];
 				let del = [];
 				for (let key in server) {
 					if (key[0] === "_") continue;
 					let s = server[key]
-					s.hits--;
+					s.hits -= subtract;
 					if (s.hits <= 0) del.push(key);
 				}
 				for (let key of del) delete server[key];
@@ -320,7 +320,7 @@ window.onload = () => {
 	<label>Show: <input type="number" id="input_show" value="100"/></label>
 	<button id="button_reset">Clear data</button>
 	<button id="button_startstop"></button>
-	Subtract 1 every <input id="input_subtract" type="number" value="0"/> second(s).
+	Subtract <input id="input_subtract" type="number" step="0.01" min="0" value="0"/> every second.
 	<span title="number of edits shown/received" class="comment" id="notes">
 		<span id="note_n_total" title="number of edits received in total"></span>
 		<span id="note_n_filtered" title="number of edits shown"></span>
