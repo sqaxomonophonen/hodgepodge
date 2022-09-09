@@ -262,9 +262,11 @@ window.onload = () => {
 	let last_server;
 	es.onmessage = (ev) => {
 		const data = JSON.parse(ev.data);
-		handle_data(data.server_name, data);
-		if (is_rendering && data.server_name === get_input_server()) render();
-		update_stats();
+		if (data.bot === false && data.type === "edit") {
+			handle_data(data.server_name, data);
+			if (is_rendering && data.server_name === get_input_server()) render();
+			update_stats();
+		}
 	};
 
 	let t0 = Date.now();
