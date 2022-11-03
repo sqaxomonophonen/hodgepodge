@@ -1,31 +1,56 @@
 #!/usr/bin/env node
 
 const cheerio = require('cheerio');
-const fetch = require('cross-fetch');
 const path = require('path');
 const url = require('url');
+const fs = require('fs');
+const fsp = require('fs/promises');
 
-const XXXDBG = true;
+const common = require('./common');
 
-const what = [
-	[  "fv2022", "https://kmdvalg.dk/Main/Home/FV"                ],
-	[  "fv2019", "https://www.kmdvalg.dk/fv/2019/KMDValgFV.html"  ],
-];
+const target = common.select([
+	[   "fv22",   "https://kmdvalg.dk/Main/Home/FV",                "Folketingsvalg 1. november 2022"  ],
+	[   "fv19",   "https://www.kmdvalg.dk/fv/2019/KMDValgFV.html",  "Folketingsvalg 5. juni 2019"      ],
+]);
 
-const gethtml = url => fetch(url).then(x=>x.text()).then(x => new Promise(r => r(cheerio.load(x))));
+common.enter_target_dir(target, "kmdvalg");
+
+class KeyPath {
+	constructor() {
+		this.path = [];
+	}
+
+	enter(fragment) {
+		let o = new KeyPath();
+		o.path = [...this.path, fragment];
+		return o;
+	}
+
+	get(index) {
+		common.assert(0 <= index && index < this.path.length);
+		return this.path[index];
+	}
+
+	fspath() {
+		return this.path.join("__") + ".json";
+	}
+
+	archive(data) {
+		let p = this.fspath();
+		fsp.writeFile(p, JSON.stringify(data,null,2)).then(() => {
+			console.log("Gemte " + p + " ...");
+		});
+	}
+};
+
+const Bottleneck = require("bottleneck");
+const rate_limiter = new Bottleneck({ maxConcurrent: 2 });
+const fetch = require('cross-fetch');
+const rate_limited_fetch = rate_limiter.wrap(fetch);
+
+const get_html = url => rate_limited_fetch(url).then(x=>x.text()).then(x => new Promise(r => r(cheerio.load(x))));
 
 const url_resolv = (a,b) => (new url.URL(b,a)).href;
-
-const map_from_array_of_tuples = (array, tuple_key_index) => {
-	let map = {}
-	for (const tuple of array) {
-		let key = tuple[tuple_key_index];
-		if (key === undefined) throw new Error("no key");
-		if (map[key] !== undefined) throw new Error("duplicate key: " + key);
-		map[key] = tuple;
-	}
-	return map;
-};
 
 const label_defs = [
 	[  'Antal stemmeberettigede:',   "antal_stemmeberettigede",   "int"        ],
@@ -61,8 +86,8 @@ const parti_defs = [
 	["Å", "#65b32e", "Alternativet",                       ],
 ];
 
-const label_map = map_from_array_of_tuples(label_defs, 0);
-const parti_map = map_from_array_of_tuples(parti_defs, 0);
+const label_map = common.map_from_array_of_tuples(label_defs, 0);
+const parti_map = common.map_from_array_of_tuples(parti_defs, 0);
 
 const get_label_tuple = (label) => {
 	let tuple = label_map[label];
@@ -74,47 +99,41 @@ const parse_int = (v) => parseInt(v.replace(".",""), 10);
 const parse_float = (v) => parseFloat(v.replace(".","").replace(",","."));
 
 const value_parsers = {
-	"int": (tds) => ({"value": parse_int(tds.eq(1).text())}),
-	"text": (tds) => ({"text": tds.eq(1).text().trim().replace(/  +/gm, " / ")}),
-	"date": (tds) => ({"date": tds.eq(1).text()}),
+	"int":      (tds) => ({"value": parse_int(tds.eq(1).text())}),
+	"text":     (tds) => ({"text": tds.eq(1).text().trim().replace(/  +/gm, " / ")}),
+	"date":     (tds) => ({"date": tds.eq(1).text()}),
 	"int+diff": (tds) => ({"value": parse_int(tds.eq(1).text()), "diff": parse_int(tds.eq(2).text())}),
 };
 
 const href2id = (href) => path.basename(href).split(".")[0];
 
-const parse_info_table = ($, expected_header) => {
-	expected_header = expected_header.toLocaleLowerCase();
-
+const parse_info_table = ($, keypath) => {
 	let ob;
 
-	$(".content-block").each(function(i,em) {
-		em = $(em);
-		if (em.find(".content-block-header").text().toLocaleLowerCase() !== expected_header) {
-			return;
-		}
-		em = em.find("table").eq(0);
-		ob = {};
-		em.find("tr").each(function(i,em) {
-			em = $(em);
-			let tds = $(em.find("td"));
-			let label = tds.eq(0).text();
-			let tuple = get_label_tuple(label);
-			let key = tuple[1];
-			if (key === undefined) return;
-			let parser = value_parsers[tuple[2]];
-			if (parser === undefined) throw new Error("no value parser: " + tuple[2]);
-			ob[key] = parser(tds);
-		});
-	});
+	let tables = $(".kmd-table-info");
+	common.assert(tables.length >= 1, keypath.fspath());
 
-	if (ob === undefined) throw new Error("no info table found?!");
+	let t0 = $(tables.eq(0));
+
+	ob = {};
+	t0.find("tr").each(function(i,em) {
+		em = $(em);
+		let tds = $(em.find("td"));
+		let label = tds.eq(0).text();
+		let tuple = get_label_tuple(label);
+		let key = tuple[1];
+		if (key === undefined) return;
+		let parser = value_parsers[tuple[2]];
+		if (parser === undefined) throw new Error("no value parser: " + tuple[2]);
+		ob[key] = parser(tds);
+	});
 
 	return ob;
 }
 
-const parse_parti_table = ($, lvl) => {
+const parse_parti_table = ($) => {
 	let xs = $(".kmd-parti-list");
-	if (xs.length !== 1) throw new Error("expected to find exactly one element");
+	common.assert(xs.length === 1);
 	let table = [];
 	$(xs).find(".table-like-row").each(function(i0,em) {
 		if (i0 < 1) return;
@@ -130,7 +149,10 @@ const parse_parti_table = ($, lvl) => {
 					row["navn"] = em.text().replace(bogstav, ""); // XXX too ugly? :)
 				}
 				let a = em.find("a");
-				if (a.length > 0) row["ref"] = a.attr("href");
+				if (a.length > 0) {
+					row["href"] = a.attr("href");
+					row["id"] = row["href"].toLocaleUpperCase().split(".")[0];
+				}
 
 			} else if (i1 === 1) {
 				row["stemmetal"] = parse_int(em.text());
@@ -145,16 +167,14 @@ const parse_parti_table = ($, lvl) => {
 	return table;
 };
 
-function crawl_parti_page(idxx, root) {
-	if (XXXDBG && idxx !== "F1007A") return; // XXX
-	gethtml(root).then($ => {
-		let ob = parse_info_table($, "Valgkreds info")
-		console.log(ob); // XXX
+function crawl_parti_page(keypath, root) {
+	get_html(root).then($ => {
+		let info = parse_info_table($, keypath);
 
 		let vs = $(".kmd-personal-votes-list");
-		if (vs.length !== 1) throw new Error("expected to find exactly one element");
+		common.assert(vs.length === 1);
 
-		let table = [];
+		let personlige_stemmer = [];
 		$(vs).find(".table-like-row").each(function(i0,em) {
 			if (i0 < 1) return;
 			em = $(em);
@@ -168,71 +188,66 @@ function crawl_parti_page(idxx, root) {
 					row["stemmer"] = parse_int(em.text());
 				}
 			});
-			table.push(row);
+			personlige_stemmer.push(row);
 		});
 
-		console.log(table);
+		let data = { info, personlige_stemmer }
+		keypath.archive(data);
 	});
 }
 
-function crawl_parti_table(parent_root, table) {
-	for (const row of table) {
-		if (!row.ref) continue;
-		let idxx = href2id(row.ref).toLocaleUpperCase();
-		crawl_parti_page(idxx, url_resolv(parent_root, row.ref));
+function crawl_parti_table(parent_keypath, parti, parent_root) {
+	for (const row of parti) {
+		if (!row.href || !row.id) continue;
+		crawl_parti_page(parent_keypath.enter(row.id), url_resolv(parent_root, row.href));
 	}
 }
 
-function crawl_lvl2(label, valgkreds, id0, id01, root) {
-	if (XXXDBG) return; // XXX
-	if (XXXDBG && id01 !== "F1007851036") return; // XXX
-	gethtml(root).then($ => {
-		let ob = parse_info_table($, "Afstemningsområde info")
-		console.log(ob); // XXX
+function crawl_rec(keypath, navn, root) {
+	get_html(root).then($ => {
+		let info = parse_info_table($, keypath);
 
-		let pt = parse_parti_table($, 2);
-		crawl_parti_table(root, pt);
+		let parti = parse_parti_table($);
+		crawl_parti_table(keypath, parti, root);
+
+		let dybere = null;
+		let g = $("#vote-areas");
+		if (g.length > 0) {
+			dybere = [];
+			g.find("a").each(function(i,em) {
+				em = $(em);
+				let href = em.attr("href");
+				let id01 = href2id(href);
+				let dybere_navn = em.text();
+				dybere.push({id:id01, navn:dybere_navn});
+				crawl_rec(keypath.enter(id01), dybere_navn, url_resolv(root, href));
+			})
+		}
+
+		let data = { navn, info, dybere, parti };
+		keypath.archive(data);
 	});
 }
 
-function crawl_lvl1(label, valgkreds, id0, root) {
-	if (XXXDBG && id0 !== "F1007") return; // XXX
-	gethtml(root).then($ => {
-		let ob = parse_info_table($, "Valgkreds info")
-		console.log(ob);
+const fragment_sanitize = (s) => s.toLocaleUpperCase().replace(" ", "_");
 
-		let pt = parse_parti_table($, 1);
-		crawl_parti_table(root, pt);
-
-		let g = $(".kmd-voting-areas-list-items");
-		if (g.length !== 1) throw new Error("expected to find exactly one element");
-		g.find("a").each(function(i,em) {
-			em = $(em);
-			let href = em.attr("href");
-			let id01 = href2id(href);
-			crawl_lvl2(label, valgkreds, id0, id01, url_resolv(root, href));
-		})
-	});
-}
-
-function crawl_lvl0(label, root) {
-	gethtml(root).then($ => {
+function crawl_lvl0(root) {
+	get_html(root).then($ => {
 		let d = $(".kmd-list-items");
 
 		d.find(".list-group").each(function(i, em) {
 			em = $(em);
+			let keypath = new KeyPath();
 			let valgkreds = em.find("div").text();
+			keypath = keypath.enter(fragment_sanitize(valgkreds));
 			em.find("a").each(function(i, em) {
 				em = $(em);
 				let href = em.attr("href");
 				let id0 = href2id(href);
-				crawl_lvl1(label, valgkreds, id0, url_resolv(root, href));
+				crawl_rec(keypath.enter(id0), em.text(), url_resolv(root, href));
 			});
 		});
 	});
 }
 
-for (const tup of what) {
-	crawl_lvl0(tup[0], tup[1]);
-	break; // XXX
-}
+crawl_lvl0(target[1]);
