@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const cheerio = require('cheerio');
-const fetch = require('cross-fetch');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
@@ -19,10 +18,15 @@ common.enter_target_dir(target, "dst");
 const ROOT_URL = "https://www.dst.dk/" + path.join("valg", target[1], "xml") + "/";
 console.log("Root URL: " + ROOT_URL);
 
+const Bottleneck = require("bottleneck");
+const rate_limiter = new Bottleneck({ maxConcurrent: 4 });
+const fetch = require('cross-fetch');
+const rate_limited_fetch = rate_limiter.wrap(fetch);
+
 const logp = (msg) => new Promise((resolve) => { console.log(msg); resolve(); });
 const load_xml = (xml) => cheerio.load(xml, {xmlMode:true});
 const stor = (p, doc) => logp("Gemmer " + p + "...").then(() => fsp.writeFile(p, doc.xml()));
-const get_xml = (url) => fetch(url).then(r=>r.text()).then(xml => load_xml(xml));
+const get_xml = (url) => rate_limited_fetch(url).then(r=>r.text()).then(xml => load_xml(xml));
 const relative_path_url = (relative_path) => (ROOT_URL + relative_path);
 const xml_archive = (p) => fsp.stat(p).then(
 	() => fsp.readFile(p).then((blob) => load_xml(blob))
