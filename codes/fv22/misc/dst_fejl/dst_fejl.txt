@@ -1,0 +1,175 @@
+
+Opdaget af: Niels Erik Kaaber Rasmussen / @nilleren på Twitter
+Tidspunkt:  22:10 nov 3. 2022
+Via:        https://twitter.com/nilleren/status/1588277428203364352
+
+
+
+Beskrivelse af fejlen:
+
+3 kandidater fra Bornholms Storkreds bliver talt dobbelt i Bornholms 2
+"opstillingskredse" i DST's XML data for folketingsvalget 2022. Det drejer sig
+om:
+ - Jakob Buchwald Busk (D)
+ - Bjarne Hartung Kirkegaard (K)
+ - Vibeke Brønnum (Æ)
+
+På storkreds niveau står kandidaterne kun én gang, men stemmerne tæller stadigt
+dobbelt. Problemet eksisterer ikke "under" opstilingskredsen (dvs. på
+"afstemningsområder", 9 stk. på Bornholm)
+
+
+Problemet ses ikke på kmdvalg.dk
+
+Jeg har desuden verificeret (programmatisk) at det ikke er et problem
+andetsteds, specifikt:
+ - problemet eksisterer ikke for andre kandidater i fv22
+ - problemet eksisterer slet ikke i DST's fv19 datasæt
+
+
+
+Links og screenshots af fejlen:
+
+Opstillingskreds Rønne:
+https://www.dst.dk/valg/Valg1968094/xml/fintal_46.xml
+./dst_fejl_fintal46.png
+
+Opstillingskreds Aakirkeby:
+https://www.dst.dk/valg/Valg1968094/xml/fintal_47.xml
+./dst_fejl_fintal47.png
+
+Bornholms Storkreds:
+https://www.dst.dk/valg/Valg1968094/xml/fintal_13.xml
+./dst_fejl_fintal13.png
+
+
+Afstemningsområder i Opstillingskreds Rønne:
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972465.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972466.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972467.xml
+
+Afstemningsområder i Opstillingskreds Aakirkeby:
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972468.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972469.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972470.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972471.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972472.xml
+https://www.dst.dk/valg/Valg1968094/xml/fintal_1972473.xml
+
+
+
+
+
+====================================================
+OPDATERING 2022-11-04 13:00 ish:
+
+Fejlen er rettet i de 2 opstillingskredse, men stemmerne tæller stadigt dobbelt
+i storkredsen.
+
+
+
+fintal_46.xml (forkortet):
+  <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+  <Data xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.dst.dk/valg/xml/resultat.xsd">
+    <ValgNavn>Folketingsvalg tirsdag 1. november 2022</ValgNavn>
+    <ValgDato>01-11-2022</ValgDato>
+    <Sted Id="46" Type="OpstKreds">1. R&#xf8;nne</Sted>
+    <SenestRettet>04-11-2022 11:50:25</SenestRettet>
+    <SenestRettetIso>2022-11-04T11:50:25</SenestRettetIso>
+    <SenestDannet>04-11-2022 12:06:40</SenestDannet>
+    <SenestDannetIso>2022-11-04T12:06:40</SenestDannetIso>
+    ...
+    <Status Kode="12">Fint&#xe6;llingsresultat</Status>
+    ...
+    <Personer>
+      ...
+      <Parti Bogstav="D" Id="1675319" navn="D. Nye Borgerlige" PersonligeStemmer="44" TildeltePartiStemmer="211" StemmerIAlt="255">
+        <Person Navn="Jakob Buchwald Busk" PersonligeStemmer="44" TildeltePartiStemmer="211" StemmerIAlt="255"/>
+      </Parti>
+      ...
+      <Parti Bogstav="K" Id="5901" navn="K. KD - Kristendemokraterne" PersonligeStemmer="129" TildeltePartiStemmer="93" StemmerIAlt="222">
+        <Person Navn="Bjarne Hartung Kirkegaard" PersonligeStemmer="129" TildeltePartiStemmer="93" StemmerIAlt="222"/>
+      </Parti>
+      ...
+      <Parti Bogstav="&#xc6;" Id="1968075" navn="&#xc6;. Danmarksdemokraterne - Inger St&#xf8;jberg" PersonligeStemmer="65" TildeltePartiStemmer="663" StemmerIAlt="728">
+        <Person Navn="Vibeke Br&#xf8;nnum" PersonligeStemmer="65" TildeltePartiStemmer="663" StemmerIAlt="728"/>
+      </Parti>
+      ...
+    </Personer>
+  </Data>
+
+
+
+fintal_47.xml (forkortet):
+  <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+  <Data xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.dst.dk/valg/xml/resultat.xsd">
+    <ValgNavn>Folketingsvalg tirsdag 1. november 2022</ValgNavn>
+    <ValgDato>01-11-2022</ValgDato>
+    <Sted Id="47" Type="OpstKreds">2. Aakirkeby</Sted>
+    <SenestRettet>04-11-2022 11:50:39</SenestRettet>
+    <SenestRettetIso>2022-11-04T11:50:39</SenestRettetIso>
+    <SenestDannet>04-11-2022 12:06:40</SenestDannet>
+    <SenestDannetIso>2022-11-04T12:06:40</SenestDannetIso>
+    ...
+    <Status Kode="12">Fint&#xe6;llingsresultat</Status>
+    ...
+    <Personer>
+      ...
+      <Parti Bogstav="D" Id="1675319" navn="D. Nye Borgerlige" PersonligeStemmer="58" TildeltePartiStemmer="216" StemmerIAlt="274">
+        <Person Navn="Jakob Buchwald Busk" PersonligeStemmer="58" TildeltePartiStemmer="216" StemmerIAlt="274"/>
+      </Parti>
+      ...
+      <Parti Bogstav="K" Id="5901" navn="K. KD - Kristendemokraterne" PersonligeStemmer="142" TildeltePartiStemmer="139" StemmerIAlt="281">
+        <Person Navn="Bjarne Hartung Kirkegaard" PersonligeStemmer="142" TildeltePartiStemmer="139" StemmerIAlt="281"/>
+      </Parti>
+      ...
+      <Parti Bogstav="&#xc6;" Id="1968075" navn="&#xc6;. Danmarksdemokraterne - Inger St&#xf8;jberg" PersonligeStemmer="101" TildeltePartiStemmer="761" StemmerIAlt="862">
+        <Person Navn="Vibeke Br&#xf8;nnum" PersonligeStemmer="101" TildeltePartiStemmer="761" StemmerIAlt="862"/>
+      </Parti>
+      ...
+    </Personer>
+  </Data>
+
+
+
+fintal_13.xml (forkortet):
+  <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+  <Data xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://www.dst.dk/valg/xml/resultat.xsd">
+    <ValgNavn>Folketingsvalg tirsdag 1. november 2022</ValgNavn>
+    <ValgDato>01-11-2022</ValgDato>
+    <Sted Id="13" Type="StorKreds">Bornholms Storkreds</Sted>
+    <SenestRettet>04-11-2022 11:50:39</SenestRettet>
+    <SenestRettetIso>2022-11-04T11:50:39</SenestRettetIso>
+    <SenestDannet>04-11-2022 12:06:35</SenestDannet>
+    <SenestDannetIso>2022-11-04T12:06:35</SenestDannetIso>
+    ...
+    <Status Kode="12">Fint&#xe6;llingsresultat</Status>
+    ...
+    <Personer>
+      ...
+      <Parti Bogstav="D" Id="1675319" navn="D. Nye Borgerlige" PersonligeStemmer="204" TildeltePartiStemmer="427" StemmerIAlt="631">
+        <Person Navn="Jakob Buchwald Busk" PersonligeStemmer="204" TildeltePartiStemmer="427" StemmerIAlt="631"/>
+      </Parti>
+      ...
+      <Parti Bogstav="K" Id="5901" navn="K. KD - Kristendemokraterne" PersonligeStemmer="542" TildeltePartiStemmer="232" StemmerIAlt="774">
+        <Person Navn="Bjarne Hartung Kirkegaard" PersonligeStemmer="542" TildeltePartiStemmer="232" StemmerIAlt="774"/>
+      </Parti>
+      ...
+      <Parti Bogstav="&#xc6;" Id="1968075" navn="&#xc6;. Danmarksdemokraterne - Inger St&#xf8;jberg" PersonligeStemmer="332" TildeltePartiStemmer="1424" StemmerIAlt="1756">
+        <Person Navn="Vibeke Br&#xf8;nnum" PersonligeStemmer="332" TildeltePartiStemmer="1424" StemmerIAlt="1756"/>
+      </Parti>
+      ...
+    </Personer>
+  </Data>
+
+
+Dvs:
+ - Jakob Buchwald Busk (D)        får  44  + 58  = 102 personlige stemmer; storkredsen siger 204 (204=102*2)
+ - Bjarne Hartung Kirkegaard (K)  får  129 + 142 = 271 personlige stemmer; storkredsen siger 542 (542=271*2)
+ - Vibeke Brønnum (Æ)             får  65  + 101 = 166 personlige stemmer; storkredsen siger 332 (332=166*2)
+
+
+Jeg har taget snaphots før og efter:
+../../dst_data_fv22_2022_11_03_1700.tar.bz2
+../../dst_data_fv22_2022_11_04_1300.tar.bz2
+
