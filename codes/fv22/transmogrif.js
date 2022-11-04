@@ -86,6 +86,7 @@ function dst_load(root) {
 		return fintal;
 	};
 
+	let t0 = [];
 	let tree = [];
 
 	for (let level = 0; level < structure.length; level++) {
@@ -101,8 +102,9 @@ function dst_load(root) {
 			obj.fintal = extract_fintal(path.basename(em.attr("filnavn")));
 
 			if (level === 0) {
-				tree.push(obj);
-			} else {
+				t0.push(obj);
+			} else if (level >= 1) {
+				if (level === 1) tree.push(obj);
 				let parent_id = em.attr(parent_key);
 				let po = store[mk_skey(parent_key, parent_id)];
 				if (!po.dybere) po.dybere = [];
@@ -112,11 +114,46 @@ function dst_load(root) {
 		});
 	}
 
+	// konsistenscheck: summen af disse felter i "underobjekter" skal være
+	// den samme som i "dette objekt"
+	const do_check = [ "i_alt_gyldige_stemmer", "blanke_stemmer", "andre_ugyldige_stemmer", "i_alt_ugyldige_stemmer", "i_alt_afgivne_stemmer" ];
+	function chk_field_rec(f,x) {
+		let ref = x.fintal[f];
+		common.assert(ref !== undefined);
+
+		if (x.dybere) {
+			let sum = 0;
+			for (let c of x.dybere) {
+				sum += chk_field_rec(f, c);
+			}
+			common.assert(ref === sum);
+		}
+
+		return ref;
+	};
+	for (let f of do_check) for (let x of t0) chk_field_rec(f,x);
+
 	return tree;
 }
 
 function kmd_load(root) {
-	throw new Error("TODO");//XXX
+	let store = {};
+	let tree = [];
+
+	for (let rel_path of fs.readdirSync(root)) {
+		let [p0,p1] = rel_path.split(".");
+		common.assert(p1 === "json");
+		let keypath = p0.split("__");
+		common.assert(keypath.length >= 2);
+
+		let obj = JSON.parse(fs.readFileSync(path.join(root, rel_path)));
+		store[p0] = obj;
+
+		if (keypath.length === 2) {
+			console.log(p0);
+			//console.log(obj);
+		}
+	}
 }
 
 function valgdata2022_load(root) {
@@ -127,5 +164,7 @@ function save(rel_path, tree) {
 	fs.writeFileSync(rel_path, JSON.stringify(tree, null, 3));
 }
 
-save("dst.fv22.json", dst_load("_dst_data_for_fv22"));
+//save("dst.fv22.json", dst_load("_dst_data_for_fv22"));
 //save("dst.fv19.json", dst_load("_dst_data_for_fv19"));
+kmd_load("_kmdvalg_data_for_fv22");
+//save("kmd.fv22.json", kmd_load("_kmdvalg_data_for_fv22"));
