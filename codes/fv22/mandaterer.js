@@ -266,10 +266,8 @@ const for_hver_storkreds = (callback) => {
 	}
 };
 
-const load_dst_doc = (id) => {
-	const ROOT = "_dst_data_for_fv22"; // XXX TODO
-	return cheerio.load(fs.readFileSync(path.join(ROOT, "fintal_"+id+".xml")), {xmlMode:true});
-};
+//const DATA_SRC = ['dst',  "_dst_data_for_fv22"];
+const DATA_SRC = ['kmd',  "_kmdvalg_data_for_fv22"];
 
 const intval = (v) => {
 	v = parseInt(v,10);
@@ -278,12 +276,14 @@ const intval = (v) => {
 	return v;
 };
 
-const load_storkreds_stemmer = (storkreds) => {
-	let $ = load_dst_doc(storkreds.dst_id);
+const load_storkreds_stemmer_dst = (storkreds) => {
+	common.assert(DATA_SRC[0] === "dst");
+	let $ = cheerio.load(fs.readFileSync(path.join(DATA_SRC[1], "fintal_"+storkreds.dst_id+".xml")), {xmlMode:true});
 	common.assert($("Sted").attr("Type") === "StorKreds");
 
 	let stemmer = $("Stemmer");
 	let r = {};
+	let stemmesum = 0;
 	stemmer.find("Parti").each((i,em) => {
 		em=$(em);
 		let bogstav = em.attr("Bogstav");
@@ -291,8 +291,11 @@ const load_storkreds_stemmer = (storkreds) => {
 			common.assert(em.attr("Navn") === "Uden for partier");
 			return;
 		}
-		r[bogstav] = intval(em.attr("StemmerAntal"));
+		let antal_stemmer = intval(em.attr("StemmerAntal"));
+		r[bogstav] = antal_stemmer;
+		stemmesum += antal_stemmer;
 	});
+
 
 	let personer = $("Personer");
 	personer.find("Parti").each((i,em) => {
@@ -302,9 +305,50 @@ const load_storkreds_stemmer = (storkreds) => {
 		common.assert(navn !== undefined);
 		let antal_personlige_stemmer = intval(em.attr("PersonligeStemmer"));
 		r[navn] = antal_personlige_stemmer;
+		stemmesum += antal_personlige_stemmer;
 	});
 
+	const i_alt_gyldige_stemmer = intval(stemmer.find("IAltGyldigeStemmer").text());
+	common.assert(stemmesum === i_alt_gyldige_stemmer);
+
 	return r;
+};
+
+const load_storkreds_stemmer_kmd = (storkreds) => {
+	common.assert(DATA_SRC[0] === "kmd");
+	//console.log(storkreds);
+	let root = DATA_SRC[1]
+
+	let r = {};
+	for (let rel_path of fs.readdirSync(root)) {
+		let [p0,p1] = rel_path.split(".");
+		common.assert(p1 === "json");
+		let keypath = p0.split("__");
+		common.assert(keypath.length >= 2);
+		if (keypath[0] !== storkreds.kmd_id) continue;
+		if (keypath.length !== 2) continue;
+		let obj = JSON.parse(fs.readFileSync(path.join(root, rel_path)));
+		//console.log([rel_path,JSON.stringify(obj)]);
+		//console.log(rel_path);
+		//console.log(JSON.stringify(obj));
+
+		for (const parti of obj.parti) {
+			let k = !parti.bogstav.startsWith("UP") ? parti.bogstav : parti.navn;
+			if (r[k] === undefined) r[k] = 0;
+			r[k] += parti.stemmetal;
+		}
+	}
+
+	return r;
+};
+
+const load_storkreds_stemmer = (storkreds) => {
+	let what = DATA_SRC[0];
+	switch (what) {
+	case 'dst': return load_storkreds_stemmer_dst(storkreds);
+	case 'kmd': return load_storkreds_stemmer_kmd(storkreds);
+	default: throw new Error("what " + what);
+	}
 };
 
 const gcd = (a,b) => {
@@ -348,16 +392,46 @@ const kvotient_compar = (a,b) => {
 // mellem partierne og kandidaterne uden for partierne. Er to eller flere
 // kvotienter lige store, foretages lodtrækning.
 
+let resultat = {
+	partier: {},
+	gyldige_stemmer_per_storkreds: {},
+	kredsmandater_per_storkreds: {},
+	kredsmandater_per_parti: {},
+	tillægsmandater_per_parti: {},
+	partistemmer_per_storkreds: {},
+	partistemmer: {},
+	antal_gyldige_stemmer: 0,
+	antal_mandater_udenfor_partier: 0,
+};
+
+const er_parti = (k) => k.length===1; // XXX jeg håber ikke der er nogen partiløs kandidat med et enbogstavs navn
+
 for_hver_storkreds((storkreds) => {
 	const { navn, antal_kredsmandater } = storkreds;
 	const stemmer = load_storkreds_stemmer(storkreds);
 	const keys = Object.keys(stemmer);
 	let divisorer = {};
 	let kredsmandater = {};
+
+	let antal_gyldige_stemmer_i_storkreds = 0;
 	for (const k of keys) {
 		divisorer[k] = 1;
 		kredsmandater[k] = 0;
+		if (er_parti(k)) {
+			resultat.partier[k] = true;
+			resultat.kredsmandater_per_parti[k] = 0;
+			resultat.tillægsmandater_per_parti[k] = 0;
+			if (resultat.partistemmer[k] === undefined) {
+				resultat.partistemmer[k] = 0;
+			}
+			resultat.partistemmer[k] += stemmer[k]
+			resultat.partistemmer_per_storkreds[navn] = stemmer;
+		}
+		antal_gyldige_stemmer_i_storkreds += stemmer[k];
 	};
+	resultat.antal_gyldige_stemmer += antal_gyldige_stemmer_i_storkreds;
+
+	// d'hondts metode...
 	for (let mandat_indeks = 0; mandat_indeks < storkreds.antal_kredsmandater; mandat_indeks++) {
 		let bedste_kvotient = undefined;
 		let bedste_k = undefined;
@@ -374,6 +448,8 @@ for_hver_storkreds((storkreds) => {
 		common.assert(bedste_k !== undefined);
 		kredsmandater[bedste_k]++;
 		divisorer[bedste_k]++;
+
+		if (!er_parti(bedste_k)) resultat.antal_mandater_udenfor_partier++;
 	}
 
 	{
@@ -382,8 +458,24 @@ for_hver_storkreds((storkreds) => {
 		common.assert(sum === antal_kredsmandater);
 	}
 
-	//console.log([navn, kredsmandater]);
+	resultat.gyldige_stemmer_per_storkreds[navn] = antal_gyldige_stemmer_i_storkreds;
+	resultat.kredsmandater_per_storkreds[navn] = kredsmandater;
 });
+resultat.partier = Object.keys(resultat.partier);
+{
+	let sum_af_kredsmandater = 0;
+	for (const k in resultat.kredsmandater_per_storkreds) {
+		let km = resultat.kredsmandater_per_storkreds[k];
+		for (const parti of resultat.partier) {
+			let antal_mandater = km[parti];
+			resultat.kredsmandater_per_parti[parti] += antal_mandater;
+			sum_af_kredsmandater += antal_mandater;
+
+
+		}
+	}
+	common.assert(sum_af_kredsmandater == antal_kredsmandater);
+}
 
 // § 77. Tillægsmandaterne fordeles blandt partier, der enten
 
@@ -395,8 +487,49 @@ for_hver_storkreds((storkreds) => {
 
 // 3) i hele landet har opnået mindst 2 pct. af de afgivne gyldige stemmer.
 
-// Stk. 2. Det opgøres, hvor mange stemmer der i hele landet er tilfaldet hvert
-// af de partier, der er berettiget til tillægsmandater efter stk. 1. Det
+resultat.partier_der_kan_få_tillægsmandat = {};
+for (const parti of resultat.partier) {
+	let parti_kan_få_tillægsmandat = 0;
+
+	// 1) "har opnået mindst ét kredsmandat"
+	if (resultat.kredsmandater_per_parti[parti] > 0) {
+		parti_kan_få_tillægsmandat++;
+	}
+
+	// 2) "inden for hver af to af de tre landsdele, der er nævnt i § 8,
+	// stk. 1, har opnået mindst lige så mange stemmer som det
+	// gennemsnitlige antal gyldige stemmer, der i landsdelen er afgivet
+	// pr. kredsmandat"
+	{
+		let antal = 0;
+		for (const landsdel of struktur) {
+			common.assert(landsdel.type === "landsdel");
+			let antal_gyldige_stemmer_i_landsdel = 0;
+			let antal_partistemmer_i_landsdel = 0;
+			for (const storkreds of landsdel.dybere) {
+				common.assert(storkreds.type === "storkreds");
+				antal_gyldige_stemmer_i_landsdel += resultat.gyldige_stemmer_per_storkreds[storkreds.navn];
+				antal_partistemmer_i_landsdel += resultat.partistemmer_per_storkreds[storkreds.navn][parti];
+			}
+			let stemmer_per_kredsmandat = antal_gyldige_stemmer_i_landsdel / landsdel.antal_kredsmandater;
+			if (antal_partistemmer_i_landsdel >= stemmer_per_kredsmandat) {
+				antal++;
+			}
+		}
+		if (antal >= 2) parti_kan_få_tillægsmandat++;
+	}
+
+	// 3) "i hele landet har opnået mindst 2 pct. af de afgivne gyldige
+	// stemmer."
+	if (resultat.partistemmer[parti] * (1/0.02) >= resultat.antal_gyldige_stemmer) {
+		parti_kan_få_tillægsmandat++;
+	}
+
+	resultat.partier_der_kan_få_tillægsmandat[parti] = parti_kan_få_tillægsmandat > 0;
+}
+
+// § 77 Stk. 2. Det opgøres, hvor mange stemmer der i hele landet er tilfaldet
+// hvert af de partier, der er berettiget til tillægsmandater efter stk. 1. Det
 // samlede stemmetal for disse partier divideres med tallet 175 med fradrag af
 // det antal kredsmandater, der måtte være tilfaldet kandidater uden for
 // partierne. Med det tal, der herved fremkommer, divideres hvert af partiernes
@@ -428,43 +561,53 @@ for_hver_storkreds((storkreds) => {
 // henhold til stk. 2. Der foretages en ny fordeling af de resterende mandater
 // på de øvrige partier efter tilsvarende regler som i stk. 2 og 3.
 
+{
+	common.assert(antal_danske_mandater === 175);
+	let divisor = antal_danske_mandater - resultat.antal_mandater_udenfor_partier;
 
-// § 78. For hvert af de partier, der ifølge § 77 skal have tillægsmandater,
-// opgøres, hvor mange stemmer partiet har fået i hver af de 3 landsdele.
+	let antal_stemmer_for_tillægsmandatberettigede_partier = 0;
+	for (const parti of resultat.partier) {
+		if (!resultat.partier_der_kan_få_tillægsmandat[parti]) continue;
+		antal_stemmer_for_tillægsmandatberettigede_partier += resultat.partistemmer[parti];
+	}
 
-// Stk. 2. Hvert af disse stemmetal divideres med tallene 1-3-5-7 osv. Derefter
-// udelades så mange af de største kvotienter, som svarer til det antal
-// kredsmandater, som partiet har fået i landsdelen ifølge § 76.
+	//console.log(antal_stemmer_for_tillægsmandatberettigede_partier);
+	let det_tal_der_herved_fremkommer = antal_stemmer_for_tillægsmandatberettigede_partier / divisor;
 
-// Stk. 3. Den landsdel og det parti, der herefter har den største kvotient,
-// får det første tillægsmandat. Den landsdel og det parti, der har den
-// næststørste kvotient, får det næste tillægsmandat og så fremdeles. Når en
-// landsdel eller et parti har fået det antal tillægsmandater, som den eller
-// det skal have, jf. §§ 10 og 77, kommer landsdelen eller partiet ikke videre
-// i betragtning. Fordelingen fortsættes for de andre landsdele og for de
-// øvrige partier, indtil samtlige tillægsmandater er fordelt. Hvis et parti,
-// der ikke har fået stemmer i alle 3 landsdele, ved denne fordeling ikke kan
-// få tildelt de tillægsmandater, som partiet er berettiget til, skal disse
-// forlods tildeles partiet i de landsdele, hvor der er afgivet stemmer for
-// det.
+	let resterende_antal_tillægsmandater = antal_tillægsmandater;
+	let tilbage = [];
+	for (const parti of resultat.partier) {
+		if (!resultat.partier_der_kan_få_tillægsmandat[parti]) continue;
+		let mandater_i_forhold_til_stemmetal = resultat.partistemmer[parti] / det_tal_der_herved_fremkommer;
+		let antal_kredsmandater = resultat.kredsmandater_per_parti[parti];
+		let resterende_mandater = mandater_i_forhold_til_stemmetal - antal_kredsmandater;
+		let p77_stk4_special_case = antal_kredsmandater > mandater_i_forhold_til_stemmetal;
+		if (p77_stk4_special_case) continue;
+		//console.log([parti,mandater_i_forhold_til_stemmetal,antal_kredsmandater,p77_stk4_special_case,resterende_mandater]);
+		//console.log(resterende_mandater);
+		//console.log(Math.floor(resterende_mandater));
 
+		let n = Math.floor(resterende_mandater);
+		resultat.tillægsmandater_per_parti[parti] += n;
+		tilbage.push([parti, resterende_mandater-n]);
+		resterende_antal_tillægsmandater -= n;
+	}
 
-// § 79. Inden for den eller de landsdele, hvor et parti har fået
-// tillægsmandater ifølge § 78, divideres partiets stemmetal i de enkelte
-// storkredse med tallene 1-4-7-10 osv. I hver storkreds udelades derefter så
-// mange af de største kvotienter, som svarer til det antal kredsmandater, som
-// partiet har fået i storkredsen.
-
-// Stk. 2. Den storkreds, der herefter har den største kvotient, får det første
-// tillægsmandat. Det næste tillægsmandat tilfalder den storkreds, der har den
-// næststørste kvotient, og så fremdeles, indtil det antal tillægsmandater, som
-// partiet har fået i landsdelen, er fordelt.
-
-// Stk. 3. Er ved fordelingen af tillægsmandaterne på landsdele eller på
-// storkredse to eller flere kvotienter lige store, foretages lodtrækning.
-
-
+	tilbage.sort((a,b) => b[1]-a[1]);
+	for (let i = 0; i < resterende_antal_tillægsmandater; i++) {
+		resultat.tillægsmandater_per_parti[tilbage[i][0]]++;
+	}
+}
 
 
-
+let valgresultat = [];
+for (const parti of resultat.partier) {
+	let n0 = resultat.kredsmandater_per_parti[parti];
+	let n1 = resultat.tillægsmandater_per_parti[parti];
+	let nn = n0+n1;
+	//console.log([parti, nn, "/", n0,n1]);
+	valgresultat.push([parti,nn,n0+"k+"+n1+"t"]);
+}
+valgresultat.sort((a,b) => b[1]-a[1]);
+for (const v of valgresultat) console.log(v.join("\t"));
 
