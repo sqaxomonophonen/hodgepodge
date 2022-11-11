@@ -1,0 +1,13 @@
+#!/bin/sh
+
+tmpbox=$(mktemp -t _mp4it_XXXXXXXXX.png)
+import $tmpbox
+id=$(identify -format "%wx%h %X %Y" $tmpbox)
+dim=$(echo $id | cut -d\  -f1)
+x=$(echo $id | cut -d\  -f2 | cut -d+ -f2 )
+y=$(echo $id | cut -d\  -f3 | cut -d+ -f2 )
+rm $tmpbox
+
+out=$(mktemp -t _mp4it_XXXXXXXXX.mp4)
+rm $out
+ffmpeg -video_size ${dim} -framerate 25 -f x11grab -i :0.0+${x},${y} ${out}
