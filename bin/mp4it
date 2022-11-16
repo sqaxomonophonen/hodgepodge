@@ -2,12 +2,17 @@
 
 tmpbox=$(mktemp -t _mp4it_XXXXXXXXX.png)
 import $tmpbox
-id=$(identify -format "%wx%h %X %Y" $tmpbox)
-dim=$(echo $id | cut -d\  -f1)
-x=$(echo $id | cut -d\  -f2 | cut -d+ -f2 )
-y=$(echo $id | cut -d\  -f3 | cut -d+ -f2 )
+id=$(identify -format "%w %h %X %Y" $tmpbox)
+width=$(echo $id | cut -d\  -f1)
+height=$(echo $id | cut -d\  -f2)
+x=$(echo $id | cut -d\  -f3 | cut -d+ -f2 )
+y=$(echo $id | cut -d\  -f4 | cut -d+ -f2 )
 rm $tmpbox
+
+# width and height must be divisible by two
+width=$(( ( (width + 1) / 2) * 2 ))
+height=$(( ( (height + 1) / 2) * 2 ))
 
 out=$(mktemp -t _mp4it_XXXXXXXXX.mp4)
 rm $out
-ffmpeg -video_size ${dim} -framerate 25 -f x11grab -i :0.0+${x},${y} ${out}
+ffmpeg -video_size ${width}x${height} -framerate 25 -f x11grab -i :0.0+${x},${y} -vcodec h264 -pix_fmt yuv420p -profile:v baseline -level 3 ${out}
