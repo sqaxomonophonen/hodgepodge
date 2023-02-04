@@ -199,7 +199,6 @@ static void chunk_add_circle(struct chunk* chunk, uint16_t x, uint16_t y, uint16
 }
 
 struct render {
-	int multisample_log2;
 	GLuint program_paint;
 
 	gbMat4 tx;
@@ -216,11 +215,9 @@ struct render {
 #define STR2(x) #x
 #define STR(x) STR2(x)
 
-static struct render* new_render(int multisample_log2)
+static struct render* new_render()
 {
 	struct render* render = calloc(1, sizeof * render);
-
-	render->multisample_log2 = multisample_log2;
 
 	render->program_paint = create_program(
 		"#version 140\n"
