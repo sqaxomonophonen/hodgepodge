@@ -16,9 +16,14 @@ $ cc $(pkg-config --cflags gl sdl2) -o using_instancing_for_anti_alias_and_gauss
 #define GB_MATH_IMPLEMENTATION
 #include "gb_math.h"
 
+#define SOKOL_TIME_IMPL
+#include "sokol_time.h"
+
 #define ARRAY_LENGTH(x) (sizeof(x) / sizeof(x[0]))
 #define MEMBER_SIZE(t,m) sizeof(((t *)0)->m)
 #define MEMBER_OFFSET(t,m) (void*)((size_t)&(((t *)0)->m))
+
+#define PI (3.141592653589793)
 
 void _chkgl(const char* file, const int line)
 {
@@ -123,17 +128,16 @@ struct chunk {
 	int n_indices;
 	uint16_t indices[3<<16];
 
-	gbVec2 origin;
-	float multiplier;
+	gbVec2 origin, scale;
 	GLuint gl_buffers[2];
 
 };
 
-static struct chunk* new_chunk(gbVec2 origin, float multiplier)
+static struct chunk* new_chunk(gbVec2 origin, gbVec2 scale)
 {
 	struct chunk* chunk = calloc(1, sizeof *chunk);
 	chunk->origin = origin;
-	chunk->multiplier = multiplier;
+	chunk->scale = scale;
 	glGenBuffers(2, chunk->gl_buffers); CHKGL;
 
 	glBindBuffer(GL_ARRAY_BUFFER, chunk->gl_buffers[0]); CHKGL;
@@ -152,7 +156,9 @@ static struct chunk* new_chunk(gbVec2 origin, float multiplier)
 static uint16_t chunk_add_vertex(struct chunk* chunk, struct vertex v)
 {
 	assert((chunk->n_vertices+1) < ARRAY_LENGTH(chunk->vertices));
-	chunk->vertices[chunk->n_vertices++] = v;
+	uint16_t i = chunk->n_vertices++;
+	chunk->vertices[i] = v;
+	return i;
 }
 
 static void chunk_add_triangle(struct chunk* chunk, uint16_t v0, uint16_t v1, uint16_t v2)
@@ -163,19 +169,52 @@ static void chunk_add_triangle(struct chunk* chunk, uint16_t v0, uint16_t v1, ui
 	chunk->indices[chunk->n_indices++] = v2;
 }
 
+static void chunk_add_circle(struct chunk* chunk, uint16_t x, uint16_t y, uint16_t r0, uint16_t r1, uint32_t color)
+{
+	const int n = 1000;
+	uint16_t v0;
+	for (int i = 0; i < n; i++) {
+		double theta = ((double)i / (double)n) * 2.0 * PI;
+		double ux = sin(theta);
+		double uy = cos(theta);
+
+		uint16_t x0 = x + (uint16_t)(ux*(double)r0);
+		uint16_t y0 = y + (uint16_t)(uy*(double)r0);
+		uint16_t x1 = x + (uint16_t)(ux*(double)r1);
+		uint16_t y1 = y + (uint16_t)(uy*(double)r1);
+
+		uint16_t v = chunk_add_vertex(chunk, (struct vertex) { .a_pos={x0,y0},  .a_color=color });
+		if (i == 0) v0 = v;
+		chunk_add_vertex(chunk, (struct vertex) { .a_pos={x1,y1},  .a_color=color });
+	}
+
+	for (int i = 0; i < n; i++) {
+		const int i0 = i*2;
+		const int i1 = i*2+1;
+		const int i2 = ((i+1)%n)*2;
+		const int i3 = ((i+1)%n)*2+1;
+		chunk_add_triangle(chunk, i0, i2, i3);
+		chunk_add_triangle(chunk, i0, i3, i1);
+	}
+}
+
 struct render {
 	int multisample_log2;
 	GLuint program_paint;
 
 	gbMat4 tx;
-	gbVec2 dim;
+	gbVec2 screen_resolution;
 
-	GLint u_tx;
-	GLint u_dim;
-	GLint u_samples;
-	GLint u_multiplier;
-	GLint u_origin;
+	GLint location_u_tx;
+	GLint location_u_screen_resolution;
+	GLint location_u_scale;
+	GLint location_u_origin;
+	GLint location_u_instance;
 };
+
+#define MAX_INSTANCES (128)
+#define STR2(x) #x
+#define STR(x) STR2(x)
 
 static struct render* new_render(int multisample_log2)
 {
@@ -189,23 +228,21 @@ static struct render* new_render(int multisample_log2)
 		"in vec4  a_color;\n"
 		"\n"
 		"uniform mat4x4  u_tx;\n"
-		"uniform vec2    u_dim;\n"
-		"uniform uvec2   u_samples;\n"
-		"uniform float   u_multiplier;\n"
+		"uniform vec2    u_screen_resolution;\n"
+		"uniform vec2    u_scale;\n"
 		"uniform vec2    u_origin;\n"
+		"uniform vec3    u_instance[" STR(MAX_INSTANCES) "];\n"
 		"\n"
 		"out vec4 v_color;\n"
 		"\n"
 		"void main()\n"
 		"{\n"
-		"	vec4 p = u_tx * vec4(u_origin + u_multiplier*a_pos, 0.0, 1.0);\n"
-		"\n"
-		"	uint i = uint(gl_InstanceID);\n"
-		"	vec2 ip = vec2(mod(float(i), float(u_samples.x)), float(i / u_samples.x)) / vec2(u_samples);\n"
-		"	vec2 u2 = vec2(2.0, 2.0) / u_dim;\n"
-		"	vec2 d = u2*ip;\n"
-		"\n"
-		"	v_color = a_color;\n"
+		"	vec4 p = u_tx * vec4(u_origin + u_scale*a_pos, 0.0, 1.0);\n"
+		"	vec3 instance = u_instance[gl_InstanceID];\n"
+		"	vec2 displacement = instance.xy;\n"
+		"	float color_scale = instance.z;\n"
+		"	vec2 d = (vec2(2,2) / u_screen_resolution) * displacement;\n"
+		"	v_color = a_color * color_scale;\n"
 		"	gl_Position = vec4(p.xyz/p.w,1) + vec4(d, 0.0, 0.0);\n"
 		"}\n"
 	,
@@ -218,25 +255,20 @@ static struct render* new_render(int multisample_log2)
 		"}\n"
 	);
 
-	#define UNIFORM(NAME) render->NAME = glGetUniformLocation(render->program_paint, #NAME); CHKGL; assert(render->NAME >= 0);
+	#define UNIFORM(NAME) render->location_##NAME = glGetUniformLocation(render->program_paint, #NAME); CHKGL; assert(render->location_##NAME >= 0);
 	UNIFORM(u_tx)
-	UNIFORM(u_dim)
-	UNIFORM(u_samples)
-	UNIFORM(u_multiplier)
+	UNIFORM(u_screen_resolution)
+	UNIFORM(u_scale)
 	UNIFORM(u_origin)
+	UNIFORM(u_instance)
 	#undef UNIFORM
 
 	return render;
 }
 
-static inline int render_get_instance_count(struct render* render)
-{
-	return 1 << (render->multisample_log2 << 1);
-}
-
 static void render_prep(struct render* render, int width, int height, gbVec3 campos, float pitch_radians, float yaw_radians)
 {
-	render->dim = gb_vec2(width, height);
+	render->screen_resolution = gb_vec2(width, height);
 
 	{
 		gbMat4 perspective;
@@ -250,15 +282,74 @@ static void render_prep(struct render* render, int width, int height, gbVec3 cam
 
 		gbMat4* tx = &render->tx;
 		gb_mat4_identity(tx);
-		#if 1
 		gb_mat4_mul(tx, tx, &perspective);
 		gb_mat4_mul(tx, tx, &look);
 		gb_mat4_mul(tx, tx, &translate);
-		#else
-		gb_mat4_mul(tx, tx, &translate);
-		gb_mat4_mul(tx, tx, &look);
-		gb_mat4_mul(tx, tx, &perspective);
-		#endif
+	}
+}
+
+static void instances_add_anti_alias(gbVec3* instance, int* n_instances, int sublog2)
+{
+	const int n = 1 << sublog2;
+	const int nn = n*n;
+	const float color_scale = 1.0f / (float)nn;
+
+	const float s = 1.0f / (float)n;
+	const float d = -0.5f;
+
+	const float sx = s;
+	const float sy = s;
+	const float dx = d;
+	const float dy = d;
+
+	for (int y = 0; y < n; y++) {
+		for (int x = 0; x < n; x++) {
+			instance[(*n_instances)++] = gb_vec3((float)x*sx+dx, (float)y*sy+dy, color_scale);
+			assert(*n_instances <= MAX_INSTANCES);
+		}
+	}
+}
+
+static void instances_add_glow0(gbVec3* instance, int* n_instances)
+{
+	const double spacing = 30.0;
+	const int nri = 3;
+	for (int ri = 1; ri <= nri; ri++) {
+		double r = (double)ri * spacing;
+		double circum = 2.0*PI*r;
+		int nc = (int)round(circum / spacing);
+		if (nc < 1) nc = 1;
+		double scale = 0.1 / (double)ri; // XXX gaussian
+		for (int ci = 0; ci < nc; ci++) {
+			double theta = ((double)ci / (double)nc) * 2.0 * PI;
+			double dx = sin(theta)*r;
+			double dy = cos(theta)*r;
+			instance[(*n_instances)++] = gb_vec3(dx, dy, scale);
+			assert(*n_instances <= MAX_INSTANCES);
+		}
+	}
+}
+
+static inline double drand()
+{
+	return (double)rand() / (double)RAND_MAX;
+}
+
+
+static void instances_add_glow1(gbVec3* instance, int* n_instances)
+{
+	const int n_glow = 200;
+	const double radius = 100;
+	for (int i = 0; i < n_glow; i++) {
+		const double theta = drand() * 2.0 * PI;
+		const double rn = drand();
+		const double r = rn * radius;
+		const double dx = sin(theta)*r;
+		const double dy = cos(theta)*r;
+		const double scale = exp(-(rn*rn*4.0)) * 0.03;
+		//const double scale = 0.05;
+		instance[(*n_instances)++] = gb_vec3(dx, dy, scale);
+		assert(*n_instances <= MAX_INSTANCES);
 	}
 }
 
@@ -272,14 +363,19 @@ static void render_chunk(struct render* render, struct chunk* chunk)
 	// column major order. If transpose is GL_TRUE, each matrix is assumed
 	// to be supplied in row major order.".
 	const GLboolean transpose = GL_FALSE; // gb_math.h looks very column-major
-	glUniformMatrix4fv(render->u_tx, 1, transpose, (GLfloat*)&render->tx); CHKGL;
-	glUniform2fv(render->u_dim, 1, (GLfloat*)&render->dim); CHKGL;
-	const GLuint nso = 1u << render->multisample_log2;
-	glUniform2ui(render->u_samples, nso, nso); CHKGL;
+	glUniformMatrix4fv(render->location_u_tx, 1, transpose, (GLfloat*)&render->tx); CHKGL;
+	glUniform2fv(render->location_u_screen_resolution, 1, (GLfloat*)&render->screen_resolution); CHKGL;
 
 	// per chunk uniforms
-	glUniform1f(render->u_multiplier, chunk->multiplier); CHKGL;
-	glUniform2fv(render->u_origin, 1, (GLfloat*)&chunk->origin); CHKGL;
+	glUniform2fv(render->location_u_scale, 1, (GLfloat*)&chunk->scale); CHKGL;
+	glUniform2fv(render->location_u_origin, 1, (GLfloat*)&chunk->origin); CHKGL;
+
+	gbVec3 instance[MAX_INSTANCES];
+	int n_instances = 0;
+	instances_add_anti_alias(instance, &n_instances, 3);
+	instances_add_glow0(instance, &n_instances);
+	//instances_add_glow1(instance, &n_instances);
+	glUniform3fv(render->location_u_instance, n_instances, (GLfloat*)&instance[0]); CHKGL;
 
 	const int n_vertex_attribs = 2;
 
@@ -297,12 +393,14 @@ static void render_chunk(struct render* render, struct chunk* chunk)
 	glVertexAttribPointer(0, 2, GL_UNSIGNED_SHORT, GL_TRUE, stride, MEMBER_OFFSET(struct vertex, a_pos)); CHKGL;
 	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE,  GL_TRUE, stride, MEMBER_OFFSET(struct vertex, a_color)); CHKGL;
 
+	//printf("instance count: %d\n", n_instances);
+
 	glDrawElementsInstanced(
 		GL_TRIANGLES,
 		chunk->n_indices,
 		GL_UNSIGNED_SHORT,
 		(void*)0,
-		render_get_instance_count(render)); CHKGL;
+		n_instances); CHKGL;
 
 	for (int i = 0; i < n_vertex_attribs; i++) {
 		glDisableVertexAttribArray(i); CHKGL;
@@ -311,6 +409,8 @@ static void render_chunk(struct render* render, struct chunk* chunk)
 
 int main(int argc, char** argv)
 {
+	stm_setup();
+
 	SDL_Init(SDL_INIT_VIDEO);
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -331,20 +431,34 @@ int main(int argc, char** argv)
 	g.gl_context = SDL_GL_CreateContext(g.window);
 	assert(g.gl_context);
 
+	#define PGL(NAME) \
+		{ \
+			GLint i; \
+			glGetIntegerv(NAME, &i); \
+			printf(#NAME " = %d\n", i); \
+		}
+	PGL(GL_MAX_UNIFORM_BUFFER_BINDINGS)
+	PGL(GL_MAX_UNIFORM_BLOCK_SIZE)
+	PGL(GL_MAX_UNIFORM_LOCATIONS)
+	#undef PGL
+
 	populate_screen_globals();
 
 	struct render* render = new_render(2);
 
-	struct chunk* chunk = new_chunk(gb_vec2(0,0), 100.0);
+	struct chunk* chunk = new_chunk(gb_vec2(0,0), gb_vec2(100,100));
 	{
-		const uint32_t c = 0x000f0f0f; // n=2
+		//const uint32_t c = 0x000f0f0f; // n=2
 		//const uint32_t c = 0x00030303; // n=3
-		uint16_t v0 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={100,  100    }, .a_color=c });
-		uint16_t v1 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={1500, 0    },   .a_color=c });
-		uint16_t v2 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={1000, 1000 },   .a_color=c });
-		uint16_t v3 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={0,    1000 },   .a_color=c });
-		chunk_add_triangle(chunk, v0, v1, v2);
-		chunk_add_triangle(chunk, v0, v2, v3);
+		//const uint32_t c = 0x00ff8080; // n=3
+		//uint16_t v0 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={100,  100    }, .a_color=c });
+		//uint16_t v1 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={1500, 0    },   .a_color=c });
+		//uint16_t v2 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={1000, 1000 },   .a_color=c });
+		//uint16_t v3 = chunk_add_vertex(chunk, (struct vertex) { .a_pos={0,    1000 },   .a_color=c });
+		//chunk_add_triangle(chunk, v0, v1, v2);
+		//chunk_add_triangle(chunk, v0, v2, v3);
+
+		chunk_add_circle(chunk, 5000, 5000, 3997, 4000, 0x00ffffff);
 	}
 
 	int exiting = 0;
@@ -359,7 +473,8 @@ int main(int argc, char** argv)
 	glDisable(GL_CULL_FACE); CHKGL;
 	glDisable(GL_DEPTH_TEST); CHKGL;
 
-	printf("instance count: %d\n", render_get_instance_count(render));
+	//assert(SDL_CaptureMouse(1) == 0);
+	assert(SDL_SetRelativeMouseMode(1) == 0);
 
 	while (!exiting) {
 		SDL_Event ev;
@@ -370,6 +485,13 @@ int main(int argc, char** argv)
 				exiting = 1;
 			} else if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
 				populate_screen_globals();
+			} else if (ev.type == SDL_MOUSEMOTION) {
+				int dx = ev.motion.xrel;
+				int dy = ev.motion.yrel;
+
+				const float spd = 0.0005f;
+				yaw += (float)dx * -spd;
+				pitch += (float)dy * -spd;
 			}
 		}
 
@@ -379,9 +501,13 @@ int main(int argc, char** argv)
 
 		render_prep(render, g.true_screen_width, g.true_screen_height, campos, pitch, yaw);
 
+		uint64_t t0 = stm_now();
 		render_chunk(render, chunk);
+		glFlush();
 
 		SDL_GL_SwapWindow(g.window);
+		double dt = stm_sec(stm_diff(stm_now(), t0));
+		printf("render: %fs (%f/s)\n", dt, 1.0/dt);
 
 
 		//pitch += 0.001f;
