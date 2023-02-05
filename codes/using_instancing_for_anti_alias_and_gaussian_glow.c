@@ -25,6 +25,8 @@ $ cc $(pkg-config --cflags gl sdl2) -o using_instancing_for_anti_alias_and_gauss
 
 #define PI (3.141592653589793)
 
+#define ARRAY_BUFFER_SIZE (1<<24)
+
 void _chkgl(const char* file, const int line)
 {
 	GLenum err = glGetError();
@@ -117,113 +119,93 @@ static void populate_screen_globals()
 }
 
 struct vertex {
-	uint16_t a_pos[2];
+	uint32_t a_pos[2];
 	uint32_t a_color;
 };
 
 struct chunk {
 	int n_vertices;
-	struct vertex vertices[1<<16];
-
-	int n_indices;
-	uint16_t indices[3<<16];
-
-	gbVec2 origin, scale;
-	GLuint gl_buffers[2];
-
+	struct vertex vertices[1<<20];
+	int is_buffered;
+	int buffer_idx0;
 };
 
-static struct chunk* new_chunk(gbVec2 origin, gbVec2 scale)
+static struct chunk* new_chunk()
 {
 	struct chunk* chunk = calloc(1, sizeof *chunk);
-	chunk->origin = origin;
-	chunk->scale = scale;
-	glGenBuffers(2, chunk->gl_buffers); CHKGL;
-
-	glBindBuffer(GL_ARRAY_BUFFER, chunk->gl_buffers[0]); CHKGL;
-	glBufferData(GL_ARRAY_BUFFER, sizeof(chunk->vertices), NULL, GL_DYNAMIC_DRAW); CHKGL;
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->gl_buffers[1]); CHKGL;
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(chunk->indices), NULL, GL_DYNAMIC_DRAW); CHKGL;
-
-	#if 0
-	printf("buffer v:%zdB i:%zdB\n", sizeof(chunk->vertices), sizeof(chunk->indices));
-	#endif
-
 	return chunk;
 }
 
-static uint16_t chunk_add_vertex(struct chunk* chunk, struct vertex v)
+static void chunk_add_vertex(struct chunk* chunk, struct vertex v)
 {
 	assert((chunk->n_vertices+1) < ARRAY_LENGTH(chunk->vertices));
-	uint16_t i = chunk->n_vertices++;
-	chunk->vertices[i] = v;
-	return i;
+	chunk->vertices[chunk->n_vertices++] = v;
 }
 
-static void chunk_add_triangle(struct chunk* chunk, uint16_t v0, uint16_t v1, uint16_t v2)
+static void chunk_add_triangle(struct chunk* chunk, struct vertex v0, struct vertex v1, struct vertex v2)
 {
-	assert((chunk->n_indices+3) < ARRAY_LENGTH(chunk->indices));
-	chunk->indices[chunk->n_indices++] = v0;
-	chunk->indices[chunk->n_indices++] = v1;
-	chunk->indices[chunk->n_indices++] = v2;
+	chunk_add_vertex(chunk, v0);
+	chunk_add_vertex(chunk, v1);
+	chunk_add_vertex(chunk, v2);
 }
 
-static void chunk_add_circle(struct chunk* chunk, int n, uint16_t x, uint16_t y, uint16_t r0, uint16_t r1, uint32_t color0, uint32_t color1)
+static void chunk_add_circle(struct chunk* chunk, int n, uint32_t x, uint32_t y, uint32_t r0, uint32_t r1, uint32_t color0, uint32_t color1)
 {
-	uint16_t v0;
-	for (int i = 0; i < n; i++) {
+	struct vertex prev_v0, prev_v1;
+
+	for (int i = 0; i <= n; i++) {
 		double theta = ((double)i / (double)n) * 2.0 * PI;
 		double ux = sin(theta);
 		double uy = cos(theta);
 
-		uint16_t x0 = x + (uint16_t)(ux*(double)r0);
-		uint16_t y0 = y + (uint16_t)(uy*(double)r0);
-		uint16_t x1 = x + (uint16_t)(ux*(double)r1);
-		uint16_t y1 = y + (uint16_t)(uy*(double)r1);
+		uint32_t x0 = x + (uint32_t)(ux*(double)r0);
+		uint32_t y0 = y + (uint32_t)(uy*(double)r0);
+		struct vertex v0 = { .a_pos={x0,y0}, .a_color=color0 };
 
-		uint16_t v = chunk_add_vertex(chunk, (struct vertex) { .a_pos={x0,y0},  .a_color=color0 });
-		if (i == 0) v0 = v;
-		chunk_add_vertex(chunk, (struct vertex) { .a_pos={x1,y1},  .a_color=color1 });
-	}
+		uint32_t x1 = x + (uint32_t)(ux*(double)r1);
+		uint32_t y1 = y + (uint32_t)(uy*(double)r1);
+		struct vertex v1 = { .a_pos={x1,y1}, .a_color=color1 };
 
-	for (int i = 0; i < n; i++) {
-		const int i0 = i*2;
-		const int i1 = i*2+1;
-		const int i2 = ((i+1)%n)*2;
-		const int i3 = ((i+1)%n)*2+1;
-		chunk_add_triangle(chunk, i0, i2, i3);
-		chunk_add_triangle(chunk, i0, i3, i1);
+		if (i > 0) {
+			chunk_add_triangle(chunk, prev_v0, v0, v1);
+			chunk_add_triangle(chunk, prev_v0, v1, prev_v1);
+		}
+
+		prev_v0 =  v0;
+		prev_v1 =  v1;
 	}
 }
 
 static void chunk_add_waveform(struct chunk* chunk)
 {
 	uint32_t color = 0x00ffffff;
-	uint16_t v0;
 	const int n = 30000;
-	for (int i = 0; i < n; i++) {
-		uint16_t x = i;
+	struct vertex prev_v0, prev_v1;
+	for (int i = 0; i <= n; i++) {
+		uint32_t x = i * 8;
 		double w = (double)rand() / (double)RAND_MAX;
-		uint16_t dy = w * 30000.0;
-		uint16_t y0 = 32768 - dy;
-		uint16_t y1 = 32768 + dy;
-		uint16_t v = chunk_add_vertex(chunk, (struct vertex) { .a_pos={x,y0},  .a_color=color });
-		if (i == 0) v0 = v;
-		chunk_add_vertex(chunk, (struct vertex) { .a_pos={x,y1},  .a_color=color });
-	}
-	for (int i = 0; i < n-1; i++) {
-		const int i0 = i*2;
-		const int i1 = i*2+1;
-		const int i2 = (i+1)*2;
-		const int i3 = (i+1)*2+1;
-		chunk_add_triangle(chunk, i0, i2, i3);
-		chunk_add_triangle(chunk, i0, i3, i1);
+		const int sz = 1500;
+		uint32_t dy = w * sz;
+		uint32_t y0 = sz - dy;
+		uint32_t y1 = sz + dy;
+
+		struct vertex v0 = { .a_pos={x,y0},  .a_color=color };
+		struct vertex v1 = { .a_pos={x,y1},  .a_color=color };
+
+		if (i > 0) {
+			chunk_add_triangle(chunk, prev_v0, v0, v1);
+			chunk_add_triangle(chunk, prev_v0, v1, prev_v1);
+		}
+
+		prev_v0 =  v0;
+		prev_v1 =  v1;
 	}
 }
 
 struct render {
 	GLuint program_paint;
+	GLuint array_buffer;
+	int array_buffer_cursor;
 
 	gbMat4 tx;
 	gbVec2 screen_resolution;
@@ -232,8 +214,6 @@ struct render {
 
 	GLint location_u_tx;
 	GLint location_u_screen_resolution;
-	GLint location_u_scale;
-	GLint location_u_origin;
 	GLint location_u_instance;
 	GLint location_u_seed;
 };
@@ -255,8 +235,6 @@ static struct render* new_render(void)
 		"\n"
 		"uniform mat4x4  u_tx;\n"
 		"uniform vec2    u_screen_resolution;\n"
-		"uniform vec2    u_scale;\n"
-		"uniform vec2    u_origin;\n"
 		"uniform vec3    u_instance[" STR(MAX_INSTANCES) "];\n"
 		"uniform uint    u_seed;\n"
 		"\n"
@@ -272,15 +250,15 @@ static struct render* new_render(void)
 		"	return x;\n"
 		"}\n"
 		"\n"
-		"float rndf(uint seed2)\n"
+		"float rndf(uint local_seed)\n"
 		"{\n"
-		"	uint h = hash(hash(hash(hash(u_seed) + seed2) + uint(gl_InstanceID)) + uint(gl_VertexID));\n"
+		"	uint h = hash(hash(hash(hash(u_seed) + local_seed) + uint(gl_InstanceID)) + uint(gl_VertexID));\n"
 		"	return fract(sin(h));\n"
 		"}\n"
 		"\n"
 		"void main()\n"
 		"{\n"
-		"	vec4 p = u_tx * vec4(u_origin + u_scale*a_pos, 0.0, 1.0);\n"
+		"	vec4 p = u_tx * vec4(a_pos * 0.001, 0.0, 1.0);\n"
 		"	vec3 instance = u_instance[gl_InstanceID];\n"
 		"	vec2 displacement = instance.xy;\n"
 		"	float color_scale = instance.z;\n"
@@ -302,11 +280,13 @@ static struct render* new_render(void)
 	#define UNIFORM(NAME) render->location_##NAME = glGetUniformLocation(render->program_paint, #NAME); CHKGL; assert(render->location_##NAME >= 0);
 	UNIFORM(u_tx)
 	UNIFORM(u_screen_resolution)
-	UNIFORM(u_scale)
-	UNIFORM(u_origin)
 	UNIFORM(u_instance)
 	UNIFORM(u_seed)
 	#undef UNIFORM
+
+	glGenBuffers(1, &render->array_buffer); CHKGL;
+	glBindBuffer(GL_ARRAY_BUFFER, render->array_buffer); CHKGL;
+	glBufferData(GL_ARRAY_BUFFER, ARRAY_BUFFER_SIZE, NULL, GL_DYNAMIC_DRAW); CHKGL;
 
 	return render;
 }
@@ -425,31 +405,29 @@ static void render_prep(struct render* render, int width, int height, gbVec3 cam
 	for (int i = 0; i < N_VERTEX_ATTRIBUTES; i++) {
 		glEnableVertexAttribArray(i); CHKGL;
 	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, render->array_buffer); CHKGL;
+
+	const size_t stride = sizeof(struct vertex);
+	glVertexAttribPointer(0, 2, GL_UNSIGNED_INT,   GL_FALSE, stride, MEMBER_OFFSET(struct vertex, a_pos)); CHKGL;
+	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE,  GL_TRUE,  stride, MEMBER_OFFSET(struct vertex, a_color)); CHKGL;
 }
 
 static void render_chunk(struct render* render, struct chunk* chunk)
 {
-	// per chunk uniforms
-	glUniform2fv(render->location_u_scale, 1, (GLfloat*)&chunk->scale); CHKGL;
-	glUniform2fv(render->location_u_origin, 1, (GLfloat*)&chunk->origin); CHKGL;
+	if (!chunk->is_buffered) {
+		const int n = chunk->n_vertices;
+		chunk->buffer_idx0 = render->array_buffer_cursor;
+		const size_t vsz = sizeof(*chunk->vertices);
+		glBufferSubData(GL_ARRAY_BUFFER, chunk->buffer_idx0 * vsz, chunk->n_vertices * vsz, chunk->vertices); CHKGL;
+		render->array_buffer_cursor += n;
+		chunk->is_buffered = 1;
+	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, chunk->gl_buffers[0]); CHKGL;
-	glBufferSubData(GL_ARRAY_BUFFER, 0, chunk->n_vertices * sizeof(*chunk->vertices), chunk->vertices); CHKGL;
-
-	const size_t stride = sizeof(struct vertex);
-	glVertexAttribPointer(0, 2, GL_UNSIGNED_SHORT, GL_TRUE, stride, MEMBER_OFFSET(struct vertex, a_pos)); CHKGL;
-	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE,  GL_TRUE, stride, MEMBER_OFFSET(struct vertex, a_color)); CHKGL;
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->gl_buffers[1]); CHKGL;
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, chunk->n_indices * sizeof(*chunk->indices), chunk->indices); CHKGL;
-
-	//printf("instance count: %d\n", n_instances);
-
-	glDrawElementsInstanced(
+	glDrawArraysInstanced(
 		GL_TRIANGLES,
-		chunk->n_indices,
-		GL_UNSIGNED_SHORT,
-		(void*)0,
+		chunk->buffer_idx0,
+		chunk->n_vertices,
 		render->n_instances); CHKGL;
 }
 
