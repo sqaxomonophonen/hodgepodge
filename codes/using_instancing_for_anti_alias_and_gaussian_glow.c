@@ -169,9 +169,8 @@ static void chunk_add_triangle(struct chunk* chunk, uint16_t v0, uint16_t v1, ui
 	chunk->indices[chunk->n_indices++] = v2;
 }
 
-static void chunk_add_circle(struct chunk* chunk, uint16_t x, uint16_t y, uint16_t r0, uint16_t r1, uint32_t color)
+static void chunk_add_circle(struct chunk* chunk, int n, uint16_t x, uint16_t y, uint16_t r0, uint16_t r1, uint32_t color0, uint32_t color1)
 {
-	const int n = 1000;
 	uint16_t v0;
 	for (int i = 0; i < n; i++) {
 		double theta = ((double)i / (double)n) * 2.0 * PI;
@@ -183,9 +182,9 @@ static void chunk_add_circle(struct chunk* chunk, uint16_t x, uint16_t y, uint16
 		uint16_t x1 = x + (uint16_t)(ux*(double)r1);
 		uint16_t y1 = y + (uint16_t)(uy*(double)r1);
 
-		uint16_t v = chunk_add_vertex(chunk, (struct vertex) { .a_pos={x0,y0},  .a_color=color });
+		uint16_t v = chunk_add_vertex(chunk, (struct vertex) { .a_pos={x0,y0},  .a_color=color0 });
 		if (i == 0) v0 = v;
-		chunk_add_vertex(chunk, (struct vertex) { .a_pos={x1,y1},  .a_color=color });
+		chunk_add_vertex(chunk, (struct vertex) { .a_pos={x1,y1},  .a_color=color1 });
 	}
 
 	for (int i = 0; i < n; i++) {
@@ -209,13 +208,14 @@ struct render {
 	GLint location_u_scale;
 	GLint location_u_origin;
 	GLint location_u_instance;
+	GLint location_u_seed;
 };
 
 #define MAX_INSTANCES (128)
 #define STR2(x) #x
 #define STR(x) STR2(x)
 
-static struct render* new_render()
+static struct render* new_render(void)
 {
 	struct render* render = calloc(1, sizeof * render);
 
@@ -229,8 +229,25 @@ static struct render* new_render()
 		"uniform vec2    u_scale;\n"
 		"uniform vec2    u_origin;\n"
 		"uniform vec3    u_instance[" STR(MAX_INSTANCES) "];\n"
+		"uniform uint    u_seed;\n"
 		"\n"
 		"out vec4 v_color;\n"
+		"\n"
+		"uint hash(uint x)\n"
+		"{\n"
+		"	x += ( x << 10u );\n"
+		"	x ^= ( x >>  6u );\n"
+		"	x += ( x <<  3u );\n"
+		"	x ^= ( x >> 11u );\n"
+		"	x += ( x << 15u );\n"
+		"	return x;\n"
+		"}\n"
+		"\n"
+		"float rndf(uint seed2)\n"
+		"{\n"
+		"	uint h = hash(hash(hash(hash(u_seed) + seed2) + uint(gl_InstanceID)) + uint(gl_VertexID));\n"
+		"	return fract(sin(h));\n"
+		"}\n"
 		"\n"
 		"void main()\n"
 		"{\n"
@@ -239,7 +256,8 @@ static struct render* new_render()
 		"	vec2 displacement = instance.xy;\n"
 		"	float color_scale = instance.z;\n"
 		"	vec2 d = (vec2(2,2) / u_screen_resolution) * displacement;\n"
-		"	v_color = a_color * color_scale;\n"
+		"	vec3 color_dither = vec3(rndf(0u)-0.5, rndf(1u)-0.5, rndf(2u)-0.5) * (2.0/256.0);\n"
+		"	v_color = a_color * color_scale + vec4(color_dither, 0);\n"
 		"	gl_Position = vec4(p.xyz/p.w,1) + vec4(d, 0.0, 0.0);\n"
 		"}\n"
 	,
@@ -258,6 +276,7 @@ static struct render* new_render()
 	UNIFORM(u_scale)
 	UNIFORM(u_origin)
 	UNIFORM(u_instance)
+	UNIFORM(u_seed)
 	#undef UNIFORM
 
 	return render;
@@ -370,9 +389,11 @@ static void render_chunk(struct render* render, struct chunk* chunk)
 	gbVec3 instance[MAX_INSTANCES];
 	int n_instances = 0;
 	instances_add_anti_alias(instance, &n_instances, 3);
-	instances_add_glow0(instance, &n_instances);
+	//instances_add_glow0(instance, &n_instances);
 	//instances_add_glow1(instance, &n_instances);
 	glUniform3fv(render->location_u_instance, n_instances, (GLfloat*)&instance[0]); CHKGL;
+
+	glUniform1ui(render->location_u_seed, rand());
 
 	const int n_vertex_attribs = 2;
 
@@ -441,7 +462,7 @@ int main(int argc, char** argv)
 
 	populate_screen_globals();
 
-	struct render* render = new_render(2);
+	struct render* render = new_render();
 
 	struct chunk* chunk = new_chunk(gb_vec2(0,0), gb_vec2(100,100));
 	{
@@ -455,7 +476,8 @@ int main(int argc, char** argv)
 		//chunk_add_triangle(chunk, v0, v1, v2);
 		//chunk_add_triangle(chunk, v0, v2, v3);
 
-		chunk_add_circle(chunk, 5000, 5000, 3997, 4000, 0x00ffffff);
+		//chunk_add_circle(chunk, 30000, 5000, 5000, 3995, 4000, 0x00ffffff);
+		chunk_add_circle(chunk, 2000, 5000, 5000, 3700, 4000, 0x00ffffff, 0x00000000);
 	}
 
 	int exiting = 0;
