@@ -1,0 +1,51 @@
+$ cc -O3 -std=c17 haversine.c -o haversine -lm && ./haversine
+avg is 10008.07. 12535361 haversines/s
+avg is 10008.07. 12473826 haversines/s
+avg is 10008.07. 12547440 haversines/s
+avg is 10008.07. 12543501 haversines/s
+avg is 10008.07. 12538412 haversines/s
+avg is 10008.07. 12588548 haversines/s
+avg is 10008.07. 12462681 haversines/s
+avg is 10008.07. 12562643 haversines/s
+avg is 10008.07. 12531365 haversines/s
+avg is 10008.07. 12499254 haversines/s
+best: 12588548 haversines/s
+
+
+$ node -v
+v14.18.0
+
+$ node haversine.js
+avg is 10008. 11848341.23 haversines/s
+avg is 10008. 11834319.53 haversines/s
+avg is 10008. 11947431.30 haversines/s
+avg is 10008. 11990407.67 haversines/s
+avg is 10008. 11933174.22 haversines/s
+avg is 10008. 11990407.67 haversines/s
+avg is 10008. 11947431.30 haversines/s
+avg is 10008. 11947431.30 haversines/s
+avg is 10008. 11976047.90 haversines/s
+avg is 10008. 11933174.22 haversines/s
+best: 11990408 haversines/s
+
+
+$ python -V
+Python 3.10.6
+
+$ python haversine.py
+avg is 10007.02; 682124 haversines/s
+avg is 10007.02; 700371 haversines/s
+avg is 10007.02; 682387 haversines/s
+avg is 10007.02; 709824 haversines/s
+avg is 10007.02; 692329 haversines/s
+avg is 10007.02; 675546 haversines/s
+avg is 10007.02; 688934 haversines/s
+avg is 10007.02; 684625 haversines/s
+avg is 10007.02; 716196 haversines/s
+avg is 10007.02; 695527 haversines/s
+best: 716196 haversines/s
+
+
+12588548 / 11990408 = 1.04988487464313140970
+11990408 / 716196 = 16.74179693826829527112
+12588548 / 716196 = 17.57695937983457042485
