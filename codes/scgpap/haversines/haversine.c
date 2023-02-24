@@ -37,21 +37,50 @@ static inline double timespec_diff(struct timespec a, struct timespec b)
 	return d_seconds + 1e-9*d_nanoseconds;
 }
 
+//#define WRITE_JSON
+//#define WRITE_BINARY
+
 int main()
 {
 	const double earth_radius_km = 6371;
 	const int N = 10000000;
 
+	#ifdef WRITE_JSON
+	FILE* f_json = fopen("data_10000000_flex.json", "w");
+	fprintf(f_json, "{\"pairs\":[\n"); // :[
+	#endif
+
+	#ifdef WRITE_BINARY
+	FILE* f_binary = fopen("data_10000000_flex.f32", "wb");
+	#endif
+
 	double* arguments = calloc(4*N, sizeof *arguments);
 	{
 		double* p = arguments;
 		for (int i = 0; i < N; i++) {
-			*(p++) = rnd(360)-180;
-			*(p++) = rnd(180)-90;
-			*(p++) = rnd(360)-180;
-			*(p++) = rnd(180)-90;
+			p[0] = rnd(360)-180;
+			p[1] = rnd(180)-90;
+			p[2] = rnd(360)-180;
+			p[3] = rnd(180)-90;
+			const int is_last = (i == (N-1));
+			#ifdef WRITE_JSON
+			fprintf(f_json, "\t{\"x0\":%.6f, \"y0\":%.6f, \"x1\":%.6f, \"y1\":%.6f}%s\n", p[0], p[1], p[2], p[3], is_last?"":",");
+			#endif
+			#ifdef WRITE_BINARY
+			float w32[4] = {p[0], p[1], p[2], p[3]};
+			assert(fwrite(w32, 4, sizeof *w32, f_binary) == 4);
+			#endif
+			p += 4;
 		}
+
 	}
+	#ifdef WRITE_JSON
+	fprintf(f_json, "]}\n");
+	fclose(f_json);
+	#endif
+	#ifdef WRITE_BINARY
+	fclose(f_binary);
+	#endif
 
 	const int N_TRIALS = 10;
 	double best_rate = 0.0;
