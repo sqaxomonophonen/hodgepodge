@@ -115,13 +115,16 @@ int main(int argc, char** argv)
 
 	gb_mat4_perspective(&m_perspective, fov_y_radians, (float)width/(float)height, z_near, z_far);
 
-	const int n0 = 15000;
-	const int n1 = 5000;
+	const int n0 = 10000;
+	const int n1 = 1000;
 
 	int n_in_view = 0;
 	int n_not_in_view = 0;
 
 	const int n_qsides = 7;
+
+	float px_r[n_qsides][n_qsides];
+	float px_g[n_qsides][n_qsides];
 
 	for (int tt = 0; tt < n_qsides; tt++) {
 		for (int ss = 0; ss < n_qsides; ss++) {
@@ -193,8 +196,52 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			printf("[%d,%d] du=[%.4f;%.4f] dv=[%.4f;%.4f]\n", ss, tt, du_min, du_max, dv_min, dv_max);
+			//printf("[%d,%d] du=[%.4f;%.4f/%.4f] dv=[%.4f;%.4f/%.4f]\n", ss, tt, du_min, du_max, du_max/du_min, dv_min, dv_max, dv_max/dv_min);
+			//px_r[ss][tt] = du_max/du_min;
+			//px_g[ss][tt] = dv_max/dv_min;
+			float mu = px_r[ss][tt] = 1.0f / du_min;
+			float mv = px_g[ss][tt] = 1.0f / dv_min;
+			printf("[%d,%d] mu=%.4f mv=%.4f\n", ss, tt, mu, mv);
 		}
+	}
+
+	{
+
+		float max_value = 0.0f;
+		float min_value = 1e3;
+		for (int tt = 0; tt < n_qsides; tt++) {
+			for (int ss = 0; ss < n_qsides; ss++) {
+				float v0 = px_r[ss][tt];
+				float v1 = px_g[ss][tt];
+				if (v0 > max_value) max_value = v0;
+				if (v1 > max_value) max_value = v1;
+				if (v0 < min_value) min_value = v0;
+				if (v1 < min_value) min_value = v1;
+			}
+		}
+
+		min_value = 0.0f; // XXX
+
+		const int mag = 32;
+		const int width  = n_qsides * mag;
+		const int height = n_qsides * mag;
+
+		FILE* f = fopen("render.ppm", "w");
+		fprintf(f, "P3\n");
+		fprintf(f, "%d %d\n", width, height);
+		fprintf(f, "255\n");
+
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int ss = x / mag;
+				int tt = y / mag;
+				float r = roundf(((px_r[ss][tt] - min_value) / (max_value - min_value)) * 255.0f);
+				float g = roundf(((px_g[ss][tt] - min_value) / (max_value - min_value)) * 255.0f);
+				fprintf(f, "%d %d %d\n", (int)r, (int)g, 0);
+			}
+		}
+
+		fclose(f);
 	}
 
 	printf("in view: %d\nnot in view: %d\n", n_in_view, n_not_in_view);
