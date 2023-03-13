@@ -142,6 +142,16 @@ int main(int argc, char** argv)
 
 	SDL_GLContext* glctx = SDL_GL_CreateContext(window);
 
+	int has_aniso = SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic");
+	printf("has_aniso=%d\n", has_aniso);
+
+	float max_aniso_level = -1.0f;
+	float aniso_level = 1.0f;
+	if (has_aniso) {
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_aniso_level);
+		printf("max aniso: %f\n", max_aniso_level);
+	}
+
 	int exiting = 0;
 
 	float mlook_rotx = 0.0f;
@@ -179,7 +189,7 @@ int main(int argc, char** argv)
 		"void main()\n"
 		"{\n"
 		"	float n = 100;\n"
-		"	v_uv = a_coord * n;\n"
+		"	v_uv = a_coord * n * vec2(0.5,1);\n"
 		"	gl_Position = u_transform * vec4(n*100*(a_coord*2-vec2(1,1)), 0, 1);\n"
 		"}\n"
 	,
@@ -253,6 +263,7 @@ int main(int argc, char** argv)
 
 	while (!exiting) {
 		SDL_Event e;
+		float set_aniso_level = -1.0f;
 		while (SDL_PollEvent(&e)) {
 			switch (e.type) {
 			case SDL_QUIT: {
@@ -266,6 +277,10 @@ int main(int argc, char** argv)
 				} else if (sym == ' ') {
 					grab = !grab;
 					SDL_SetRelativeMouseMode(grab);
+				} else if (has_aniso && sym == '[') {
+					set_aniso_level = aniso_level - 1.0f;
+				} else if (has_aniso && sym == ']') {
+					set_aniso_level = aniso_level + 1.0f;
 				}
 			} break;
 
@@ -277,11 +292,19 @@ int main(int argc, char** argv)
 			}
 		}
 
+		if (1.0f <= set_aniso_level && set_aniso_level <= max_aniso_level) {
+			aniso_level = set_aniso_level;
+			glBindTexture(GL_TEXTURE_2D, tex); CHKGL;
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso_level); CHKGL;
+			printf("new anisotropic filtering level %f\n", aniso_level);
+		}
+
+
 		int screen_width;
 		int screen_height;
 		SDL_GL_GetDrawableSize(window, &screen_width, &screen_height);
 
-		gbVec3 campos = gb_vec3(0,0,-500);
+		gbVec3 campos = gb_vec3(0,0,-900);
 		gbMat4 tx;
 		{
 			const float aspect_ratio = (float)screen_width / (float)screen_height;
