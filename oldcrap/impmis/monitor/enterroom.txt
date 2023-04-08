@@ -1,0 +1,6 @@
+
+
+code from atleast 8b9b to 8bcd
+maybe before
+
+jump to room loop from 8bcd (jmp $7249)

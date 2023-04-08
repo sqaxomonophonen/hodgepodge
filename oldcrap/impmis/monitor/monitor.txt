@@ -1,0 +1,422 @@
+832A
+interesting push pull stack action
+and subroutines
+
+7249-
+7291
+loop, when inside room, related to room
+set break 724c to catch it
+
+subroutines
+7F6B 
+8609 
+AC81 
+AE2D 
+
+83ea
+73e4
+8609
+
+
+:8609 (graphics, sprites, sound)
+:notes
+ this must wait a number of frames according to the "fastest" robot
+ ..when one robot moves fast, it moves with every call to 8609, and the others wait
+ ..when all robots move slow, they all move with every call to 8609
+
+85FD robots move
+
+
+#called from both shaft and room:
+7F6B 
+8609
+
+#called from room only:
+AC81 (ac81 - accc, me thinks)
+AE2D
+
+
+
+;****** ROOM MAIN LOOP *************
+
+; :loop
+.C:7249   20 6B 7F   JSR $7F6B		; NOP: you fall very quickly.. must be some count thing
+
+; if (room_id==11 || room_id==1b) jump to a73d
+; 11 and 1b are "music rooms" (called code rooms in the manual i think)
+.C:724c   A5 7E      LDA $7E		; room_id = $7e
+.C:724e   C9 11      CMP #$11
+.C:7250   F0 04      BEQ $7256
+.C:7252   C9 1B      CMP #$1B
+.C:7254   D0 03      BNE $7259
+.C:7256   20 3D A7   JSR $A73D		; music room handler subroutine
+
+; if not free falling OR $3f != 10, jump to :loop
+.C:7259   A5 41      LDA $41
+.C:725b   D0 2B      BNE $7288
+.C:725d   A5 3F      LDA $3F
+.C:725f   C9 10      CMP #$10
+.C:7261   B0 25      BCS $7288
+
+.C:7263   AD 00 DC   LDA $DC00		; A = joystick
+.C:7266   4A         LSR A
+.C:7267   B0 0C      BCS $7275
+.C:7269   A4 3F      LDY $3F
+.C:726b   C0 0E      CPY #$0E
+.C:726d   D0 06      BNE $7275
+.C:726f   20 96 92   JSR $9296
+.C:7272   4C 8B 72   JMP $728B
+
+.C:7275   29 08      AND #$08
+.C:7277   D0 0B      BNE $7284
+.C:7279   A4 DE      LDY $DE
+.C:727b   D0 0B      BNE $7288
+.C:727d   E6 DE      INC $DE
+.C:727f   E6 51      INC $51
+.C:7281   4C 88 72   JMP $7288
+
+.C:7284   A9 00      LDA #$00
+.C:7286   85 DE      STA $DE
+.C:7288   20 09 86   JSR $8609		; NOP: lose player control
+.C:728b   20 81 AC   JSR $AC81          ; NOP: lifts are disabled
+.C:728e   20 2D AE   JSR $AE2D          ; NOP: you can't fall, player vs. bg collision disabled
+.C:7291   4C 49 72   JMP $7249		; end of loop
+
+
+
+
+
+
+
+
+
+; bet this has something to do with lifts
+; it checks a table, to see if the hero is there
+
+;******* SUB AC81 ***********
+.C:ac81   A4 3F      LDY $3F		;entry point
+.C:ac83   C0 0E      CPY #$0E		
+.C:ac85   D0 23      BNE $ACAA		; return if $3f != 0E
+
+; store y position in $52 (unit: char)
+
+.C:ac87   20 55 8C   JSR $8C55
+.C:ac8a   38         SEC
+.C:ac8b   E9 32      SBC #$32
+.C:ac8d   4A         LSR A		; A /= 8
+.C:ac8e   4A         LSR A		; ..
+.C:ac8f   4A         LSR A		; ..
+.C:ac90   85 52      STA $52	
+	
+; store x position in $53 (unit: char)
+.C:ac92   20 5E 8C   JSR $8C5E
+.C:ac95   6A         ROR A
+.C:ac96   38         SEC
+.C:ac97   E9 0B      SBC #$0B		; A -= 11
+.C:ac99   4A         LSR A		; A /= 4
+.C:ac9a   4A         LSR A		; ..
+.C:ac9b   85 53      STA $53		
+
+.C:ac9d   A0 00      LDY #$00
+.C:ac9f   C8         INY		; :loop1
+.C:aca0   C8         INY
+.C:aca1   B1 81      LDA ($81),Y
+.C:aca3   AA         TAX		; X = ($81)+Y
+.C:aca4   88         DEY
+.C:aca5   88         DEY
+.C:aca6   B1 81      LDA ($81),Y	; A = ($81)+Y
+.C:aca8   10 01      BPL $ACAB
+.C:acaa   60         RTS		; return from sub if A>80h
+
+.C:acab   C5 52      CMP $52		; compare A with hero Y position	
+.C:acad   F0 08      BEQ $ACB7
+
+.C:acaf   38         SEC
+.C:acb0   E9 06      SBC #$06		; A -= 6
+.C:acb2   CA         DEX
+.C:acb3   10 F6      BPL $ACAB		; loop if plus
+.C:acb5   30 0F      BMI $ACC6		; skip if minus
+.C:acb7   C8         INY
+.C:acb8   A5 53      LDA $53
+.C:acba   D1 81      CMP ($81),Y
+.C:acbc   90 08      BCC $ACC6
+.C:acbe   B1 81      LDA ($81),Y
+.C:acc0   69 00      ADC #$00
+.C:acc2   C5 53      CMP $53
+.C:acc4   B0 09      BCS $ACCF
+
+; set Y to point to next block
+; block is terminated by FF
+.C:acc6   C8         INY		
+.C:acc7   B1 81      LDA ($81),Y
+.C:acc9   10 FB      BPL $ACC6
+.C:accb   C8         INY
+
+.C:accc   4C 9F AC   JMP $AC9F		; jump to :loop1
+
+
+
+; ******* SUB 8c55 ********** i think this is get_hero_y()
+.C:8c55   A4 3F      LDY $3F
+.C:8c57   B9 CD 8D   LDA $8DCD,Y	; A = $8dcd +  y
+.C:8c5a   18         CLC
+.C:8c5b   65 2D      ADC $2D		; A += $2d
+.C:8c5d   60         RTS
+
+
+; ******* SUB 8c5e ********** i think this is  get_hero_x()
+.C:8c5e   A5 32      LDA $32
+.C:8c60   29 02      AND #$02
+.C:8c62   4A         LSR A
+.C:8c63   85 79      STA $79
+.C:8c65   A4 3F      LDY $3F
+.C:8c67   A5 50      LDA $50
+.C:8c69   10 18      BPL $8C83
+.C:8c6b   B9 E9 8D   LDA $8DE9,Y
+.C:8c6e   10 0C      BPL $8C7C
+.C:8c70   18         CLC
+.C:8c71   65 2C      ADC $2C
+.C:8c73   B0 04      BCS $8C79
+.C:8c75   A0 00      LDY #$00
+.C:8c77   84 79      STY $79
+.C:8c79   46 79      LSR $79
+.C:8c7b   60         RTS
+.C:8c7c   18         CLC
+.C:8c7d   65 2C      ADC $2C
+.C:8c7f   90 F8      BCC $8C79
+.C:8c81   38         SEC
+.C:8c82   60         RTS
+.C:8c83   A9 17      LDA #$17
+.C:8c85   38         SEC
+.C:8c86   F9 05 8E   SBC $8E05,Y
+.C:8c89   18         CLC
+.C:8c8a   65 2C      ADC $2C
+.C:8c8c   90 04      BCC $8C92
+.C:8c8e   A0 01      LDY #$01
+.C:8c90   84 79      STY $79
+.C:8c92   46 79      LSR $79
+.C:8c94   60         RTS
+
+
+
+
+
+
+; i guess this has something to do with controlling your character
+;  when you're in free fall it skips this, possibly because you can't control your
+;  hero midair
+
+; ******* SUB ae2d ***********
+.C:ae2d   A5 1A      LDA $1A		; if ($1a == 0 || $41 != 0) return
+.C:ae2f   F0 04      BEQ $AE35		;  (return if not in room OR return if free falling)
+.C:ae31   A5 41      LDA $41
+.C:ae33   F0 01      BEQ $AE36
+.C:ae35   60         RTS
+
+.C:ae36   20 55 8C   JSR $8C55		; A = get_hero_y()
+.C:ae39   85 E8      STA $E8
+.C:ae3b   C6 E8      DEC $E8
+
+.C:ae3d   20 5E 8C   JSR $8C5E		; A = get_hero_x()
+.C:ae40   85 E6      STA $E6
+.C:ae42   A9 00      LDA #$00
+.C:ae44   2A         ROL A
+.C:ae45   85 E7      STA $E7
+
+.C:ae47   A5 3F      LDA $3F		; if ($3f == 0 || $3f == 7) jump to :p1
+.C:ae49   F0 15      BEQ $AE60		
+.C:ae4b   C9 07      CMP #$07
+.C:ae4d   F0 11      BEQ $AE60
+
+.C:ae4f   C9 06      CMP #$06		; if ($3f == 6 || $3f == 13) jump to :p2
+.C:ae51   F0 13      BEQ $AE66		
+.C:ae53   C9 0D      CMP #$0D
+.C:ae55   F0 0F      BEQ $AE66
+
+.C:ae57   C9 0E      CMP #$0E		; if ($3f == 14) jump to :p3
+.C:ae59   F0 11      BEQ $AE6C
+
+.C:ae5b   C9 10      CMP #$10		; if ($3f == 16) jump to :p4
+.C:ae5d   F0 1C      BEQ $AE7B
+
+.C:ae5f   60         RTS		; return
+
+.C:ae60   A2 05      LDX #$05		; :p1
+.C:ae62   A0 08      LDY #$08
+.C:ae64   10 22      BPL $AE88
+.C:ae66   A2 09      LDX #$09		; :p2
+.C:ae68   A0 03      LDY #$03
+.C:ae6a   10 1C      BPL $AE88
+.C:ae6c   A2 05      LDX #$05		; :p3
+.C:ae6e   A0 06      LDY #$06
+.C:ae70   20 B0 AE   JSR $AEB0          ; jump, x,y = 5,6
+
+.C:ae73   B0 34      BCS $AEA9
+.C:ae75   A2 09      LDX #$09
+.C:ae77   A0 02      LDY #$02
+.C:ae79   10 0D      BPL $AE88
+.C:ae7b   A2 07      LDX #$07		; :p4
+.C:ae7d   A0 08      LDY #$08
+.C:ae7f   20 B0 AE   JSR $AEB0
+.C:ae82   B0 25      BCS $AEA9
+.C:ae84   A2 0D      LDX #$0D
+.C:ae86   A0 02      LDY #$02
+.C:ae88   20 B0 AE   JSR $AEB0
+.C:ae8b   B0 1C      BCS $AEA9
+.C:ae8d   24 50      BIT $50
+.C:ae8f   30 0B      BMI $AE9C
+.C:ae91   20 95 8C   JSR $8C95
+.C:ae94   90 10      BCC $AEA6
+.C:ae96   C9 60      CMP #$60
+.C:ae98   B0 0F      BCS $AEA9
+.C:ae9a   90 0A      BCC $AEA6
+.C:ae9c   A5 E7      LDA $E7
+.C:ae9e   D0 06      BNE $AEA6
+.C:aea0   A5 E6      LDA $E6
+.C:aea2   C9 18      CMP #$18
+.C:aea4   90 03      BCC $AEA9
+.C:aea6   E6 41      INC $41
+.C:aea8   60         RTS
+.C:aea9   A9 00      LDA #$00
+.C:aeab   85 41      STA $41
+.C:aead   85 42      STA $42
+.C:aeaf   60         RTS
+
+
+;************* SUB AEB0 ****************
+.C:aeb0   8A         TXA
+.C:aeb1   24 50      BIT $50
+.C:aeb3   30 01      BMI $AEB6 
+.C:aeb5   98         TYA
+.C:aeb6   18         CLC
+.C:aeb7   65 E6      ADC $E6
+.C:aeb9   AA         TAX
+.C:aeba   A9 00      LDA #$00
+.C:aebc   65 E7      ADC $E7
+.C:aebe   4A         LSR A
+.C:aebf   A4 E8      LDY $E8
+.C:aec1   20 C3 8C   JSR $8CC3 ; something with hero x,y stored in X and Y
+.C:aec4   60         RTS
+
+
+; called from multiple places
+.C:8cc3   08         PHP
+.C:8cc4   A9 00      LDA #$00
+.C:8cc6   85 7B      STA $7B
+.C:8cc8   98         TYA
+.C:8cc9   38         SEC
+.C:8cca   E9 32      SBC #$32
+.C:8ccc   90 34      BCC $8D02
+.C:8cce   29 F8      AND #$F8
+.C:8cd0   85 7A      STA $7A
+.C:8cd2   0A         ASL A
+.C:8cd3   26 7B      ROL $7B
+.C:8cd5   0A         ASL A
+.C:8cd6   26 7B      ROL $7B
+.C:8cd8   65 7A      ADC $7A
+.C:8cda   90 02      BCC $8CDE
+.C:8cdc   E6 7B      INC $7B
+.C:8cde   85 7C      STA $7C
+.C:8ce0   A5 7B      LDA $7B
+.C:8ce2   18         CLC
+.C:8ce3   69 40      ADC #$40
+.C:8ce5   85 7D      STA $7D
+.C:8ce7   8A         TXA
+.C:8ce8   28         PLP
+.C:8ce9   6A         ROR A
+.C:8cea   38         SEC
+.C:8ceb   E9 0C      SBC #$0C
+.C:8ced   90 14      BCC $8D03
+.C:8cef   4A         LSR A
+.C:8cf0   4A         LSR A
+.C:8cf1   A8         TAY
+.C:8cf2   C0 28      CPY #$28
+.C:8cf4   B0 0D      BCS $8D03
+.C:8cf6   B1 7C      LDA ($7C),Y                ; ?
+.C:8cf8   C9 45      CMP #$45
+.C:8cfa   90 07      BCC $8D03
+.C:8cfc   C9 52      CMP #$52
+.C:8cfe   B0 03      BCS $8D03
+.C:8d00   38         SEC
+.C:8d01   60         RTS
+.C:8d02   28         PLP
+.C:8d03   18         CLC
+.C:8d04   60         RTS
+
+
+
+
+
+
+zero page
+$1a (set to 0x00 in shafts, 0x01 in rooms)
+$3f (hero sprite #)
+$41 (set to 0x00 when not falling, else increment each frame falling)
+$7e (room index)
+$3e (counter of some kind, connected with hero speed)
+$40 (hero speed, default:3, very fast:1, "constant" in the game)
+$52,$53 (y,x position of hero, unit: char)
+$7a
+$7b
+$7c,$7d (possible level data)
+
+position of hero
+$e6 (x position, first 8 bits)
+$e7 (x position, 9th bit)
+$e8 (y position)
+
+($81) (pointer to table, seems to be room dependant)
+elements are FF terminated
+elements CAN change
+$2c+x -- sprite positions or something
+
+$3f =
+00-0d: running
+0e: standing
+0f: turn against terminal/search
+10+: somersault.. it decrements from a value until it gets to 0e: on ground, it skips 0f however
+
+
+
+
+
+
+
+
+these are LIFT blocks.. there are as many blocks as there are lifts
+also.. lifts linked together (moving together) are considered a single lift
+
+first element of block has something to do with Y coordinate in chars
+second element has something to do with X coordinate in chars
+
+
+
+
+>C:43c0  47 45 46 45   GEFE
+>C:43c4  46 45 46 45   FEFE
+>C:43c8  46 45 46 45   FEFE
+>C:43cc  46 45 46 45   FEFE
+>C:43d0  46 45 46 45   FEFE
+>C:43d4  46 45 46 45   FEFE
+>C:43d8  46 49 4a 4b   FIJK
+>C:43dc  53 53 53 53   SSSS
+>C:43e0  53 45 46 45   SEFE
+>C:43e4  46 45 46 45   FEFE
+>C:43e8  53 53 53 53   SSSS
+>C:43ec  53 53 53 53   SSSS
+>C:43f0  53 53 53 53   SSSS
+>C:43f4  53 53 53 53   SSSS
+
+
+
+
+4000-43F4
+4000-4400
+
+
+
+
+
+
+
+

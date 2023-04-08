@@ -1,0 +1,265 @@
+
+
+
+
+
+
+
+; THE MOTHER
+
+
+
+
+.C:8609   A5 43      LDA $43
+.C:860b   F0 04      BEQ $8611
+.C:860d   20 DA 95   JSR $95DA
+.C:8610   60         RTS
+
+; if not freefalling, jump to :p1
+.C:8611   20 FD 85   JSR $85FD
+.C:8614   A5 41      LDA $41
+.C:8616   D0 03      BNE $861B
+.C:8618   4C EE 86   JMP $86EE
+
+; if free falling:
+.C:861b   A9 80      LDA #$80           ; sound thing
+.C:861d   8D 12 D4   STA $D412
+
+.C:8620   A5 41      LDA $41            ; get fall counter
+.C:8622   4A         LSR A              
+.C:8623   4A         LSR A
+.C:8624   4A         LSR A
+.C:8625   A8         TAY
+.C:8626   C8         INY
+.C:8627   C8         INY                ; Y = fall counter/8 + 2
+
+.C:8628   C0 09      CPY #$09           ; if Y>=9 then Y=8
+.C:862a   90 02      BCC $862E
+.C:862c   A0 08      LDY #$08
+
+; this adds Y to a couple of zero page registers
+;  around $2c,x .. probably to handle motion
+.C:862e   20 5F 8B   JSR $8B5F          
+
+.C:8631   A5 42      LDA $42
+.C:8633   D0 65      BNE $869A
+.C:8635   24 50      BIT $50
+.C:8637   30 06      BMI $863F
+
+.C:8639   20 21 8E   JSR $8E21
+.C:863c   4C 42 86   JMP $8642
+
+; this handles X motion of hero i think
+.C:863f   20 3F 8E   JSR $8E3F
+
+.C:8642   20 55 8C   JSR $8C55
+.C:8645   38         SEC
+.C:8646   E9 02      SBC #$02
+.C:8648   85 E6      STA $E6
+.C:864a   20 5E 8C   JSR $8C5E
+.C:864d   85 E7      STA $E7
+.C:864f   B0 05      BCS $8656
+.C:8651   C9 18      CMP #$18
+.C:8653   90 0F      BCC $8664
+.C:8655   18         CLC
+.C:8656   AA         TAX
+.C:8657   A4 E6      LDY $E6
+.C:8659   20 C3 8C   JSR $8CC3
+.C:865c   C9 47      CMP #$47
+.C:865e   F0 04      BEQ $8664
+.C:8660   C9 48      CMP #$48
+.C:8662   D0 13      BNE $8677
+.C:8664   A5 E7      LDA $E7
+.C:8666   29 F8      AND #$F8
+.C:8668   18         CLC
+.C:8669   69 08      ADC #$08
+.C:866b   38         SEC
+.C:866c   E5 E7      SBC $E7
+.C:866e   A8         TAY
+.C:866f   20 21 8B   JSR $8B21
+.C:8672   E6 42      INC $42
+.C:8674   4C 9A 86   JMP $869A
+.C:8677   20 95 8C   JSR $8C95
+.C:867a   85 E7      STA $E7
+.C:867c   AA         TAX
+.C:867d   A4 E6      LDY $E6
+.C:867f   20 C3 8C   JSR $8CC3
+.C:8682   90 16      BCC $869A
+.C:8684   C9 47      CMP #$47
+.C:8686   F0 04      BEQ $868C
+.C:8688   C9 48      CMP #$48
+.C:868a   D0 0E      BNE $869A
+.C:868c   A5 E7      LDA $E7
+.C:868e   29 07      AND #$07
+.C:8690   18         CLC
+.C:8691   69 01      ADC #$01
+.C:8693   85 E4      STA $E4
+.C:8695   20 EF 8A   JSR $8AEF
+.C:8698   E6 42      INC $42
+.C:869a   20 36 AE   JSR $AE36
+.C:869d   A5 41      LDA $41
+.C:869f   F0 0B      BEQ $86AC
+.C:86a1   20 D3 87   JSR $87D3
+.C:86a4   20 55 8C   JSR $8C55
+.C:86a7   C9 F8      CMP #$F8
+.C:86a9   B0 1C      BCS $86C7
+.C:86ab   60         RTS
+.C:86ac   20 55 8C   JSR $8C55
+.C:86af   85 E6      STA $E6
+.C:86b1   38         SEC
+.C:86b2   E9 02      SBC #$02
+.C:86b4   29 F8      AND #$F8
+.C:86b6   09 03      ORA #$03
+.C:86b8   85 E4      STA $E4
+.C:86ba   A5 E6      LDA $E6
+.C:86bc   38         SEC
+.C:86bd   E5 E4      SBC $E4
+.C:86bf   85 E4      STA $E4
+.C:86c1   20 51 8B   JSR $8B51
+.C:86c4   4C D3 87   JMP $87D3
+.C:86c7   A5 41      LDA $41
+.C:86c9   4A         LSR A
+.C:86ca   4A         LSR A
+.C:86cb   4A         LSR A
+.C:86cc   A8         TAY
+.C:86cd   C8         INY
+.C:86ce   C8         INY
+.C:86cf   C0 09      CPY #$09
+.C:86d1   90 02      BCC $86D5
+.C:86d3   A0 08      LDY #$08
+.C:86d5   20 5F 8B   JSR $8B5F
+.C:86d8   20 D3 87   JSR $87D3
+.C:86db   20 6B 7F   JSR $7F6B
+.C:86de   20 46 8C   JSR $8C46
+.C:86e1   C9 F6      CMP #$F6
+.C:86e3   90 E2      BCC $86C7
+.C:86e5   A9 02      LDA #$02
+.C:86e7   85 43      STA $43
+.C:86e9   A9 00      LDA #$00
+.C:86eb   85 41      STA $41
+.C:86ed   60         RTS
+
+.C:86ee   20 77 8E   JSR $8E77          ; :p1
+.C:86f1   A5 3E      LDA $3E
+.C:86f3   C5 40      CMP $40
+.C:86f5   B0 01      BCS $86F8
+.C:86f7   60         RTS
+
+.C:86f8   A9 00      LDA #$00
+.C:86fa   85 3E      STA $3E
+.C:86fc   20 46 8C   JSR $8C46
+.C:86ff   85 3D      STA $3D
+.C:8701   20 55 8C   JSR $8C55
+.C:8704   38         SEC
+.C:8705   E9 02      SBC #$02
+.C:8707   85 3C      STA $3C
+.C:8709   20 5E 8C   JSR $8C5E
+.C:870c   6A         ROR A
+.C:870d   85 3A      STA $3A
+.C:870f   20 95 8C   JSR $8C95
+.C:8712   6A         ROR A
+.C:8713   85 3B      STA $3B
+
+.C:8715   20 EB 87   JSR $87EB          ; NOP: no horizontal hero response, lifts works
+.C:8718   20 57 88   JSR $8857          ; NOP: moves in place, no horizontal movement
+.C:871b   20 15 88   JSR $8815          ; NOP: no jump, hero moves like ghost (no animation)
+.C:871e   20 F7 88   JSR $88F7          ; NOP: ???
+.C:8721   20 6C 8B   JSR $8B6C          ; NOP: ???
+.C:8724   20 5F 8E   JSR $8E5F          ; NOP: ???
+.C:8727   20 FA 94   JSR $94FA          ; NOP: ???
+
+.C:872a   A5 43      LDA $43
+.C:872c   F0 03      BEQ $8731
+.C:872e   4C DA 95   JMP $95DA
+.C:8731   20 D3 87   JSR $87D3
+.C:8734   AD 15 D0   LDA $D015
+.C:8737   A6 3F      LDX $3F
+.C:8739   BC 41 8D   LDY $8D41,X
+.C:873c   E0 14      CPX #$14
+.C:873e   90 09      BCC $8749
+.C:8740   E0 1A      CPX #$1A
+.C:8742   B0 05      BCS $8749
+.C:8744   29 FB      AND #$FB
+.C:8746   4C 4F 87   JMP $874F
+.C:8749   8C FA 43   STY $43FA
+.C:874c   09 04      ORA #$04
+.C:874e   C8         INY
+.C:874f   8C FB 43   STY $43FB
+.C:8752   C8         INY
+.C:8753   E0 07      CPX #$07
+.C:8755   90 05      BCC $875C
+.C:8757   E0 0E      CPX #$0E
+.C:8759   B0 01      BCS $875C
+.C:875b   C8         INY
+.C:875c   8C F9 43   STY $43F9
+.C:875f   8D 15 D0   STA $D015
+.C:8762   8A         TXA
+.C:8763   0A         ASL A
+.C:8764   AA         TAX
+.C:8765   BC 5D 8D   LDY $8D5D,X
+.C:8768   84 18      STY $18
+.C:876a   8C A9 87   STY $87A9
+.C:876d   8C B8 87   STY $87B8
+.C:8770   C8         INY
+.C:8771   8C BB 87   STY $87BB
+.C:8774   8C C1 87   STY $87C1
+.C:8777   C8         INY
+.C:8778   8C AF 87   STY $87AF
+.C:877b   8C B2 87   STY $87B2
+.C:877e   BC 5E 8D   LDY $8D5E,X
+.C:8781   84 19      STY $19
+.C:8783   8C AA 87   STY $87AA
+.C:8786   8C B0 87   STY $87B0
+.C:8789   8C B3 87   STY $87B3
+.C:878c   8C B9 87   STY $87B9
+.C:878f   8C BC 87   STY $87BC
+.C:8792   8C C2 87   STY $87C2
+.C:8795   A0 3F      LDY #$3F
+.C:8797   B1 18      LDA ($18),Y
+.C:8799   C5 50      CMP $50
+.C:879b   F0 35      BEQ $87D2
+.C:879d   AA         TAX
+.C:879e   BD 00 C5   LDA $C500,X
+.C:87a1   91 18      STA ($18),Y
+.C:87a3   A6 3F      LDX $3F
+.C:87a5   BC 95 8D   LDY $8D95,X
+.C:87a8   BE 00 67   LDX $6700,Y
+.C:87ab   BD 00 C5   LDA $C500,X
+.C:87ae   BE 02 67   LDX $6702,Y
+.C:87b1   99 02 67   STA $6702,Y
+.C:87b4   BD 00 C5   LDA $C500,X
+.C:87b7   99 00 67   STA $6700,Y
+.C:87ba   BE 01 67   LDX $6701,Y
+.C:87bd   BD 00 C5   LDA $C500,X
+.C:87c0   99 01 67   STA $6701,Y
+.C:87c3   88         DEY
+.C:87c4   88         DEY
+.C:87c5   88         DEY
+.C:87c6   98         TYA
+.C:87c7   29 3F      AND #$3F
+.C:87c9   C9 3D      CMP #$3D
+.C:87cb   D0 DB      BNE $87A8
+.C:87cd   88         DEY
+.C:87ce   C0 FC      CPY #$FC
+.C:87d0   D0 D6      BNE $87A8
+.C:87d2   60         RTS
+
+
+
+
+
+
+
+.C:8c55   A4 3F      LDY $3F
+.C:8c57   B9 CD 8D   LDA $8DCD,Y
+.C:8c5a   18         CLC
+.C:8c5b   65 2D      ADC $2D
+.C:8c5d   60         RTS
+
+
+
+
+
+
+
+

@@ -1,0 +1,116 @@
+
+copy.. possible game code and data
+c080-cc7f
+->
+0880-147f
+
+
+rooms and data
+
+ID  (&lift) (notes)
+$7e  $81      
+==============
+00   1612
+01   19d6
+02   1282
+03   1690
+04   1ba3
+05   14ad (ervin room)
+06   10e5
+07   1156
+08   1b42   
+09   1a4f
+0a   195f
+0b   1584
+0c   185d   
+0d   1213
+0e   11a5
+0f   1352
+10   1acb
+11   1c3f (?... music room, what does it mean? notes?)
+12   1770
+13   13c2
+14   17ce
+15   143a
+16   0fed
+17   0ede
+18   1bf9
+19   1514
+1a   1084
+1b   1cde (?... music room, what does it mean?)
+1c   18d8
+1d   170f
+1e   12f0     
+1f   0f41
+
+
+adresses sorted
+0ede
+0f41
+0fed
+1084
+10e5
+1156
+11a5
+1213
+1282
+12f0
+1352
+13c2
+143a
+14ad
+1514
+1584
+1612
+1690
+170f
+1770
+17ce
+185d
+18d8
+195f
+19d6
+1a4f
+1acb
+1b42
+1ba3
+1bf9
+
+1c3f ; music, not counting?
+1cde
+
+
+; table of lift data pointers.., and more?
+>C:1fda  de 0e 41 0f   ..A.
+>C:1fde  ed 0f 84 10   ....
+>C:1fe2  e5 10 a5 11   ....
+>C:1fe6  13 12 82 12   ....
+>C:1fea  f0 12 52 13   ..R.
+>C:1fee  c2 13 3a 14   ..:.
+>C:1ff2  ad 14 14 15   ....
+>C:1ff6  84 15 12 16   ....
+>C:1ffa  90 16 0f 17   ....
+>C:1ffe  70 17 ce 17   p...
+>C:2002  5d 18 d8 18   ]...
+>C:2006  5f 19 d6 19   _...
+>C:200a  4f 1a cb 1a   O...
+>C:200e  42 1b a3 1b   B...
+>C:2012  f9 1b ff ff   ....
+
+; table of pointers, but to what? (possible reset data, some dupes)
+>C:2016  64 1d 72 1d   d.r.
+>C:201a  8a 1d ad 1d   ....
+>C:201e  b6 1d c9 1d   ....
+>C:2022  da 1d f0 1d   ....
+>C:2026  07 1e 1a 1e   ....
+>C:202a  33 1e 53 1e   3.S.
+>C:202e  66 1e 82 1e   f...
+>C:2032  95 1e ae 1e   ....
+>C:2036  b6 1e d5 1e   ....
+>C:203a  dd 1e f6 1e   ....
+>C:203e  ff 1e 23 1f   ..#.
+>C:2042  38 1f 51 1f   8.Q.
+>C:2046  6a 1f 89 1f   j...
+>C:204a  ae 1f bc 1f   ....
+>C:204e  ca 1f ff ff   ....
+

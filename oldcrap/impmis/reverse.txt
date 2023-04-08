@@ -1,0 +1,189 @@
+reverse engineering
+
+
+furniture: 126
+
+32 rooms, 2 of them musical
+18 passwords (found?)
+36 puzzle pieces
+4 pieces per letter
+9 letters
+
+ALBATROSS
+
+
+rooms:
+
+s=start
+bx=blue control room (1)
+bm=blue music room (2) (hmm, there's a yellow too)
+b#=blue # (11)
+g#=green # (10)
+y#=yellow # (8)
+8+10+11+2+1 = 32
+
+
+shaft colors (from left)
+
+1 red: lightred,red
+2 pnk: yellow,pink
+3 gra: lightgray,darkgray
+4 whi: white, lightgreen
+5 grn: lightgreen, green
+6 blu: lightblue, blue
+7 brn: darkbrown, brown
+8 yel: yellow, lightblue
+
+rooms: 6*9=54 slots, 32 of them taken, rest "empty"
+
+
+layout1
+
+ g6-s-g2-+              +-g3 +-y5-+-b6-+
+    |    |              |    |    |    |
+    +-b8 +-g1-+    +-y8-+ g7-+    +-g9-+
+    |    |    |    |    |    |    |    |
+    +-b7 |    |    +-b3-+-ga-+ ba-+ g8-+
+    |    |    |    |    |    |    |    |
+    |    |    +-y4-+-b5-+-bx-+    +-bm +-y7
+    |    |    |    |    |    |    |    |
+    +-y3-+ bm-+-g4 |    | g5-+    +-y1-+
+    |    |    |    |    |    |    |    |
+ y2-+-bb-+-y6-+    +-b9 +-b2 +-b1-+ b4-+
+
+ 
+layout2
+
+ g8-s-y8-+    +-b7 +-b1-+         +-y1-+-b9
+    |    |    |    |    |         |    |
+    +-y5-+-y3-+-g4 +-g2-+-b6-+    |    +-bm
+    |    |    |    |    |    |    |    |
+    | g7-+ y2-+    +-b3-+ g6-+-bx-+    |
+    |    |    |    |    |    |    |    |
+    |    +-g1-+    |    +-y6-+-g9-+-b2 |
+    |    |    |    |    |    |    |    |
+ bm-+ b4-+    +-g3 |    +-b5-+ ba-+    |
+    |    |    |    |    |    |    |    |
+    +-b8 +-y7 +-y4-+-bb-+    +-ga-+ g5-+
+
+
+layout3
+
+ ba-s-b5-+      b4-+    +-b2 +-g2-+-y1-+-b9
+    |    |         |    |    |    |    |
+    +-b1-+-b7 +-y8-+-y3-+-g1-+    +-bx-+-g4
+    |    |    |    |    |    |    |    |
+    +-b3-+    | g7-+-bm |    |    |    |
+    |    |    |    |    |    |    |    |
+    +-g3 +-y6-+    +-b6-+    |    | bm-+
+    |    |    |    |    |    |    |    |
+    +-g9-+ g5-+-bb-+ y2-+-ga-+-y4-+    |
+         |    |              |    |    |
+      g6-+    +-y7        g8-+-y5-+    +-b8
+
+hmm
+levels seems to be randomly generated:
+
+there's ALWAYS a right-exit room in the upper left corner (so 'start' can be the same place always)
+there must of course be at least one 2-exit room between each shaft, to allow crossing
+also seems like there's at least one left-exit room to the right
+
+16 two-exit rooms, one of them the control room
+8 right exit rooms, one of them musical
+8 left exit rooms, one of them musical
+
+another way to define it: there's 4 of each 8 types of rooms:
+
+4 null-down 000-xx     0-3
+4 null-up 001-xx   4-7
+
+4 down-null 010-xx     8-11
+4 up-null 011-xx  12-15
+ 
+4 down-down 100-xx      16-19
+4 down-up 101-xx    20-23
+4 up-down 110-xx    24-27
+4 up-up 111-xx  28-31
+
+furniture: 
+large blue thing with tubes 5x4
+terminal (not the functional one) 3x3
+printer 3x3
+tape toaster 2x3
+bed 6x2
+drawer 3x3
+candy 4x4
+tape rack 3x4 
+book shelf 3x5
+chair and light 3x4
+desk 7x3
+couch 6x2
+stilk lamp 2x3
+speaker 2x2
+stereo 2x3
+sink and microwave 6x3
+fridge 3x4
+fireplace 9x4
+bath tub 6x4
+small trashcan 1x1
+toilet 2x2
+wc sink and mirror 4x4
+
+special:
+computer 3x3
+ervin exit 6x5
+lift 3x1
+music a whole room
+room exit 1x5
+
+
+sprites (pixel sizes)
+robot: 14x21
+zap: 48x8
+hero: 12x28 (variable)
+orb: 24x19
+
+
+play grid: 40x25 (8x8 pixels in original)
+
+
+orb behaviors:
+
+
+robot behaviors:
+
+rooms
+00 - right exit music
+01
+02
+03
+04
+05
+06
+07
+08 - left exit music
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31 - ervin
+
+

@@ -1,0 +1,101 @@
+.C:82e7   48         PHA
+.C:82e8   D8         CLD
+.C:82e9   AD 19 D0   LDA $D019
+.C:82ec   8D 19 D0   STA $D019
+
+.C:82ef   AD 12 D0   LDA $D012
+.C:82f2   C9 F0      CMP #$F0
+.C:82f4   90 77      BCC $836D
+
+.C:82f6   A5 1A      LDA $1A    ; if not in shaft, jump to :p1
+.C:82f8   D0 30      BNE $832A
+
+.C:82fa   A9 AA      LDA #$AA
+.C:82fc   8D 12 D0   STA $D012
+.C:82ff   A9 0C      LDA #$0C
+.C:8301   8D 21 D0   STA $D021
+.C:8304   A5 21      LDA $21
+.C:8306   8D 22 D0   STA $D022
+.C:8309   A5 22      LDA $22
+.C:830b   8D 23 D0   STA $D023
+.C:830e   AD 18 D0   LDA $D018
+.C:8311   29 F0      AND #$F0
+.C:8313   09 02      ORA #$02
+.C:8315   8D 18 D0   STA $D018
+.C:8318   A5 A4      LDA $A4
+.C:831a   F0 45      BEQ $8361
+.C:831c   C6 A4      DEC $A4
+.C:831e   D0 41      BNE $8361
+.C:8320   A9 08      LDA #$08
+.C:8322   8D 0B D4   STA $D40B
+.C:8325   8D 12 D4   STA $D412
+.C:8328   10 37      BPL $8361
+
+; :p1 
+.C:832a   98         TYA        ; store everything         
+.C:832b   48         PHA
+.C:832c   8A         TXA
+.C:832d   48         PHA
+.C:832e   A5 7C      LDA $7C
+.C:8330   48         PHA
+.C:8331   A5 7D      LDA $7D
+.C:8333   48         PHA
+.C:8334   A5 7A      LDA $7A
+.C:8336   48         PHA
+.C:8337   A5 7B      LDA $7B
+.C:8339   48         PHA
+.C:833a   A5 79      LDA $79
+.C:833c   48         PHA
+
+.C:833d   20 FA 94   JSR $94FA  ; NOP: ??
+.C:8340   20 CA 8E   JSR $8ECA  ; NOP: disable robots, except collision
+.C:8343   20 C1 92   JSR $92C1  ; NOP: disable orb (both types: seeking, and 8-loop)
+
+.C:8346   68         PLA        ; restore everything
+.C:8347   85 79      STA $79
+.C:8349   68         PLA
+.C:834a   85 7B      STA $7B
+.C:834c   68         PLA
+.C:834d   85 7A      STA $7A
+.C:834f   68         PLA
+.C:8350   85 7D      STA $7D
+.C:8352   68         PLA
+.C:8353   85 7C      STA $7C
+.C:8355   68         PLA
+.C:8356   AA         TAX
+.C:8357   68         PLA
+.C:8358   A8         TAY
+
+.C:8359   20 78 7F   JSR $7F78  ; NOP: ??
+.C:835c   A9 FF      LDA #$FF
+.C:835e   8D 12 D0   STA $D012
+.C:8361   E6 E0      INC $E0
+.C:8363   E6 3E      INC $3E
+.C:8365   20 98 83   JSR $8398  ; NOP: freeze time
+.C:8368   20 EA 84   JSR $84EA  ; NOP: something happens to sound
+.C:836b   68         PLA
+.C:836c   40         RTI
+
+.C:836d   A9 FF      LDA #$FF
+.C:836f   8D 12 D0   STA $D012
+.C:8372   A5 1A      LDA $1A
+.C:8374   D0 14      BNE $838A
+.C:8376   A9 0E      LDA #$0E
+.C:8378   8D 22 D0   STA $D022
+.C:837b   A9 06      LDA #$06
+.C:837d   8D 23 D0   STA $D023
+.C:8380   A9 00      LDA #$00
+.C:8382   8D 21 D0   STA $D021
+.C:8385   A9 06      LDA #$06
+.C:8387   8D 18 D0   STA $D018
+.C:838a   68         PLA
+.C:838b   40         RTI
+
+
+
+
+
+
+
+
+

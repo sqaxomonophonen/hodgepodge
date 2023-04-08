@@ -1,0 +1,10 @@
+
+
+63 cycles available for each scanline, except:
+23 cycles every bad scanline
+
+
+
+Always seen as ROM by the VIC, so pretty good for code:
+$1000-$1fff
+$9000-$9fff
