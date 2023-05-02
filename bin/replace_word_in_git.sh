@@ -5,8 +5,13 @@ if [ -z "$2" ] ; then
 fi
 OLD="$1"
 NEW="$2"
+PATTERN="$3"
 files() {
-	git ls-files # filter unwanted files if you want to
+	if [ -z "$PATTERN" ] ; then
+		git ls-files
+	else
+		git ls-files $PATTERN
+	fi
 }
 
 for file in $(files) ; do
