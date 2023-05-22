@@ -1,0 +1,26 @@
+
+
+(CC0) nothings/stb/deprecated/stb.h (C-templated quicksort -> insertion sort? simple)
+
+(CC0) https://github.com/jscottb/c_snippets
+      https://github.com/jscottb/c_snippets/blob/master/hugesort.c
+      https://github.com/jscottb/c_snippets/blob/master/rg_qsort.c1
+      https://github.com/jscottb/c_snippets/blob/master/rg_ssort.c (shell sort; it's a faster insertion sort?)
+
+(CC0) https://github.com/BonzaiThePenguin/WikiSort ("Fast and stable sort
+algorithm that uses O(1) memory. Public domain.")
+
+(CC0) https://github.com/DevSolar/pdclib/blob/master/functions/stdlib/qsort.c 
+      https://github.com/DevSolar/pdclib/blob/master/functions/stdlib/qsort_s.c (public domain c library qsort())
+
+(MIT) attractivechaos.github.io/klib (C-templated)
+
+(MIT) https://github.com/Mrrl/GrailSort ("Stable In-place sorting in
+O(n*log(n)) worst time."). Also:
+https://github.com/HolyGrailSortProject/Rewritten-Grailsort
+
+
+
+
+
+.oO(<3 __attribute__((always_inline)))
