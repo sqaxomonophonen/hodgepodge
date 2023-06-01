@@ -245,7 +245,7 @@ fn T(comptime f: anytype) void {
         std.builtin.Type.Void => &SAFE_CALL,
         else => &BANG_CALL,
     };
-    std.debug.print("T {{{{\n", .{});
+    std.debug.print("\nT {{{{\n", .{});
     ff(f);
     std.debug.print("}}}} T\n", .{});
 }
