@@ -231,26 +231,27 @@ fn eval6() void {
     eval6_passed(&buf);
 }
 
-fn T(comptime f: anytype) void {
-    // T() is half-way there to being like a C-macro, because `f` is
-    // "duck-typed" at compile-time (even if "comptime" is removed).
-    //std.debug.print("T {s} {{{{\n", .{@typeName(@TypeOf(f))}); // functions don't know their name; @typeName@(TypeOf(f)) evaluates to "fn() void"
-    std.debug.print("\nT {{{{\n", .{}); // "{{" escapes to "{"
+fn SAFE_CALL(comptime f: anytype) void {
     f();
-    std.debug.print("}}}} T\n", .{});
 }
 
-fn BT(comptime f: anytype) void {
-    // T() is half-way there to being like a C-macro, because `f` is
-    // "duck-typed" at compile-time (even if "comptime" is removed).
-    //std.debug.print("T {s} {{{{\n", .{@typeName(@TypeOf(f))}); // functions don't know their name; @typeName@(TypeOf(f)) evaluates to "fn() void"
-    std.debug.print("\nT {{{{\n", .{}); // "{{" escapes to "{"
+fn BANG_CALL(comptime f: anytype) void {
     f() catch |err| std.debug.print("ERR={s}", .{@errorName(err)});
+}
+
+fn T(comptime f: anytype) void {
+    const rt = @typeInfo(@typeInfo(@TypeOf(f)).Fn.return_type orelse unreachable);
+    const ff = comptime switch (rt) {
+        std.builtin.Type.Void => &SAFE_CALL,
+        else => &BANG_CALL,
+    };
+    std.debug.print("T {{{{\n", .{});
+    ff(f);
     std.debug.print("}}}} T\n", .{});
 }
 
-var allocator0: std.mem.Allocator = .{ .ptr = undefined, .vtable = undefined };
-var allocator1: std.mem.Allocator = .{ .ptr = undefined, .vtable = undefined };
+var allocator0: std.mem.Allocator = undefined;
+var allocator1: std.mem.Allocator = undefined;
 
 fn make_baked_allocator_type(comptime allocator_ptr: *std.mem.Allocator) type {
     return struct {
@@ -365,5 +366,5 @@ pub fn main() !void {
     T(eval4);
     T(eval5);
     T(eval6);
-    BT(eval7);
+    T(eval7);
 }
