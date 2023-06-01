@@ -221,6 +221,16 @@ fn eval5() void {
     }
 }
 
+fn eval6_passed(buf: []u8) void {
+    std.debug.print("passed buf.len={d}\n", .{buf.len});
+}
+
+fn eval6() void {
+    var buf: [420666]u8 = undefined;
+    std.debug.print("buf.len={d}\n", .{buf.len});
+    eval6_passed(&buf);
+}
+
 fn T(comptime f: anytype) void {
     // T() is half-way there to being like a C-macro, because `f` is
     // "duck-typed" at compile-time (even if "comptime" is removed).
@@ -230,8 +240,122 @@ fn T(comptime f: anytype) void {
     std.debug.print("}}}} T\n", .{});
 }
 
-// TODO can I mimic a stb_ds.h-style dynamic array? i.e. len, cap and data are
-// all stored in the same allocation? and "null" is an empty array?
+fn BT(comptime f: anytype) void {
+    // T() is half-way there to being like a C-macro, because `f` is
+    // "duck-typed" at compile-time (even if "comptime" is removed).
+    //std.debug.print("T {s} {{{{\n", .{@typeName(@TypeOf(f))}); // functions don't know their name; @typeName@(TypeOf(f)) evaluates to "fn() void"
+    std.debug.print("\nT {{{{\n", .{}); // "{{" escapes to "{"
+    f() catch |err| std.debug.print("ERR={s}", .{@errorName(err)});
+    std.debug.print("}}}} T\n", .{});
+}
+
+var allocator0: std.mem.Allocator = .{ .ptr = undefined, .vtable = undefined };
+var allocator1: std.mem.Allocator = .{ .ptr = undefined, .vtable = undefined };
+
+fn make_baked_allocator_type(comptime allocator_ptr: *std.mem.Allocator) type {
+    return struct {
+        xs: []i32 = &[_]i32{},
+        pub fn baked_alloc(self: anytype, n: usize) !void {
+            self.xs = try allocator_ptr.*.alloc(@TypeOf(self.xs[0]), n);
+            std.debug.print("xs is now {d} elements\n", .{self.xs.len});
+        }
+    };
+}
+
+const TraceAllocator = struct {
+    const Self = @This();
+    a: std.mem.Allocator,
+    pub fn allocator(self: *Self) std.mem.Allocator {
+        return .{
+            .ptr = self,
+            .vtable = &.{
+                .alloc = alloc,
+                .resize = resize,
+                .free = free,
+            },
+        };
+    }
+
+    pub fn alloc(
+        ctx: *anyopaque,
+        n: usize,
+        log2_ptr_align: u8,
+        ret_addr: usize,
+    ) ?[*]u8 {
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ctx));
+        std.debug.print("TraceAllocator::alloc({d},{d})\n", .{ n, log2_ptr_align });
+        return self.a.vtable.alloc(self.a.ptr, n, log2_ptr_align, ret_addr);
+    }
+
+    pub fn resize(
+        ctx: *anyopaque,
+        buf: []u8,
+        log2_buf_align: u8,
+        new_len: usize,
+        ret_addr: usize,
+    ) bool {
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ctx));
+        std.debug.print("TraceAllocator::resize({d},{d})\n", .{ log2_buf_align, new_len });
+        return self.a.vtable.resize(self.a.ptr, buf, log2_buf_align, new_len, ret_addr);
+    }
+
+    pub fn free(
+        ctx: *anyopaque,
+        buf: []u8,
+        log2_buf_align: u8,
+        ret_addr: usize,
+    ) void {
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ctx));
+        std.debug.print("TraceAllocator::free()\n", .{});
+        self.a.vtable.free(self.a.ptr, buf, log2_buf_align, ret_addr);
+    }
+};
+
+fn eval7() !void {
+    // zig has std.mem.Allocator, which is nice, but having each value that
+    // needs an allocator store one (16 bytes) or a pointer to a shared one (8
+    // bytes) might seem a bit too fine-grained and excessive? (e.g. see
+    // std.ArrayList). the problem with C is that:
+    //  - the only standard is malloc()/free() (and mmap() etc to a lesser
+    //    extent)
+    //  - designing libraries to NOT depend on malloc()/free() is challenging
+    //    and non-standard; you could go full-on fnptr interface, but sometimes
+    //    macros are more convenient, but this requires recompiling your
+    //    dependency (which is not always feasible).
+    // this example shows that there's a middle ground between "ONE ALLOCATOR
+    // TO RULE THEM ALL" and "ONE ALLOCATOR PER VALUE": the _address_ of an
+    // allocator is known at comptime, so this is baked into the type, but the
+    // allocator is still initialized at runtime.
+    const T0 = make_baked_allocator_type(&allocator0);
+    const T1 = make_baked_allocator_type(&allocator1);
+
+    var t0 = T0{};
+    var t1 = T1{};
+
+    var test_slice: []i32 = undefined;
+    std.debug.print("sizeof(t0)={d} / sizeof(t1)={d} (types should only contain a single slice, which, for reference, should be {d} bytes)\n", .{
+        @sizeOf(@TypeOf(t0)),
+        @sizeOf(@TypeOf(t1)),
+        @sizeOf(@TypeOf(test_slice)),
+    });
+
+    var X0 = std.heap.GeneralPurposeAllocator(.{}){};
+
+    var X1 = std.heap.GeneralPurposeAllocator(.{}){};
+    var Y1 = TraceAllocator{ .a = X1.allocator() };
+
+    // notice we're initializing global allocators AFTER depending on them; it
+    // should only be the `baked_alloc()` calls below that actually uses the
+    // allocator, so we're safe until then.
+    allocator0 = X0.allocator();
+    allocator1 = Y1.allocator();
+
+    std.debug.print("(NOTE: trace allocator should only \"see 6's\" after division with type size:)\n", .{});
+    try t0.baked_alloc(42);
+    try t1.baked_alloc(66);
+    try t0.baked_alloc(420);
+    try t1.baked_alloc(666);
+}
 
 pub fn main() !void {
     T(eval0);
@@ -240,4 +364,6 @@ pub fn main() !void {
     T(eval3);
     T(eval4);
     T(eval5);
+    T(eval6);
+    BT(eval7);
 }
