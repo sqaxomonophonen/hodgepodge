@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=test0
+Exec=test0
+Comment=TEST0
+Icon=test0
+Categories=Development;
+Terminal=true

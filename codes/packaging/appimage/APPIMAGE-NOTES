@@ -1,0 +1,33 @@
+
+ - .AppImage (v2) files are ELF binaries with a SquashFS file system appended
+   to the end (you can literally make an .AppImage application with `cat`). the
+   binary part is a kind of bootloader, which locates the embedded SquashFS and
+   mounts it (using FUSE), and then runs the program inside.
+
+ - self-contained: `ldd ./myapp.AppImage` => "not a dynamic executable"
+
+ - built-in self-extraction: `./myapp.AppImage --appimage-extract`. but even if
+   the executable breaks (like GNU broke ELF with DT_GNU_HASH) you still stand
+   a good chance of extracting the app; you need to find where the SquashFS
+   header begins ("hsqs"-magic), and then you need a SquashFS extractor.
+
+ - overhead: ~10ms? seems unaffected by size of SquashFS (same startup time for
+   500MB and 2.5GB garbage in the embedded file system). I don't know if
+   SquashFS has noticeable read() overhead though (relavant if the app contains
+   a lot of .so files)
+
+ - no magic; it's really just a way to mount an embedded application dir and
+   run the application inside it. to make an .AppImage independent of distro,
+   all dependencies should be bundled, and binaries should be patched to not
+   use absolute paths? clone(2) and namespaces(7) could be used to verify
+   correctness by launching into a "jail" that literally contains no files from
+   your host OS.
+
+ - vs Snap: snap superficially resembles AppImage, but snap seems to assume bad
+   things, like that your system runs systemd. also feels a bit like "made by
+   Canonical, for Canonical"
+
+ - vs Flatpak: flatpak applications are not one-file-executables; seems more
+   like a package manager that doesn't belong to specific distros?
+
+https://docs.appimage.org/index.html
