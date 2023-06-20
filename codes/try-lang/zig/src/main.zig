@@ -358,6 +358,13 @@ fn eval7() !void {
     try t1.baked_alloc(666);
 }
 
+fn eval8() !void {
+    // see build.zig
+    const build_options = @import("build_options");
+    std.debug.print("buildtime_answer_to_the_ultimate_question={d}\n", .{build_options.buildtime_answer_to_the_ultimate_question});
+    std.debug.print("ping={s}\n", .{build_options.ping});
+}
+
 pub fn main() !void {
     T(eval0);
     T(eval1);
@@ -367,4 +374,5 @@ pub fn main() !void {
     T(eval5);
     T(eval6);
     T(eval7);
+    T(eval8);
 }
