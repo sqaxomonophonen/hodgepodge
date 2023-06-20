@@ -5,7 +5,11 @@ HTML=zigdl.html
 curl -s https://ziglang.org/download/ -o $HTML
 latest=$(w3m -dump $HTML | grep zig-linux-$(uname -p) | head -n1 | cut -d\  -f1)
 base="${latest%.tar.xz}"
-echo "latest is [$base]"
+if [ "$base" = $(readlink zig) ] ; then
+	echo "latest is [$base]; already up to date"
+	exit 0
+fi
+echo "latest is [$base]; updating now..."
 wget https://ziglang.org/builds/$latest
 echo "unpacking $latest"
 tar xf $latest
