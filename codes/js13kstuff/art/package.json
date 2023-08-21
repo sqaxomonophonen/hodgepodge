@@ -1,0 +1,11 @@
+{
+  "name": "packart",
+  "version": "1.0.0",
+  "description": "packs art into a package of art",
+  "main": "packart.js",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "omggif": "^1.0.10"
+  }
+}
