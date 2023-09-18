@@ -5,4 +5,4 @@ DIM=$(identify -format "%wx%h" $BOX)
 X=$(identify -format "%X" $BOX)
 Y=$(identify -format "%Y" $BOX)
 rm $BOX
-ffmpeg -video_size ${DIM} -framerate 25 -f x11grab -i :0.0${X},${Y} /tmp/gifit.gif
+ffmpeg -video_size ${DIM} -framerate 25 -f x11grab -i ${DISPLAY}+${X},${Y} /tmp/gifit.gif
