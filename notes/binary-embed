@@ -1,0 +1,35 @@
+
+APPROACH: objcopy
+  $ objcopy -I binary -O elf64-x86-64 input.bin output.o
+Then reference symbols with:
+  extern unsigned char _binary_input_bin_start[];
+  extern unsigned char _binary_input_bin_end[];
+Notes:
+ - Depends on `objcopy`
+ - Must know the architecture ("elf64-x86-64")
+ - Don't use "extern unsigned char*" (crashes)
+ - Length of data is (_binary_input_bin_end - _binary_input_bin_start)
+ - Input filename defines symbol names (if this is inconvenient you can use
+   symlinks)
+
+
+APPROACH: xxd
+  $ xxd -i input.bin output.inc.h
+Outputs:
+  unsigned char input_bin[] = {...};
+  unsigned int input_bin_len = ...;
+Notes:
+ - Depends on `xxd`
+ - Input filename defines symbol names (if this is inconvenient you can use
+   symlinks)
+ - Artifacts are portable (unlike objcopy-approach), so you can commit them to
+   source control
+
+
+APPROACH: roll your own
+ - Like xxd, but done by your own libc-only program
+ - More portable than the other solutions, but requires an extra build step
+ - Same program can sometimes do other "custom build steps"
+ - Artifacts are portable (unlike objcopy-approach), so you can commit them to
+   source control
+
