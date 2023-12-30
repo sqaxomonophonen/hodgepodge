@@ -176,8 +176,8 @@ def cmd_stat():
 
 	tbl = [
 		("Requests in total", n_requests),
-		("Bot requests (best effort)", n_bot_requests),
-		("Human requests (best effort)", n_human_requests),
+		("Bot requests (estimate)", n_bot_requests),
+		("Human requests (estimate)", n_human_requests),
 		("(2xx) OKs", n_oks),
 		("(3xx) Redirects", n_redirects),
 		("(4xx) Client errors", n_4xx),
