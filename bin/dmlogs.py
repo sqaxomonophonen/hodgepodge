@@ -103,12 +103,12 @@ def fmt_byte_count(n):
 	return "%.2f %s" % (n/div, suffixes[i])
 
 
-def print_top(what, kn, MAX = 10):
+def print_top(what, kn, MAX = None):
 	if not kn or len(kn) == 0: return
 	if not kn or len(kn) == 0: return
 	print()
 	tbl = [(x[1],x[0]) for x in sorted(kn.items(), key = lambda x: -x[1])]
-	if len(tbl) <= MAX:
+	if MAX is None or len(tbl) <= MAX:
 		print("%s:" % what)
 	else:
 		print("%s (showing top %d):" % (what, MAX))
@@ -219,6 +219,33 @@ def cmd_json():
 		line_number += 1
 	print(json.dumps(xs))
 
+
+def cmd_refurl():
+	"Show referrals by URL"
+	line_number = 1
+	referrals = {}
+	for line in sys.stdin.readlines():
+		o = parse_clf_line(line, line_number)
+		ref = o["referrer"]
+		if len(ref) > 1:
+			if ref not in referrals:
+				referrals[ref] = 0
+			referrals[ref] += 1
+	print_top("Referrals", referrals)
+
+def cmd_refhost():
+	"Show referrals by host"
+	line_number = 1
+	referrals = {}
+	for line in sys.stdin.readlines():
+		o = parse_clf_line(line, line_number)
+		ref = o["referrer"]
+		host = urllib.parse.urlparse(ref).netloc.lower()
+		if len(host) > 0:
+			if host not in referrals:
+				referrals[host] = 0
+			referrals[host] += 1
+	print_top("Referrals", referrals)
 
 cmd_prefix = "cmd_"
 def usage():
