@@ -7,15 +7,20 @@
 #include <stdio.h>
 
 // resolution
-#define TILE_SIZE_LOG2     (9)
+#define TILE_SIZE_LOG2     (7)
 #define ATLAS_COLUMNS_LOG2 (2)
 #define ATLAS_ROWS_LOG2    (2)
 #define SUPERSAMPLE        (16)
 
 // style
 #define LINE_WIDTH     (0.10f)
-#define ROUND_RADIUS   (0.25f)
+#define ROUND_RADIUS   (0.35f)
 #define DOT_RADIUS     (0.25f)
+#define PADDING        (0.05f)
+#define SUBDOT_RADIUS  (0.50f)
+#define SUBLINE_WIDTH  (0.50f)
+#define SUBCENTER      (0.00f)
+
 
 struct vec2 { float u,v; };
 static inline struct vec2 vec2(float u, float v) { return (struct vec2) {.u=u,.v=v}; }
@@ -51,11 +56,58 @@ static int wire_cross(struct vec2 p)
 	return i;
 }
 
+static int wire_t(struct vec2 p)
+{
+	int i = 0;
+	i |= fabsf(p.u) < (LINE_WIDTH * 0.5f) && p.v > 0.0f;
+	i |= fabsf(p.v) < (LINE_WIDTH * 0.5f);
+	i |= vec2_dot(p,p) < sqr(DOT_RADIUS);
+	return i;
+}
+
+
+static int sub_entry0(struct vec2 p)
+{
+	p.v += SUBCENTER;
+	int i = 0;
+	i |= fabsf(p.u) < (LINE_WIDTH * 0.5f) && p.v > 0.0f;
+	i |= vec2_dot(p,p) < sqr(DOT_RADIUS);
+	return i;
+}
+
+static int sub_pattern(struct vec2 p)
+{
+	p.u += 1.0f;
+	p.v += 1.0f;
+	const float m0 = 1.0f / 8.0f;
+	const float m1 = m0 * 0.66f;
+	return fmodf(vec2_dot(p, vec2(1.0f,1.0f)), m0) < m1;
+}
+
+static int sub_entry1(struct vec2 p)
+{
+	p.v += SUBCENTER;
+
+	int i0 = 0, i1 = 0;
+	i0 |= vec2_dot(p,p) < sqr(SUBDOT_RADIUS);
+	i0 |= fabsf(p.u) < ((SUBLINE_WIDTH) * 0.5f) && p.v < 0.0f;
+
+	i1 |= fabsf(p.u) < (LINE_WIDTH * 0.5f + PADDING) && p.v > 0.0f;
+	i1 |= vec2_dot(p,p) < sqr(DOT_RADIUS + PADDING);
+
+	return i0 && !i1 && sub_pattern(p);
+}
+
+static int sub_wire(struct vec2 p)
+{
+	return fabsf(p.u) < ((SUBLINE_WIDTH) * 0.5f) && sub_pattern(p);
+}
+
 __attribute__((always_inline))
 static inline void render_tile(int column, int row, int(*sample)(struct vec2))
 {
 	const int sz = 1 << TILE_SIZE_LOG2;
-	uint8_t* p = bitmap + (row << (TILE_SIZE_LOG2)) + (column << TILE_SIZE_LOG2);
+	uint8_t* p = bitmap + (row << (2*TILE_SIZE_LOG2+ATLAS_COLUMNS_LOG2)) + (column << TILE_SIZE_LOG2);
 	const int stride = (1 << (TILE_SIZE_LOG2+ATLAS_COLUMNS_LOG2)) - (1 << TILE_SIZE_LOG2);
 
 	const float c0 = -1.0f; // XXX probably off by one unit? half?
@@ -101,6 +153,11 @@ int main(int argc, char** argv)
 	render_tile(0, 0, wire_cross);
 	render_tile(1, 0, wire_line);
 	render_tile(2, 0, wire_corner);
+	render_tile(3, 0, wire_t);
+
+	render_tile(0, 1, sub_entry0);
+	render_tile(1, 1, sub_entry1);
+	render_tile(2, 1, sub_wire);
 
 	fprintf(out, "P2\n%d %d\n255\n", atlas_width, atlas_height);
 	const int chunk = 8;

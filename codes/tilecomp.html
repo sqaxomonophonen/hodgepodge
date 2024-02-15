@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+	margin: 0;
+	padding: 0;
+}
+canvas {
+	width: 100vw;
+	height: 100vh;
+}
+</style>
+<script>
+let tileset;
+
+function redraw() {
+	const canvas = document.getElementById("canvas");
+	const W = canvas.width  = canvas.offsetWidth;
+	const H = canvas.height = canvas.offsetHeight;
+	const ctx = canvas.getContext("2d");
+
+	ctx.fillStyle = 'black';
+	ctx.fillRect(0, 0, W, H);
+
+	const TILE_SIZE = 1<<7;
+	const puttile = (dx,dy,sx,sy,orient) => {
+		let rot = orient&3;
+		let px = Math.floor(dx) * TILE_SIZE;
+		let py = Math.floor(dy) * TILE_SIZE;
+		ctx.save();
+		switch (rot) {
+		case 0: ctx.setTransform(  1 ,  0 ,  0 ,  1 ,          0+px ,          0+py); break;
+		case 1: ctx.setTransform(  0 ,  1 , -1 ,  0 ,  TILE_SIZE+px ,          0+py); break;
+		case 2: ctx.setTransform( -1 ,  0 ,  0 , -1 ,  TILE_SIZE+px ,  TILE_SIZE+py); break;
+		case 3: ctx.setTransform(  0 , -1 ,  1 ,  0 ,          0+px ,  TILE_SIZE+py); break;
+		default: throw new Error("bad rot");
+		}
+		ctx.drawImage(tileset,
+			Math.floor(sx) * TILE_SIZE,
+			Math.floor(sy) * TILE_SIZE,
+			TILE_SIZE,
+			TILE_SIZE,
+			0,0,
+			TILE_SIZE,
+			TILE_SIZE);
+		ctx.restore();
+	};
+
+	ctx.globalCompositeOperation = "lighter";
+
+	puttile(4,3, 0,1, 0);
+	ctx.globalAlpha = 0.3;
+	puttile(4,3, 1,1, 0);
+	puttile(4,2, 2,1, 0);
+	ctx.globalAlpha = 1;
+	puttile(4,1, 0,1, 2);
+	ctx.globalAlpha = 0.3;
+	puttile(4,1, 1,1, 2);
+
+	ctx.globalAlpha = 1;
+	puttile(1,1, 2,0, 0);
+	puttile(2,1, 2,0, 1);
+	puttile(2,2, 0,0, 2);
+	puttile(1,2, 2,0, 3);
+	puttile(3,2, 1,0, 1);
+	puttile(4,2, 1,0, 1);
+	puttile(5,2, 1,0, 1);
+}
+
+window.addEventListener("load", () => {
+	tileset = new Image();
+	tileset.setAttribute("src", "out.png");
+	tileset.addEventListener("load", redraw);
+});
+</script>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+</body>
+</html>
