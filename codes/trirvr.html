@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Triangle-vs-triangle collision detection with minimum displacement vector using the separating axis theorem (SAT)</title>
+<title>Triangle skinnyness/fatness value</title>
 
 <style>
 body {
@@ -36,6 +36,11 @@ body {
 
 #mysvg {
 	background: #001000;
+}
+
+#info {
+	white-space: pre-wrap;
+	font-family: monospace;
 }
 
 </style>
@@ -257,14 +262,40 @@ window.onload = function () {
 	var drag_pos = undefined;
 
 	var colors = [
-		[0.251, 0, 0, 0.7],
-		[0, 0, 0.439, 0.7]
+		[0, 0.3, 0.3, 0.7],
 	];
 
 	var triangles = [
 		[[359,331], [507,624], [310,538]],
-		[[176,400], [455,194], [311,489]]
 	];
+
+	const triangle_area = (t) => {
+		const x1 = t[0][0];
+		const y1 = t[0][1];
+		const x2 = t[1][0];
+		const y2 = t[1][1];
+		const x3 = t[2][0];
+		const y3 = t[2][1];
+		return 0.5 * (x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2));
+	};
+
+	const triangle_semiperimeter = (t) => {
+		const a = vec_distance(t[0], t[1]);
+		const b = vec_distance(t[1], t[2]);
+		const c = vec_distance(t[2], t[0]);
+		return (a+b+c)/2;
+	};
+
+	const triangle_inradius = (t) => {
+			return triangle_area(t) / triangle_semiperimeter(t);
+	};
+
+	const triangle_circumradius = (t) => {
+		const a = vec_distance(t[0], t[1]);
+		const b = vec_distance(t[1], t[2]);
+		const c = vec_distance(t[2], t[0]);
+		return (a*b*c) / (4 * triangle_area(t));
+	};
 
 	var update = function () {
 		var show_id = drag_id || show_edge_id || hover_id;
@@ -290,159 +321,32 @@ window.onload = function () {
 			triangle_element.setAttributeNS(null, "points", points);
 		}
 
-		var prj = document.getElementById("prj");
-		while (prj.childNodes.length > 0) prj.removeChild(prj.firstChild);
+		var info = document.getElementById("info");//XXX
 
-		var draw_line = function (p0, p1, stroke, width) {
-			var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-			var attrs = {
-				x1: p0[0],
-				y1: p0[1],
-				x2: p1[0],
-				y2: p1[1],
-				stroke: stroke,
-				"stroke-width": width
-			};
-			for (var k in attrs) line.setAttributeNS(null, k, attrs[k]);
-			prj.appendChild(line);
-			return line;
-		};
+		{
+			let O = "";
+			const T = triangles[0];
+			const area = triangle_area(T);
+			const semiperimeter = triangle_semiperimeter(T);
+			O += "area: " + area.toFixed(1) + "\n";
+			O += "semiperimeter: " + semiperimeter.toFixed(1) + "\n";
+			const inradius = triangle_inradius(T);
+			O += "inradius: " + inradius.toFixed(1) + "\n";
+			const circumradius = triangle_circumradius(T);
+			O += "circumradius: " + circumradius.toFixed(1) + "\n";
+			const ratio = inradius / circumradius;
+			O += "ratio: " + ratio.toFixed(1) + "\n";
 
-		// arrow-head at p1
-		var draw_arrow = function (p0, p1, stroke, width) {
-			var du = vec_scale(vec_unit(vec_sub(p1, p0)), 5);
-			var dv = vec_normal(du);
-			draw_line(p0, p1, stroke, width);
-			draw_line(p1, vec_add(vec_sub(p1, du), dv), stroke, width);
-			draw_line(p1, vec_sub(vec_sub(p1, du), dv), stroke, width);
-		};
-
-		var collision = collision_detect(triangles[0], triangles[1])
-		var collision_edge_id = collision ? mk_edge_id(collision.triangle_index, collision.edge_index) : undefined;
-		var btn_red = document.getElementById("resolve_red");
-		var btn_blue = document.getElementById("resolve_blue");
-		var info = document.getElementById("resolve_info");
-		if (collision) {
-			btn_red.disabled = false;
-			btn_blue.disabled = false;
-			var mk_resolver = function (triangle, sign) {
-				return (function (info) {
-					return function () {
-						for (var i = 0; i < triangle.length; i++) {
-							triangle[i] = vec_add(triangle[i], vec_scale(info.displacement_vector, 1.001 * sign));
-						}
-						update();
-					};
-				})(collision)
-			};
-			btn_red.onclick = mk_resolver(triangles[0], 1);
-			btn_blue.onclick = mk_resolver(triangles[1], -1);
-			info.innerHTML = "penetration depth: " + Math.abs(collision.displacement).toFixed(1);
-		} else {
-			btn_red.disabled = true;
-			btn_red.onclick = null;
-			btn_blue.disabled = true;
-			btn_blue.onclick = null;
-			info.innerHTML = "";
+			info.innerHTML = O;
 		}
 
-		var sat_edge_id = show_edge_id || collision_edge_id;
 
-		if (sat_edge_id) {
-			var dec = decode_id(sat_edge_id);
-			var edge_triangle = triangles[dec[1]];
-
-			var p0 = edge_triangle[dec[2]];
-			var p1 = edge_triangle[(dec[2] + edge_triangle.length - 1) % edge_triangle.length];
-
-			var solution_color = show_edge_id ? "#ffffff" : "#00ff00";
-
-			draw_line(p0, p1, solution_color, 4);
-
-			var v = vec_unit(vec_sub(p1, p0));
-			var u = vec_normal(v);
-			var umin, umax, wmin, wmax;
-
-			for (var i = 0; i < triangles.length; i++) {
-				var triangle = triangles[i];
-				for (var j = 0; j < triangle.length; j++) {
-					var p = triangle[j];
-					var uval = vec_dot(u, p);
-					var wval = vec_dot(v, p);
-					if (umin === undefined || uval < umin) umin = uval;
-					if (umax === undefined || uval > umax) umax = uval;
-					if (wmin === undefined || wval < wmin) wmin = wval;
-					if (wmax === undefined || wval > wmax) wmax = wval;
-				}
-			}
-
-			var upad = 70;
-			var wpad = 50;
-
-			draw_line(
-				vec_add(vec_scale(u, umin - upad), vec_scale(v, wmax + wpad)),
-				vec_add(vec_scale(u, umax + upad), vec_scale(v, wmax + wpad)),
-				solution_color, 1);
-
-			draw_line(
-				vec_add(vec_scale(u, umin - upad), vec_scale(v, wmin - wpad)),
-				vec_add(vec_scale(u, umax + upad), vec_scale(v, wmin - wpad)),
-				solution_color, 1);
-
-			var wpad_tmp = wpad - 3;
-			var intervals = [];
-			for (var i = 0; i < triangles.length; i++) {
-				wpad_tmp -= 5;
-				var triangle = triangles[i];
-				umin = undefined;
-				umax = undefined;
-				for (var j = 0; j < triangle.length; j++) {
-					var p = triangle[j];
-					var uval = vec_dot(u, p);
-					if (umin === undefined || uval < umin) umin = uval;
-					if (umax === undefined || uval > umax) umax = uval;
-				}
-				intervals.push([umin, umax]);
-
-				var color_u = color_add(color3_scale(colors[i], 5), [0.2,0.2,0.2,1]);
-				var color_w = color_add(colors[i], [0,0,0,1]);
-
-				var p00 = vec_add(vec_scale(u, umin), vec_scale(v, wmax + wpad_tmp));
-				var p01 = vec_add(vec_scale(u, umax), vec_scale(v, wmax + wpad_tmp));
-				var p10 = vec_add(vec_scale(u, umin), vec_scale(v, wmin - wpad_tmp));
-				var p11 = vec_add(vec_scale(u, umax), vec_scale(v, wmin - wpad_tmp));
-				draw_line(p00, p10, color_hex(color_w), 2);
-				draw_line(p01, p11, color_hex(color_w), 2);
-				draw_line(p00, p01, color_hex(color_u), 3);
-				draw_line(p10, p11, color_hex(color_u), 3);
-			}
-
-			var depth = calc_interval_penetration_depth(intervals[0], intervals[1]);
-			if (depth) {
-				var u0 = depth.offset;
-				var u1 = u0 + depth.displacement;
-
-				var draw_fn = collision ? draw_arrow : draw_line;
-				draw_fn(
-					vec_add(vec_scale(u, u0), vec_scale(v, wmax + wpad)),
-					vec_add(vec_scale(u, u1), vec_scale(v, wmax + wpad)),
-					"#ffff00", 3);
-
-				draw_fn(
-					vec_add(vec_scale(u, u0), vec_scale(v, wmin - wpad)),
-					vec_add(vec_scale(u, u1), vec_scale(v, wmin - wpad)),
-					"#ffff00", 3);
-			}
-		}
 	};
-
 
 	var svg = document.getElementById("mysvg");
 
 	var update_hover_stuff = function (mpos) {
 		hover_id = undefined;
-		show_edge_id = undefined;
-
 		var best_distance = undefined;
 		for (var i = 0; i < triangles.length; i++) {
 			var triangle = triangles[i];
@@ -455,29 +359,6 @@ window.onload = function () {
 				}
 			}
 		}
-
-		if (hover_id !== undefined) return;
-
-		best_distance = undefined;
-		var potential_hover_id = undefined;
-		for (var i = 0; i < triangles.length; i++) {
-			var triangle = triangles[i];
-			var side_counter = 0;
-			var j1 = triangle.length-1;
-			for (var j0 = 0; j0 < triangle.length; j0++) {
-				var p0 = triangle[j0];
-				var p1 = triangle[j1];
-				var d = line_segment_point_distance(p0, p1, mpos);
-				if (d <= 6 && (best_distance === undefined || d < best_distance)) {
-					best_distance = d;
-					show_edge_id = mk_edge_id(i, j0);
-				}
-				side_counter += point_line_side(mpos, p0, p1);
-				j1 = j0;
-			}
-			if (Math.abs(side_counter) === 3) potential_hover_id = mk_triangle_id(i);
-		}
-		if (show_edge_id === undefined) hover_id = potential_hover_id;
 	};
 
 	add_handler(svg, "onmousemove", function (ev) {
@@ -493,12 +374,6 @@ window.onload = function () {
 			switch (type) {
 			case "handle":
 				triangles[i0][i1] = vec_add(triangles[i0][i1], drag_delta);
-				break;
-			case "triangle":
-				var triangle = triangles[i0];
-				for (var i = 0; i < triangle.length; i++) {
-					triangle[i] = vec_add(triangle[i], drag_delta);
-				}
 				break;
 			}
 		} else {
@@ -537,22 +412,13 @@ window.onload = function () {
 </head>
 <body>
 	<svg id="mysvg" width="800" height="800" viewBox="0 0 800 800">
-		<g id="prj"/>
-
 		<polygon class="triangle" id="triangle_0"/>
-		<polygon class="triangle" id="triangle_1"/>
-
 		<circle r="6" class="handle" id="handle_0_0"/>
 		<circle r="6" class="handle" id="handle_0_1"/>
 		<circle r="6" class="handle" id="handle_0_2"/>
-		<circle r="6" class="handle" id="handle_1_0"/>
-		<circle r="6" class="handle" id="handle_1_1"/>
-		<circle r="6" class="handle" id="handle_1_2"/>
-
 	</svg>
 	<br/>
-	<button id="resolve_red">Move red ...</button><button id="resolve_blue">... or blue triangle to resolve collision</button><br/>
-	<span id="resolve_info">...</span>
+	<span id="info">...</span>
 
 </body>
 </html>
