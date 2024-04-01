@@ -1,0 +1,13 @@
+
+Airfoil Physics by Bartosz Ciechanowski
+https://ciechanow.ski/airfoil/
+
+[2020] WGSL is terrible!
+https://github.com/gpuweb/gpuweb/issues/566
+Att.: https://github.com/gpuweb/gpuweb/issues/566#issuecomment-592396176
+
+better/non-sRGB color gradients:
+http://scanline.ca/hue/cielab.html
+http://scanline.ca/gradients/
+https://observablehq.com/@mattdesl/perceptually-smooth-multi-color-linear-gradients
+
