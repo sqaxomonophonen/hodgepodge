@@ -34,21 +34,25 @@ int main(int argc, char** argv)
 		e->flags = next_int();
 	}
 
-	struct timespec t0;
-	clock_gettime(CLOCK_MONOTONIC, &t0);
+	for (int pass = 0; pass < 10; pass++) {
+		struct timespec t0;
+		clock_gettime(CLOCK_MONOTONIC, &t0);
 
-	float sum = 0.0f;
-	for (int i = 0; i < n; i++) {
-		struct mystruct* e = &mem[i];
-		if ((e->flags & 256) == 0) continue;
-		sum += e->x * e->y;
+		float sum = 0.0f;
+		int sum2 = 0;
+		for (int i = 0; i < n; i++) {
+			struct mystruct* e = &mem[i];
+			//if ((e->flags & 256) == 0) continue;
+			sum += e->x * e->y;
+			sum2 += e->flags;
+		}
+
+		struct timespec t1;
+		clock_gettime(CLOCK_MONOTONIC, &t1);
+		int64_t dtnanos = (t1.tv_sec - t0.tv_sec)*1000000000LL + (t1.tv_nsec - t0.tv_nsec);
+
+		printf("sum=%f sum2=%d %f it/s\n", sum, sum2, (double)n / ((double)dtnanos * 1e-9));
 	}
-
-	struct timespec t1;
-	clock_gettime(CLOCK_MONOTONIC, &t1);
-	int64_t dtnanos = (t1.tv_sec - t0.tv_sec)*1000000000LL + (t1.tv_nsec - t0.tv_nsec);
-
-	printf("sum=%f %f it/s\n", sum, (double)n / ((double)dtnanos * 1e-9));
 
 	return 0;
 }
