@@ -40,17 +40,18 @@ public class Perf4 {
             for (int pass = 0; pass < 10; pass++) {
                 long t0 = System.nanoTime();
                 float sum = 0.0f;
+                int isum = 0;
                 for (int i = 0; i < n; i++) {
                         float x = (float) xHandle.get(mem, 0L, (long)i);
                         float y = (float) yHandle.get(mem, 0L, (long)i);
                         int flags = (int) flagsHandle.get(mem, 0L, (long)i);
-                        if ((flags & 256) == 0) continue;
+                        isum += flags;
                         float fx = x;
                         float fy = y;
                         sum += fx*fy;
                 }
                 long dt = System.nanoTime() - t0;
-                System.out.println("sum="+sum+" "+String.format("%f", (float)n/(dt*1e-9))+" it/s");
+                System.out.println("sum="+sum+" isum="+isum+" "+String.format("%f", (float)n/(dt*1e-9))+" it/s");
             }
         }
     }
