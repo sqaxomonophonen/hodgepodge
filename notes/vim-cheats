@@ -31,3 +31,5 @@ ctrl+x ctrl+l -- line completion
 :highlight clear WhitespaceEOL
 
 :highlight Search ctermbg=5
+
+H/M/L: send cursor to "home/mid/last" row on screen
