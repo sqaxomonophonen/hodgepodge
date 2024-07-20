@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ -z "$1" ] ; then
+	echo "Usage: $0 <path/to/cmd>"
+	echo "'cmd grep' should pass desired filenames from stdin"
+	echo "'cmd process' should return a value for a given input at stdin (a passed file)"
+	exit 1
+fi
+CMD=$1
+
+echo -n > PLOTDATA
+for commit in $(git rev-list --no-merges HEAD | tac) ; do
+	#echo "COMMIT $commit"
+	timestamp=$(git show -s --format=%ct ${commit})
+	sum=0
+	for file in $(git ls-tree -r --name-only ${commit} | $CMD grep ) ; do
+		#echo "  FILE $file"
+		v=$(git show "$commit:$file" | $CMD process)
+		sum=$(($sum + $v))
+	done
+	echo -e "$timestamp\t$sum" | tee -a PLOTDATA
+done
+
+gnuplot -e '
+set terminal png medium size 1920,1080;
+set output "gitplot.png";
+set xdata time;
+set timefmt "%s";
+set key left top;
+plot "PLOTDATA" using 1:2 title "gitplot" with lines;
+'
