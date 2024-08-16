@@ -1,0 +1,81 @@
+
+
+======================
+FS-UAE
+======================
+Useful command-line options:
+ --warp-mode=1            (also toggled with LALT+W)
+ --keyboard-input-grab=0  (grabs also toggled with middle mouse button)
+ --window-resizable=1
+ --fullscreen=1
+ --kickstart-file=...
+ --floppy-drive-0=...
+
+Re: slow startup:
+try_alloc_32bit() spams millions (?) of mmap() calls and it costs seconds in
+startup time. Callstack for the problem is roughly:
+ - try_alloc_32bit()
+ - uae_vm_alloc_with_flags()
+ - uae_vm_alloc()
+ - init_fpucw_x87()
+ - #ifdef FPUEMU
+   fpu_reset()
+   #endif
+Work-around on FreeBSD (probably breaks non-68000 CPUs or something):
+ - get ports (/usr/ports)
+ - $ cd /usr/ports/emulators/fs-uae
+ - $ make
+ - $ cd work/fs-uae-3.1.66
+ - $ vim src/newcpu.cpp
+ - remove: `fpu_reset ();`
+ - $ make
+Note, I also tried/considered:
+ - Building from https://github.com/FrodeSolheim/fs-uae ; lots of build errors,
+   and after fixing them: segfaults :)
+ - configure.ac has a FPUEMU "requirement"; I tried removing it, and then other
+   compile errors occured
+
+
+======================
+ASSEMBLER
+======================
+vasm: $ make CPU=m68k SYNTAX=mot
+(doesn't build on FreeBSD, but vasmm68k_mot is part of the vasm ports package)
+
+
+======================
+TOOLS
+======================
+amitools, xdftool; command-line tool to create/edit ADF files
+
+
+
+======================
+DOCS
+======================
+http://amigadev.elowar.com/
+http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html
+http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node0000.html
+http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
+https://anadoxin.org/blog/amigaos-stdlib-vector-tables.html/
+https://www.nxp.com/docs/en/reference-manual/M68000PRM.pdf
+https://oldwww.nvg.ntnu.no/amiga/MC680x0_Sections/mc68000timing.HTML
+
+
+68k cycle counter:
+https://68kcounter.grahambates.com/
+
+======================
+RANDOM NOTES
+======================
+
+Boot disks: If df0:xyzzy exists, and is an Amiga executable, and
+s/startup-sequence contains "xyzzy\n", then it will autoboot the executable. If
+you see a "103" error, it's not a "file not found" error, but a exec format
+error I think (had me running in circles for a while).
+
+Memories available (AvailMem) in "hello world":
+  CHIP RAM 0x6fed8=458456
+  FAST RAM 0x76470=484464
+
+
