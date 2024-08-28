@@ -1,0 +1,9 @@
+Very old (2007-ish) attempt at remaking the old Amiga 500 game Ebonstar from
+1988 by MicroIllusions.
+
+Everything is quite faithful to the original, including ebonstar3.XM. Compare
+with: https://www.youtube.com/watch?v=oN3hjmxoo4E
+
+w,a,d,f: yellow ship; thrust, rotate left, rotate right, fire
+arrow-up,arrow-left,arrow-right,space: red ship; thrust, rotate left, rotate right, fire
+arrow-down: make black hole "explode" (keep pressed)
