@@ -147,16 +147,18 @@ def main(stdscr):
 	curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW)
 	curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
 	curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_RED)
+	curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_BLUE)
 
-	seq = [2,3,4,5]
-	tps = 0.05
+	seq = [2,3,4,5,6]
+	tps = 0.035
 
-	stdscr.timeout(40)
+	stdscr.timeout(30)
 	while True:
 		stdscr.clear()
 		h,w = stdscr.getmaxyx()
 		if len(times) < 2:
-			msg = ["TAP!"]
+			msg = ["START TAPPING"]
+			msg.insert(0," "*len(msg[0]))
 		else:
 			a = 0
 			n = 0
