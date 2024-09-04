@@ -154,7 +154,7 @@ def main(stdscr):
 
 	stdscr.timeout(30)
 	while True:
-		stdscr.clear()
+		stdscr.erase()
 		h,w = stdscr.getmaxyx()
 		if len(times) < 2:
 			msg = ["START TAPPING"]
