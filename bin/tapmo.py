@@ -157,7 +157,10 @@ def main(stdscr):
 		stdscr.erase()
 		h,w = stdscr.getmaxyx()
 		if len(times) < 2:
-			msg = ["START TAPPING"]
+			if len(times) == 0:
+				msg = ["START TAPPING"]
+			else:
+				msg = ["KEEP TAPPING"]
 			msg.insert(0," "*len(msg[0]))
 		else:
 			a = 0
