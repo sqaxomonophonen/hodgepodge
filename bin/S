@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+cols=$(tput cols)
+echo ; echo
+echo -ne '\033[30;45m'
+for x in $(seq 1 $cols) ; do
+	echo -n ' '
+done
+echo -ne '\033[30;105m'
+for x in $(seq 1 $cols) ; do
+	echo -n ' '
+done
+echo -e '\033[0m'
+echo
