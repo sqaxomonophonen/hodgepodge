@@ -83,7 +83,7 @@ window.onload = () => {
 		scrubbing = false;
 		voluming = false;
 	});
-	speaker.addEventListener("click",_=>{
+	speaker.addEventListener("mousedown",_=>{
 		if (previous_gain !== null) {
 			set_gain(previous_gain);
 			previous_gain = null;
@@ -95,13 +95,13 @@ window.onload = () => {
 		}
 	});
 
-	btnplay.addEventListener("click",_=>{
+	btnplay.addEventListener("mousedown",_=>{
 		btnplay.style.display = 'none';
 		btnpause.style.display = '';
 
 	});
 
-	btnpause.addEventListener("click",_=>{
+	btnpause.addEventListener("mousedown",_=>{
 		btnplay.style.display = '';
 		btnpause.style.display = 'none';
 	});
