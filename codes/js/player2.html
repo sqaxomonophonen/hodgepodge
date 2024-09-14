@@ -14,11 +14,13 @@ function animate() {
 	});
 }
 
-function fmtdur(dur) {
+function fmtmmss(dur,durmax) {
 	dur = dur|0;
 	let mm = ""+((dur/60)|0);
 	let ss = ""+(dur-mm*60);
 	if (ss.length === 1) ss = "0"+ss;
+	let mmx = ""+((durmax/60)|0);
+	while (mm.length < mmx.length) mm="0"+mm;
 	return mm+":"+ss;
 }
 
@@ -45,8 +47,8 @@ window.onload = () => {
 		pos = clamp(p);
 		timepre.style.width = (pos*100).toFixed(2)+'%';
 		timedot.style.left = (pos*100).toFixed(2)+'%';
-		tpos.innerHTML = fmtdur(pos*songlen);
-		tend.innerHTML = fmtdur(songlen);
+		tpos.innerHTML = fmtmmss(pos*songlen,songlen);
+		tend.innerHTML = fmtmmss(songlen,songlen);
 	};
 	set_pos(0);
 	let scrub = e=>{
