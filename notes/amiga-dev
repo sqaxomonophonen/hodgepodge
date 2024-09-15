@@ -53,11 +53,15 @@ amitools, xdftool; command-line tool to create/edit ADF files
 ======================
 DOCS
 ======================
+amiga:
 http://amigadev.elowar.com/
+http://amigadev.elowar.com/read/ADCD_2.1/Includes_and_Autodocs_3._guide/node0001.html
 http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html
 http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node0000.html
-http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
 https://anadoxin.org/blog/amigaos-stdlib-vector-tables.html/
+http://oscomp.hu/depot/amiga_memory_map.html
+m68k:
+http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
 https://www.nxp.com/docs/en/reference-manual/M68000PRM.pdf
 https://oldwww.nvg.ntnu.no/amiga/MC680x0_Sections/mc68000timing.HTML
 
@@ -78,4 +82,11 @@ Memories available (AvailMem) in "hello world":
   CHIP RAM 0x6fed8=458456
   FAST RAM 0x76470=484464
 
+
+======================
+AUDIO
+======================
+
+"28,867 samples/second is also the maximum sampling rate for PAL systems":
+http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node00DE.html
 
