@@ -58,6 +58,7 @@ function P(sample_rate,n_channels,n_frames) {
 		let songlen = n_frames/sample_rate;
 		function animate() {
 			window.requestAnimationFrame(_=>{
+				if (!window.pp) return;
 				let n=Date.now(),
 				    t=(n*2e-4)%1,
 				    tf=(t*360).toFixed(4),
