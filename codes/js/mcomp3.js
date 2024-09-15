@@ -31,9 +31,10 @@ function COMP(path, prefixes) {
 		token = next_token();
 	}
 	w = w.replaceAll("\n","");
-	const ratio = (w.length + JSON.stringify(pairs).length) / orig.length;
-	console.error(path, "compression:", ratio);
-	return [w, pairs.join(SPLIT)];
+	pairs = pairs.join(SPLIT);
+	const ratio = (w.length + pairs.length) / orig.length;
+	console.error(path, "compression:", ratio, w.length/orig.length);
+	return [w, pairs];
 }
 
 let [ css, css_pairs ] = COMP("player3.css",[
