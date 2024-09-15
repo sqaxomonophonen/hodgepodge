@@ -3,7 +3,8 @@ function P(sample_rate,n_channels,n_frames) {
 	    post_worklet_message,
 	    n_chunks_generated = 0,
 	    chunk_frame_length = 0,
-	    clamp = x=>Math.min(1,Math.max(0,x))
+	    clampmm = (x,min,max)=>Math.min(max,Math.max(min,x)),
+	    clamp = x=>clampmm(x,0,1)
 	    ;
 	window.onload=_=>{
 		let worklet_node, audio_ctx, gain_node, playing, set_pos,
@@ -175,6 +176,29 @@ function P(sample_rate,n_channels,n_frames) {
 		animate();
 	}
 
+	let data_length = n_frames * n_channels * 2,
+	    wave_length = 44+data_length,
+	    WAVE = new Uint8Array(wave_length),
+	    cursor = 0,
+	    wave_url,
+	    wu16 = value => { WAVE[cursor++]=value; WAVE[cursor++]=value>>8; },
+	    wu32 = value => { wu16(value); wu16(value>>16); },
+	    wstr = s => { for (s of s) WAVE[cursor++]=s.charCodeAt(0); }
+	    ;
+
+	wstr("RIFF");
+	wu32(data_length+36);
+	wstr("WAVEfmt ");
+	wu32(16);
+	wu16(1);
+	wu16(n_channels);
+	wu32(sample_rate);
+	wu32(sample_rate * n_channels * 2);
+	wu16(n_channels * 2);
+	wu16(16);
+	wstr("data");
+	wu32(data_length);
+
 	return chunk => {
 		chunk_frame_length = chunk.length / n_channels;
 		n_chunks_generated++;
@@ -182,6 +206,16 @@ function P(sample_rate,n_channels,n_frames) {
 			prebuf.push(chunk);
 		} else {
 			post_worklet_message({c:chunk});
+		}
+		for (let i = 0; i < chunk.length; i++) {
+			wu16(clampmm(chunk[i],-1,1)*32767 + Math.random()*0.5);
+		}
+		if ((cursor-wave_length) === 0) {
+			wave_url = URL.createObjectURL(new File([WAVE],'my_song.wav',{'type':'audio/wav'}));
+			dl0.style.display = '';
+			dl1.onclick = _=>{
+				p0.innerHTML = '<audio controls src="' + wave_url + '">';
+			};
 		}
 	};
 }

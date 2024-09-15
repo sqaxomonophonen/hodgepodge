@@ -5,7 +5,13 @@ font-family:sans;
 color:#fff;
 }
 
-a{color:$C;}
+a{
+color:$C;
+}
+
+audio{
+width:100%;
+}
 
 /*player area*/
 p0{
