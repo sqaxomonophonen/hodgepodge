@@ -92,7 +92,7 @@ let [ aw, aw_pairs ] = COMP("worklet3.min.js",[
 html = html.replace(/<!--[\s\S]*?-->/g, ''); // remove HTML comments
 css  = css.replace(/\/\*[\s\S]*?\*\//g, ''); // remove CSS comments
 
-console.log("F=(s,p)=>{p=p.split('"+SPLIT+"');while(p.length){let x=p.pop();s=s.replaceAll(p.pop(),x);}return s}");
+console.log("F=(s,p)=>{for(p=p.split('"+SPLIT+"');p.length;){let x=p.pop();s=s.replaceAll(p.pop(),x);}return s}");
 console.log("A0=F(`<style>"+css+"</style>`,`"+css_pairs+"`)");
 console.log("A1=F(`"+html+"`,`"+html_pairs+"`)");
 console.log("A2=F(`"+aw+"`,`"+aw_pairs+"`)");
