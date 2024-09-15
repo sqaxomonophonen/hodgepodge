@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -e
-ls -l player3.js player3.css player3.doc.html
-node mcomp3.js > player3.ugly.js
+T=build3.js
+ls -l song3.js player3.js player3.css player3.doc.html
+node mcomp3.js > $T
 uglifyjs \
 	--rename \
-	player3.js >> player3.ugly.js
-ls -l player3.ugly.js
-rm -f player3.ugly.js.gz
-gzip -k player3.ugly.js
-ls -l player3.ugly.js.gz
+	player3.js >> $T
+uglifyjs \
+	--rename \
+	song3.js >> $T
+ls -l $T
+rm -f $T.gz
+gzip -k $T
+ls -l $T.gz

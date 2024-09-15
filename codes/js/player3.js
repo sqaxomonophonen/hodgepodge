@@ -1,4 +1,4 @@
-function P(SAMPLERATE,N_SAMPLES) {
+function P(sample_rate,n_samples,callback) {
 	window.onload=_=>{
 
 	let varinject = (s) => s.replace(/\$C/g,"#fb1"),
@@ -10,11 +10,15 @@ function P(SAMPLERATE,N_SAMPLES) {
 
 	setTimeout(_=>{
 
-	let songlen = N_SAMPLES/SAMPLERATE;
+	let songlen = n_samples/sample_rate;
 	function animate() {
 		window.requestAnimationFrame(_=>{
-			let n=Date.now(),t=(n*2e-4)%1,tf=(t*360).toFixed(4),xf=(15+1.8*Math.sin(n*0.06)).toFixed(0),ps=pp.style;
-			ps.background = 'lch('+xf+' 40 '+tf+')';
+			let n=Date.now(),
+			    t=(n*2e-4)%1,
+			    tf=(t*360).toFixed(4),
+			    xf=(45+3*Math.sin(n*0.06)).toFixed(0),
+			    ps=pp.style;
+			ps.background = 'lch('+xf+' 60 '+tf+')';
 			ps.width = ((1-((n*7e-5)%1))*100).toFixed(1)+'%';
 			animate();
 		});
@@ -44,7 +48,7 @@ function P(SAMPLERATE,N_SAMPLES) {
 		v0.style.width = v1.style.left = fmtpct(gain);
 		sp.style.opacity = gain > 0 ? 1 : 0.2;
 		for (let i = 0; i < 3; i++) {
-			document.getElementById("vbar"+i).style.opacity = clamp(gain*3-i);
+			document.getElementById("c"+i).style.opacity = clamp(gain*3-i);
 		}
 	    },
 
@@ -126,4 +130,6 @@ function P(SAMPLERATE,N_SAMPLES) {
 
 	},0);
 	}
+
+	callback(null);
 }
