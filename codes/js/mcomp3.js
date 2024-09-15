@@ -57,7 +57,7 @@ let [ html, html_pairs ] = COMP("player3.doc.html",[
 	'<path stroke="$C" stroke-width="1" fill="none" id="vbar',
 	'<rect width="6" height="16" y="2" style="fill:$C" x="',
 	'<polygon points="',
-	'viewBox="0 0 ',
+	'<svg viewBox="0 0 ',
 	'<div id="',
 	'<div class="',
 	'style="',
@@ -65,7 +65,7 @@ let [ html, html_pairs ] = COMP("player3.doc.html",[
 	"</div>",
 	'width="',
 	'height="',
-	"svg",
+	"</svg>",
 	"0 0 ",
 ]);
 
