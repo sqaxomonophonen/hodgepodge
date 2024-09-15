@@ -2,10 +2,13 @@
 set -e
 T=build3.js
 ls -l song3.js player3.js player3.css player3.doc.html
-uglifyjs --rename worklet3.js > worklet3.min.js
+OPT() {
+	uglifyjs $1 --compress --rename --mangle
+}
+OPT worklet3.js > worklet3.min.js
 node mcomp3.js > $T
-uglifyjs --rename player3.js >> $T
-uglifyjs --rename song3.js >> $T
+OPT player3.js >> $T
+OPT song3.js >> $T
 ls -l $T
 
 H=build3.html
