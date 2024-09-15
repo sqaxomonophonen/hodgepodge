@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e
+ls -l player3.js player3.css player3.doc.html
+node mcomp3.js > player3.ugly.js
+uglifyjs \
+	--rename \
+	player3.js >> player3.ugly.js
+ls -l player3.ugly.js
+rm -f player3.ugly.js.gz
+gzip -k player3.ugly.js
+ls -l player3.ugly.js.gz
