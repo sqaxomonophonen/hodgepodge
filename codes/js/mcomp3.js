@@ -41,7 +41,7 @@ function COMP(path, prefixes) {
 		prev_ratio = ratio;
 		token = next_token();
 	}
-	console.error(path, "compression:", ratio, w.length/orig.length);
+	console.error(path, "compression:", ratio, "( without dictionary:" , w.length/orig.length, ")");
 	return [w, pairs.join(SPLIT)];
 }
 
@@ -81,9 +81,17 @@ let [ html, html_pairs ] = COMP("player3.doc.html",[
 	"0 0 ",
 ]);
 
+let [ aw, aw_pairs ] = COMP("worklet3.min.js",[
+	'Processor',
+	'.length',
+	'this.'
+]);
+
 html = html.replace(/<!--[\s\S]*?-->/g, ''); // remove HTML comments
 css  = css.replace(/\/\*[\s\S]*?\*\//g, ''); // remove CSS comments
 
 console.log("F=(s,p)=>{p=p.split('"+SPLIT+"');while(p.length){let x=p.pop();s=s.replaceAll(p.pop(),x);}return s}");
-console.log("HEAD=F(`<style>"+css+"</style>`,"+JSON.stringify(css_pairs)+")");
-console.log("HTML=F(`"+html+"`,"+JSON.stringify(html_pairs)+")");
+console.log("A0=F(`<style>"+css+"</style>`,`"+css_pairs+"`)");
+console.log("A1=F(`"+html+"`,`"+html_pairs+"`)");
+console.log("A2=F(`"+aw+"`,`"+aw_pairs+"`)");
+

@@ -1,14 +1,41 @@
-function P(sample_rate,n_samples,callback) {
-	window.onload=_=>{
+function P(sample_rate,n_samples,callback) { window.onload=_=>{
+	let worklet_node, audio_ctx, gain_node, playing;
+	let post_worklet_message = message => worklet_node.port.postMessage(message);
+
+	let play_audio_at = position=>{
+		position = (position*n_samples)|0;
+		if(!audio_ctx) {
+			audio_ctx = new AudioContext({sampleRate:sample_rate});
+			audio_ctx.audioWorklet.addModule("data:text/javascript;base64,"+btoa(A2)).then(_=>{
+				gain_node = audio_ctx.createGain();
+				gain_node.connect(audio_ctx.destination);
+				worklet_node = new AudioWorkletNode(audio_ctx, "a",{numberOfInputs:0,outputChannelCount:[2]});
+				worklet_node.connect(gain_node);
+				worklet_node.port.addEventListener("message", (msg) => {
+					//document.getElementById("pos").innerHTML = msg.data.position;
+					// TODO
+				});
+				worklet_node.port.start();
+				audio_ctx.resume();
+				post_worklet_message({p:position});
+			});
+		} else {
+			post_worklet_message({p:position});
+		}
+		playing=1;
+	};
+
+	let stop_audio = _=> {
+		playing=0;
+		post_worklet_message({s:1});
+	};
 
 	let varinject = (s) => s.replace(/\$C/g,"#fb1"),
 	    sethtml=(e,s)=>e.innerHTML=s
 	    ;
 
-	sethtml(document.head, varinject(HEAD));
-	sethtml(document.body, varinject(HTML));
-
-	setTimeout(_=>{
+	sethtml(document.head, varinject(A0));
+	sethtml(document.body, varinject(A1));
 
 	let songlen = n_samples/sample_rate;
 	function animate() {
@@ -100,6 +127,7 @@ function P(sample_rate,n_samples,callback) {
 		if (voluming) volum(event);
 	};
 	window.onmouseup=_=>{
+		if (scrubbing && playing) play_audio_at(pos);
 		scrubbing = 0;
 		voluming = 0;
 	};
@@ -117,19 +145,23 @@ function P(sample_rate,n_samples,callback) {
 
 
 	setmdown(b1,_=>{
+		play_audio_at(pos);
 		show(b1,0);
 		show(b0,1);
 	});
 
 	setmdown(b0,_=>{
+		stop_audio();
 		show(b1,1);
 		show(b0,0);
 	});
 
 	animate();
 
-	},0);
-	}
-
-	callback(null);
-}
+	callback(chunk => {
+		console.log(["TODO CHUNK", chunk]);
+		// two destinations:
+		//  - worklet: post_worklet_message({c:Float32Array...})
+		//  - local .wav buffer?
+	});
+}}
