@@ -7,6 +7,14 @@ node mcomp3.js > $T
 uglifyjs --rename player3.js >> $T
 uglifyjs --rename song3.js >> $T
 ls -l $T
-rm -f $T.gz
-gzip -k $T
-ls -l $T.gz
+
+H=build3.html
+echo "<!DOCTYPE html>" > $H
+echo "<head><script>" >> $H
+cat $T >> $H
+echo "</script></head>" >> $H
+ls -l $H
+
+rm -f $H.gz
+gzip -k $H
+ls -l $H.gz
