@@ -62,6 +62,7 @@ let [ css, css_pairs ] = COMP("player3.css",[
 	"right:",
 	"left:",
 	"0 0 ",
+	");}",
 	"px",
 ]);
 
@@ -79,6 +80,7 @@ let [ html, html_pairs ] = COMP("player3.doc.html",[
 	'height="',
 	"</svg>",
 	"0 0 ",
+	'" ',
 ]);
 
 let [ aw, aw_pairs ] = COMP("worklet3.min.js",[
