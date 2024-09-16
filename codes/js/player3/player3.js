@@ -10,7 +10,7 @@ function P(sample_rate,n_channels,n_frames) {
 		let worklet_node, audio_ctx, gain_node, playing, set_pos,
 		    gain = 1 ,
 		    set_gain_node_gain = _=>{
-			    gain_node.gain.value = (Math.pow(3,gain)-1)/(3-1);
+			    if (gain_node) gain_node.gain.value = (Math.pow(3,gain)-1)/(3-1);
 		    },
 
 		    play_audio_at = position=>{
