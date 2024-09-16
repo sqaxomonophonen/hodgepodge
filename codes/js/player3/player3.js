@@ -209,6 +209,10 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		setmdown(b1,_=>set_playing(1));
 		setmdown(b0,_=>set_playing(0));
 
+		window.onkeydown = () => {
+			if (event.code == "Space") set_playing(playing^1);
+		};
+
 		animate();
 	}
 
