@@ -10,55 +10,10 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		let worklet_node, audio_ctx, gain_node, playing, set_pos,
 		    analyser_node, analyser_data, cctx,
 		    gain = 1 ,
-		    set_gain_node_gain = _=>{
-			    if (gain_node) gain_node.gain.value = (Math.pow(3,gain)-1)/(3-1);
-		    },
-
-		    play_audio_at = position=>{
-			position = (position*n_frames)|0;
-			if(!audio_ctx) {
-				audio_ctx = new AudioContext({sampleRate:sample_rate});
-				audio_ctx.audioWorklet.addModule("data:text/javascript;base64,"+btoa(A2)).then(_=>{
-					gain_node = audio_ctx.createGain();
-					gain_node.connect(audio_ctx.destination);
-					set_gain_node_gain();
-
-					analyser_node = audio_ctx.createAnalyser();
-					analyser_node.fftSize = 256;
-					gain_node.connect(analyser_node);
-					analyser_data = new Float32Array(analyser_node.frequencyBinCount);
-
-					worklet_node = new AudioWorkletNode(audio_ctx, "a",{numberOfInputs:0,outputChannelCount:[n_channels]});
-					worklet_node.connect(gain_node);
-					worklet_node.port.onmessage = msg => {
-						set_pos(msg.data.p / n_frames);
-					};
-					worklet_node.port.start();
-					audio_ctx.resume();
-					post_worklet_message = message => worklet_node.port.postMessage(message);
-					if (prebuf) {
-						post_worklet_message({c:prebuf});
-						prebuf=0;
-					}
-					post_worklet_message({p:position});
-				});
-			} else {
-				post_worklet_message({p:position});
-			}
-			playing=1;
-		    },
-
-		    stop_audio = _=> {
-			playing=0;
-			post_worklet_message({s:1});
-		    },
-
+		    set_gain_node_gain = _=>{ if (gain_node) { gain_node.gain.value = (Math.pow(3,gain)-1)/(3-1); } },
 		    varinject = (s) => s.replace(/\$C/g,main_color),
-
 		    sethtml=(e,s)=>e.innerHTML=s,
-
 		    songlen = n_frames/sample_rate,
-
 		    animate;
 		    ;
 
@@ -75,12 +30,11 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 				    t=(n*2e-4)%1,
 				    tf=(t*360).toFixed(4),
 				    xf=(45+3*Math.sin(n*0.06)).toFixed(0),
-				    ps=pp.style;
+				    ps=pp.style,
+				    width = cc.width = cc.clientWidth,
+				    height = cc.height = cc.clientHeight;
 				ps.background = 'lch('+xf+' 60 '+tf+')';
-				//ps.width = ((1-((n*7e-5)%1))*100).toFixed(1)+'%';
 				ps.width = (clamp(1-((n_chunks_generated * chunk_frame_length) / n_frames))*100).toFixed(1)+"%";
-
-				let width = cc.width = cc.clientWidth, height = cc.height = cc.clientHeight;
 
 				if (analyser_node) {
 					analyser_node.getFloatTimeDomainData(analyser_data);
@@ -116,9 +70,40 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		let set_playing = p => {
 			if (p) {
 				if (pos==1) pos=0;
-				play_audio_at(pos);
+				let position = (pos*n_frames)|0;
+				if(!audio_ctx) {
+					audio_ctx = new AudioContext({sampleRate:sample_rate});
+					audio_ctx.audioWorklet.addModule("data:text/javascript;base64,"+btoa(A2)).then(_=>{
+						gain_node = audio_ctx.createGain();
+						gain_node.connect(audio_ctx.destination);
+						set_gain_node_gain();
+
+						analyser_node = audio_ctx.createAnalyser();
+						analyser_node.fftSize = 256;
+						gain_node.connect(analyser_node);
+						analyser_data = new Float32Array(analyser_node.frequencyBinCount);
+
+						worklet_node = new AudioWorkletNode(audio_ctx, "a",{numberOfInputs:0,outputChannelCount:[n_channels]});
+						worklet_node.connect(gain_node);
+						worklet_node.port.onmessage = msg => {
+							set_pos(msg.data.p / n_frames);
+						};
+						worklet_node.port.start();
+						audio_ctx.resume();
+						post_worklet_message = message => worklet_node.port.postMessage(message);
+						if (prebuf) {
+							post_worklet_message({c:prebuf});
+							prebuf=0;
+						}
+						post_worklet_message({p:position});
+					});
+				} else {
+					post_worklet_message({p:position});
+				}
+				playing=1;
 			} else {
-				stop_audio();
+				playing=0;
+				if (post_worklet_message) post_worklet_message({s:1});
 			}
 			show(b1,p^1);
 			show(b0,p);
@@ -133,8 +118,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			sethtml(tend, fmtmmss(songlen,songlen));
 		};
 
-		let scrubbing = 0 ,
-		    voluming = 0 ,
+		let drag_state = 0 ,
 		    pos ,
 		    previous_gain = null ,
 		    fmtpct = (scalar) => (scalar*100).toFixed(2)+'%' ,
@@ -145,7 +129,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			v0.style.width = v1.style.left = fmtpct(gain);
 			sp.style.opacity = gain > 0 ? 1 : 0.2;
 			for (let i = 0; i < 3; i++) {
-				document.getElementById("c"+i).style.opacity = clamp(gain*3-i);
+				[c0,c1,c2][i].style.opacity = clamp(gain*3-i);
 			}
 		    },
 
@@ -175,24 +159,22 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 
 		set_pos(0);
 		setmdown(t0,_=>{
-			scrubbing = 1;
+			drag_state = 1;
 			set_playing(0);
 			scrub(event);
 		});
 		setmdown(vo,_=>{
-			voluming = 1;
+			drag_state = 2;
 			volum(event);
 		});
 		vo.onwheel = wheely;
 		sp.onwheel = wheely;
 		window.onmousemove=_=>{
-			if (scrubbing) scrub(event);
-			if (voluming) volum(event);
+			if (drag_state==1) scrub(event);
+			if (drag_state==2) volum(event);
 		};
 		window.onmouseup=_=>{
-			if (scrubbing && playing) play_audio_at(pos);
-			scrubbing = 0;
-			voluming = 0;
+			drag_state = 0;
 		};
 		setmdown(sp,_=>{
 			if (previous_gain !== null) {
