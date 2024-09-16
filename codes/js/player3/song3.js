@@ -16,8 +16,8 @@
 		let xs = new Float32Array(CHUNK_FRAMES*N_CHANNELS);
 		let p = 0;
 		for (let i = 0; i < CHUNK_FRAMES; i++) {
-			xs[p++] = 0.1 * Math.sin(phi_left);
-			xs[p++] = 0.1 * Math.sin(phi_right);
+			xs[p++] = 0.9 * Math.sin(phi_left);
+			xs[p++] = 0.9 * Math.sin(phi_right);
 			phi_left += dphi_left;
 			phi_right += dphi_right;
 			dphi_left += 1.1e-7;

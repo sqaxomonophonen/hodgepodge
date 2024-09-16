@@ -8,6 +8,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 	    ;
 	window.onload=_=>{
 		let worklet_node, audio_ctx, gain_node, playing, set_pos,
+		    analyser_node, analyser_data, cctx,
 		    gain = 1 ,
 		    set_gain_node_gain = _=>{
 			    if (gain_node) gain_node.gain.value = (Math.pow(3,gain)-1)/(3-1);
@@ -21,6 +22,12 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 					gain_node = audio_ctx.createGain();
 					gain_node.connect(audio_ctx.destination);
 					set_gain_node_gain();
+
+					analyser_node = audio_ctx.createAnalyser();
+					analyser_node.fftSize = 256;
+					gain_node.connect(analyser_node);
+					analyser_data = new Float32Array(analyser_node.frequencyBinCount);
+
 					worklet_node = new AudioWorkletNode(audio_ctx, "a",{numberOfInputs:0,outputChannelCount:[n_channels]});
 					worklet_node.connect(gain_node);
 					worklet_node.port.onmessage = msg => {
@@ -56,6 +63,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 		sethtml(document.body, varinject(A1));
 
 		st.innerHTML = song_text.replaceAll("-","&ndash;");
+		cctx=cc.getContext('2d');
 
 		let songlen = n_frames/sample_rate;
 		function animate() {
@@ -69,6 +77,26 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 				ps.background = 'lch('+xf+' 60 '+tf+')';
 				//ps.width = ((1-((n*7e-5)%1))*100).toFixed(1)+'%';
 				ps.width = (clamp(1-((n_chunks_generated * chunk_frame_length) / n_frames))*100).toFixed(1)+"%";
+
+				let width = cc.width = cc.clientWidth, height = cc.height = cc.clientHeight;
+
+				if (analyser_node) {
+					analyser_node.getFloatTimeDomainData(analyser_data);
+					cctx.clearRect(0, 0, width, height);
+					let n = analyser_data.length;
+					for (let i = 0; i < n; i++) {
+						let v = analyser_data[i] * Math.sin(i*Math.PI/n);
+						cctx.beginPath();
+						cctx.rect(
+							((width/n)*(i+0.2)),
+							v>0 ? (1-v)*(height/2) : height/2,
+							((width/n)*(0.6)),
+							v>0 ? (v)*(height/2) : (-v)*(height/2)
+						);
+						cctx.fillStyle='lch('+(30-25*Math.abs(i-n/2)/(n/2))+' 15 '+(((360*i)/n)|0)+' / 0.6)';
+						cctx.fill();
+					}
+				}
 				animate();
 			});
 		}
