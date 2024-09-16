@@ -61,6 +61,7 @@ let [ css, css_pairs ] = COMP("player3.css",[
 	"color:",
 	"right:",
 	"left:",
+	"100%",
 	"0 0 ",
 	");}",
 	"px",
