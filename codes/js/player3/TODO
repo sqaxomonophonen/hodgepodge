@@ -1,3 +1,2 @@
-FIXME: doesn't enter stopped state when reaching end
 FIXME: seek doesn't really work while playing
 TODO: https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode ?

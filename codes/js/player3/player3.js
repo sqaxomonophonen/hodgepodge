@@ -83,8 +83,20 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 			return mm+":"+ss;
 		};
 
+		set_playing = p=>{
+			if (p) {
+				if (pos==1) pos=0;
+				play_audio_at(pos);
+			} else {
+				stop_audio();
+			}
+			show(b1,p^1);
+			show(b0,p);
+		},
+
 		set_pos = p=>{
 			pos = clamp(p);
+			if (pos==1) set_playing(0);
 			t3.style.width = fmtpct(pos);
 			t2.style.left = fmtpct(pos);
 			sethtml(tpos, fmtmmss(pos*songlen,songlen));
@@ -163,18 +175,8 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 			}
 		});
 
-
-		setmdown(b1,_=>{
-			play_audio_at(pos);
-			show(b1,0);
-			show(b0,1);
-		});
-
-		setmdown(b0,_=>{
-			stop_audio();
-			show(b1,1);
-			show(b0,0);
-		});
+		setmdown(b1,_=>set_playing(1));
+		setmdown(b0,_=>set_playing(0));
 
 		animate();
 	}
