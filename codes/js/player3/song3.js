@@ -26,7 +26,7 @@
 			while (phi_right > 2*Math.PI) phi_right -= 2*Math.PI;
 		}
 		push(xs);
-		setTimeout(X,50);
+		setTimeout(X,10);
 	}
 	X();
 })();
