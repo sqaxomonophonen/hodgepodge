@@ -1,4 +1,4 @@
-function P(sample_rate, n_channels, n_frames, song_text, main_color) {
+P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 	let prebuf=[],
 	    post_worklet_message,
 	    n_chunks_generated = 0,
