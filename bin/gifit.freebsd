@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+BOX=$(mktemp -t GIFIT)
+rm $BOX
+BOX="$BOX.png"
+echo $BOX
+gm import $BOX
+DIM=$(gm identify -format "%wx%h" $BOX)
+X=$(gm identify -format "%X" $BOX)
+Y=$(gm identify -format "%Y" $BOX)
+rm $BOX
+ffmpeg -video_size ${DIM} -framerate 25 -f x11grab -i ${DISPLAY}+${X},${Y} /tmp/gifit.gif
