@@ -218,8 +218,8 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 		}
 		if ((cursor-wave_length) === 0) {
 			let filename = song_text.replaceAll(' ','_')+'.wav';
-			dl1.href = URL.createObjectURL(new File([WAVE],filename,{'type':'audio/wav'}));
-			dl1.download = filename;
+			dl0.href = URL.createObjectURL(new File([WAVE],filename,{'type':'audio/wav'}));
+			dl0.download = filename;
 			dl0.style.display = '';
 		}
 	};
