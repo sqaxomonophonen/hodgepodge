@@ -220,7 +220,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 			let filename = song_text.replaceAll(' ','_')+'.wav';
 			dl0.href = URL.createObjectURL(new File([WAVE],filename,{'type':'audio/wav'}));
 			dl0.download = filename;
-			dl0.style.display = '';
+			dl0.style.visibility = '';
 		}
 	};
 }
