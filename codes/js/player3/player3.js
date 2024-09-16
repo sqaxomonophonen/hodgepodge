@@ -55,8 +55,11 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 
 		    varinject = (s) => s.replace(/\$C/g,main_color),
 
-		    sethtml=(e,s)=>e.innerHTML=s
+		    sethtml=(e,s)=>e.innerHTML=s,
 
+		    songlen = n_frames/sample_rate,
+
+		    animate;
 		    ;
 
 		sethtml(document.head, varinject(A0));
@@ -65,8 +68,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		st.innerHTML = song_text.replaceAll("-","&ndash;");
 		cctx=cc.getContext('2d');
 
-		let songlen = n_frames/sample_rate;
-		function animate() {
+		animate = () => {
 			window.requestAnimationFrame(_=>{
 				if (!window.pp) return;
 				let n=Date.now(),
@@ -111,7 +113,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			return mm+":"+ss;
 		};
 
-		set_playing = p=>{
+		let set_playing = p => {
 			if (p) {
 				if (pos==1) pos=0;
 				play_audio_at(pos);
@@ -120,9 +122,9 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			}
 			show(b1,p^1);
 			show(b0,p);
-		},
+		};
 
-		set_pos = p=>{
+		set_pos = p => {
 			pos = clamp(p);
 			if (pos==1) set_playing(0);
 			t3.style.width = fmtpct(pos);

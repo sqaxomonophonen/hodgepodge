@@ -8,10 +8,11 @@
 	    phi_left=0,
 	    phi_right=0,
 	    dphi_left = 0.1,
-	    dphi_right = 0.11
+	    dphi_right = 0.11,
+	    X
 	    ;
 
-	function X() {
+	X = () => {
 		if (remaining-- <= 0) return;
 		let xs = new Float32Array(CHUNK_FRAMES*N_CHANNELS);
 		let p = 0;
