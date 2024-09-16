@@ -111,6 +111,15 @@ margin:4px -6px;
 filter:drop-shadow(0 0 2px #000);
 }
 
+#dl0{
+animation: fadeIn 6s;
+}
+
+@keyframes fadeIn {
+	0% { opacity: 0; }
+	100% {opacity: 1; }
+}
+
 /*
 #t0:hover .pd{
 background:#fff;

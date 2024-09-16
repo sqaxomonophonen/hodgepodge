@@ -1,4 +1,4 @@
-function P(sample_rate,n_channels,n_frames) {
+function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 	let prebuf=[],
 	    post_worklet_message,
 	    n_chunks_generated = 0,
@@ -46,7 +46,7 @@ function P(sample_rate,n_channels,n_frames) {
 			post_worklet_message({s:1});
 		    },
 
-		    varinject = (s) => s.replace(/\$C/g,"#fb1"), // TODO get from outside?
+		    varinject = (s) => s.replace(/\$C/g,main_color),
 
 		    sethtml=(e,s)=>e.innerHTML=s
 
@@ -54,6 +54,8 @@ function P(sample_rate,n_channels,n_frames) {
 
 		sethtml(document.head, varinject(A0));
 		sethtml(document.body, varinject(A1));
+
+		st.innerHTML = song_text;
 
 		let songlen = n_frames/sample_rate;
 		function animate() {
