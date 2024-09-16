@@ -146,6 +146,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 		set_pos(0);
 		setmdown(t0,_=>{
 			scrubbing = 1;
+			set_playing(0);
 			scrub(event);
 		});
 		setmdown(vo,_=>{
