@@ -55,7 +55,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 		sethtml(document.head, varinject(A0));
 		sethtml(document.body, varinject(A1));
 
-		st.innerHTML = song_text;
+		st.innerHTML = song_text.replaceAll("-","&ndash;");
 
 		let songlen = n_frames/sample_rate;
 		function animate() {
@@ -217,7 +217,7 @@ function P(sample_rate, n_channels, n_frames, song_text, main_color) {
 			wu16(clampmm(chunk[i],-1,1)*32767 + Math.random()*0.5);
 		}
 		if ((cursor-wave_length) === 0) {
-			wave_url = URL.createObjectURL(new File([WAVE],'my_song.wav',{'type':'audio/wav'}));
+			wave_url = URL.createObjectURL(new File([WAVE],song_text.replaceAll(' ','_')+'.wav',{'type':'audio/wav'}));
 			dl0.style.display = '';
 			dl1.onclick = _=>{
 				p0.innerHTML = '<audio controls src="' + wave_url + '">';

@@ -3,7 +3,7 @@
 	    N_CHANNELS=2,
 	    CHUNK_FRAMES=SAMPLE_RATE/10,
 	    N_CHUNKS=100,
-	    push=P(SAMPLE_RATE, N_CHANNELS, N_CHUNKS*CHUNK_FRAMES, "song3 &ndash; aks", "#fb1"),
+	    push=P(SAMPLE_RATE, N_CHANNELS, N_CHUNKS*CHUNK_FRAMES, "song3 - aks", "#fb1"),
 	    remaining=N_CHUNKS,
 	    phi_left=0,
 	    phi_right=0,
