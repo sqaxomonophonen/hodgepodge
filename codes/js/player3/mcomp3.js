@@ -2,8 +2,11 @@ fs=require('fs');
 
 const SPLIT="Z";
 
-function COMP(path, prefixes) {
-	const orig = fs.readFileSync(path,'utf-8');
+function LOAD(path) {
+	return fs.readFileSync(path,'utf-8');
+}
+
+function COMP(name, orig, prefixes) {
 	let w = orig;
 	w = w.replaceAll("\n","");
 	let next_token = (() => {
@@ -40,11 +43,14 @@ function COMP(path, prefixes) {
 		prev_ratio = ratio;
 		token = next_token();
 	}
-	console.error(path, "compression:", ratio, "( without dictionary:" , w.length/orig.length, ")");
+	console.error(name, "compression:", ratio, "( without dictionary:" , w.length/orig.length, ")");
 	return [w, pairs.join(SPLIT)];
 }
 
-let [ css, css_pairs ] = COMP("player3.css",[
+const clean_html = s => s.replace(/<!--[\s\S]*?-->/g, ''); // remove HTML comments
+const clean_css  = s => s.replace(/\/\*[\s\S]*?\*\//g, ''); // remove CSS comments
+
+let [ css, css_pairs ] = COMP("player3.css",clean_css(LOAD("player3.css")),[
 	"filter:drop-shadow(",
 	"position:absolute;",
 	"position:relative;",
@@ -66,7 +72,7 @@ let [ css, css_pairs ] = COMP("player3.css",[
 	"px",
 ]);
 
-let [ html, html_pairs ] = COMP("player3.doc.html",[
+let [ html, html_pairs ] = COMP("player3.doc.html",clean_html(LOAD("player3.doc.html")),[
 	'<rect width="6" height="16" y="2" style="fill:$C" x="',
 	'<path stroke="$C" stroke-width="1" fill="none" id="c',
 	'<svg viewBox="0 0 ',
@@ -74,23 +80,29 @@ let [ html, html_pairs ] = COMP("player3.doc.html",[
 	'<div class="',
 	'<div id="',
 	'height="',
+	'fill:$C"',
 	'style="',
 	'class="',
 	'width="',
 	"</div>",
 	"</svg>",
+	"canvas",
+	"span",
 	"0 0 ",
 	'" ',
+	'><',
+	'="',
+	'/>',
+	'">',
 ]);
 
-let [ aw, aw_pairs ] = COMP("worklet3.min.js",[
+let [ aw, aw_pairs ] = COMP("worklet3.min.js",LOAD("worklet3.min.js"),[
 	'Processor',
-	'.length',
-	'this.'
+	//'.length', // this is too common; handle via outer compressor?
+	'this.',
+	'port.'
 ]);
 
-html = html.replace(/<!--[\s\S]*?-->/g, ''); // remove HTML comments
-css  = css.replace(/\/\*[\s\S]*?\*\//g, ''); // remove CSS comments
 
 // XXX I should probably resist the temptation to save a few chars by inlining
 // A0/A1/A2, but it has a higher risk of F being overwritten...
