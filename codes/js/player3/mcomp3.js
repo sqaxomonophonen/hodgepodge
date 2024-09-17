@@ -7,7 +7,7 @@ function COMP(path, prefixes) {
 	let w = orig;
 	w = w.replaceAll("\n","");
 	let next_token = (() => {
-		let single_letter = "ABCDEFGHIJKLMNOPQRSTUVWXY";
+		let single_letter = "ABCDEFGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxyz0123456789";
 		if (single_letter.indexOf(SPLIT) !== -1) throw new Error("SPLIT in token list");
 		let is_valid = (token) => w.indexOf(token) === -1;
 		if (!is_valid(SPLIT)) throw new Error("source contains SPLIT char; please remove it, or change SPLIT");
@@ -27,7 +27,7 @@ function COMP(path, prefixes) {
 	let pairs = [];
 	let ratio;
 	let prev_ratio = 1;
-	const get_ratio = _=>(w.length + 4 + pairs.join(SPLIT).length) / orig.length;
+	const get_ratio = _=>(w.length + 2 + pairs.join(SPLIT).length) / orig.length;
 
 	for (let prefix of prefixes) {
 		pairs.push(token+prefix);
