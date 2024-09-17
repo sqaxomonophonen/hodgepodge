@@ -108,6 +108,7 @@ let [ player, player_pairs ] = COMP("player3.min.js",LOAD("player3.min.js"),[
 	".connect",
 	".style.",
 	".on",
+	"new ",
 	//'.length', // this is too common; handle via outer compressor?
 ]);
 
