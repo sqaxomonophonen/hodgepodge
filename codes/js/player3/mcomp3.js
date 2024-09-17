@@ -120,7 +120,7 @@ function sqjson(o) {
 
 // XXX I should probably resist the temptation to save a few chars by inlining
 // A0/A1/A2, but it has a higher risk of F being overwritten...
-console.log("F=(s,p)=>{for(p=p.split('"+SPLIT+"');p.length;){let x=p.pop();s=s.replaceAll(x[0],x.slice(1));}return s}");
+console.log("F=(s,p,x)=>{for(p=p.split('"+SPLIT+"');p.length;){x=p.pop();s=s.replaceAll(x[0],x.slice(1));}return s}");
 console.log("A0=F(`<style>"+css+"</style>`,`"+css_pairs+"`)");
 console.log("A1=F(`"+html+"`,`"+html_pairs+"`)");
 console.log("A2=F(`"+aw+"`,`"+aw_pairs+"`)");
