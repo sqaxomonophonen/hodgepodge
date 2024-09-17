@@ -7,7 +7,6 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 	    clamp = x=>clampmm(x,0,1),
 	    win=window,
 	    doc=document,
-	    styleof=x=>x.style,
 	    fmtfloat=v=>v.toFixed(4)
 	    ;
 	win.onload=_=>{
@@ -34,7 +33,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 				    t=(n*2e-4)%1,
 				    tf=fmtfloat(t*360),
 				    xf=(45+3*Math.sin(n*0.06))|0,
-				    ps=styleof(pp),
+				    ps=pp.style,
 				    width = cc.width = cc.clientWidth,
 				    height = cc.height = cc.clientHeight;
 				ps.background = 'lch('+xf+' 60 '+tf+')';
@@ -116,8 +115,8 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		set_pos = p => {
 			pos = clamp(p);
 			if (pos==1) set_playing(0);
-			styleof(t3).width = fmtpct(pos);
-			styleof(t2).left = fmtpct(pos);
+			t3.style.width = fmtpct(pos);
+			t2.style.left = fmtpct(pos);
 			sethtml(tpos, fmtmmss(pos*songlen,songlen));
 			sethtml(tend, fmtmmss(songlen,songlen));
 		};
@@ -130,10 +129,10 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 		    set_gain = g=>{
 			gain = clamp(g);
 			set_gain_node_gain();
-			styleof(v0).width = styleof(v1).left = fmtpct(gain);
-			styleof(sp).opacity = gain > 0 ? 1 : 0.2;
+			v0.style.width = v1.style.left = fmtpct(gain);
+			sp.style.opacity = gain > 0 ? 1 : 0.2;
 			for (let i = 0; i < 3; i++) {
-				styleof([c0,c1,c2][i]).opacity = clamp(gain*3-i);
+				[c0,c1,c2][i].style.opacity = clamp(gain*3-i);
 			}
 		    },
 
@@ -157,7 +156,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			set_gain(gain+0.03*(event.deltaY<0?1:-1));
 		    },
 
-		    show = (e,p) => styleof(e).display = p?'':'none';
+		    show = (e,p) => e.style.display = p?'':'none';
 
 		    ;
 
@@ -240,7 +239,7 @@ P=(sample_rate, n_channels, n_frames, song_text, main_color)=>{
 			let filename = song_text.replaceAll(' ','_')+'.wav';
 			dl0.href = URL.createObjectURL(new File([WAVE],filename,{'type':'audio/wav'}));
 			dl0.download = filename;
-			styleof(dl0).visibility = '';
+			dl0.style.visibility = '';
 		}
 	};
 }

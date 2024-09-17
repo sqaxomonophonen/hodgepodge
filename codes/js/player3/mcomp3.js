@@ -10,7 +10,7 @@ function COMP(name, orig, prefixes) {
 	let w = orig;
 	w = w.replaceAll("\n","");
 	let next_token = (() => {
-		let single_letter = "ABCDEFGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxyz0123456789";
+		let single_letter = "ABCDEFGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxyz0123456789~@";
 		if (single_letter.indexOf(SPLIT) !== -1) throw new Error("SPLIT in token list");
 		let is_valid = (token) => w.indexOf(token) === -1;
 		if (!is_valid(SPLIT)) throw new Error("source contains SPLIT char; please remove it, or change SPLIT");
@@ -103,6 +103,18 @@ let [ aw, aw_pairs ] = COMP("worklet3.min.js",LOAD("worklet3.min.js"),[
 	'port.'
 ]);
 
+let [ player, player_pairs ] = COMP("player3.min.js",LOAD("player3.min.js"),[
+	".create",
+	".connect",
+	".style.",
+	".on",
+	//'.length', // this is too common; handle via outer compressor?
+]);
+
+function sqjson(o) {
+	return "'"+JSON.stringify(o).slice(1,-1).replaceAll('\\"','"')+"'";
+}
+
 
 // XXX I should probably resist the temptation to save a few chars by inlining
 // A0/A1/A2, but it has a higher risk of F being overwritten...
@@ -110,4 +122,6 @@ console.log("F=(s,p)=>{for(p=p.split('"+SPLIT+"');p.length;){let x=p.pop();s=s.r
 console.log("A0=F(`<style>"+css+"</style>`,`"+css_pairs+"`)");
 console.log("A1=F(`"+html+"`,`"+html_pairs+"`)");
 console.log("A2=F(`"+aw+"`,`"+aw_pairs+"`)");
+//console.log("eval(F("+JSON.stringify(player)+",`"+player_pairs+"`));");
+console.log("eval(F("+sqjson(player)+",`"+player_pairs+"`));");
 

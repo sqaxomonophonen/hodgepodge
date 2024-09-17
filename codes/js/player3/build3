@@ -6,8 +6,9 @@ OPT() {
 	uglifyjs $1 --compress --rename --mangle
 }
 OPT worklet3.js > worklet3.min.js
+OPT player3.js > player3.min.js
 node mcomp3.js > $T
-OPT player3.js >> $T
+#OPT player3.js >> $T
 OPT song3.js >> $T
 ls -l $T
 
