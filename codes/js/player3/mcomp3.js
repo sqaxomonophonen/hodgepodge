@@ -26,13 +26,13 @@ function COMP(name, orig, prefixes) {
 			}
 		};
 	})();
-	let token = next_token();
 	let pairs = [];
 	let ratio;
 	let prev_ratio = 1;
 	const get_ratio = _=>(w.length + 2 + pairs.join(SPLIT).length) / orig.length;
 
 	for (let prefix of prefixes) {
+		let token = next_token();
 		pairs.push(token+prefix);
 		w=w.replaceAll(prefix,token);
 		ratio = get_ratio();
@@ -41,7 +41,6 @@ function COMP(name, orig, prefixes) {
 			console.error("Bad ratio change:", prev_ratio, "=>", ratio);
 		}
 		prev_ratio = ratio;
-		token = next_token();
 	}
 	console.error(name, "compression:", ratio, "( without dictionary:" , w.length/orig.length, ")");
 	return [w, pairs.join(SPLIT)];
@@ -108,6 +107,7 @@ let [ player, player_pairs ] = COMP("player3.min.js",LOAD("player3.min.js"),[
 	".create",
 	".connect",
 	".style.",
+	".innerHTML",
 	".on",
 	"new ",
 	//'.length', // this is too common; handle via outer compressor?
