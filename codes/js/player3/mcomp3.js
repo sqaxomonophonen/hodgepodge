@@ -94,6 +94,7 @@ let [ html, html_pairs ] = COMP("player3.doc.html",clean_html(LOAD("player3.doc.
 	'="',
 	'/>',
 	'">',
+	'16',
 ]);
 
 let [ aw, aw_pairs ] = COMP("worklet3.min.js",LOAD("worklet3.min.js"),[
