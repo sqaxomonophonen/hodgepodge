@@ -95,12 +95,14 @@ for (let i = 0; i < symbol_stats.length; i++) {
 }
 */
 
+let brief_symbol_def = symbol_stats.map((st) => [st.str,st.freq]);
+
 symboltxt = "";
 symbol_list.reverse();
 for (let e of symbol_list) {
 	const st = symbol_stats[e];
 	symboltxt += st.start + " " + st.freq + "\n";
 }
-fs.writeFileSync(process.argv[5], JSON.stringify(symbol_stats));
+fs.writeFileSync(process.argv[5], JSON.stringify(brief_symbol_def));
 fs.writeFileSync(process.argv[6], symboltxt);
 

@@ -39,4 +39,4 @@ while (bit_cursor < bit_buffer.length) {
 	}
 }
 fs.writeFileSync(process.argv[3], buffer.slice(0,byte_cursor));
-console.log(byte_cursor);
+console.log("base123enc", input.length, "=>", byte_cursor, "( efficiency:", input.length/byte_cursor, ")");

@@ -58,7 +58,7 @@ X=(scale_bits,input)=>{
 	;
 
 	// rANS decoder
-	for(i=0;i<32;i+=8) rans_state |= pull_byte() << i;
+	for(let i=0;i<32;i+=8) rans_state |= pull_byte() << i;
 	return (start,freq)=>{
 		if (start === undefined) return rans_state & mask;
 		// carefully rewritten to avoid negative values (e.g. in JS:
