@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	int start,freq;
 	int n_symbols = 0;
 	while (fscanf(in, "%d %d\n", &start, &freq) == 2) {
-		printf("[start=%d] [freq=%d] d=%zd\n", start, freq, ptr-buffer_end);
+		//printf("[start=%d] [freq=%d] d=%zd\n", start, freq, ptr-buffer_end);
 		RansEncSymbol esym = {0};
 		RansEncSymbolInit(&esym, start, freq, scale_bits);
 		RansEncPutSymbol(&rans, &ptr, &esym);

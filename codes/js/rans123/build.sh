@@ -5,12 +5,22 @@ OPT() {
 }
 OPT rans123.js > rans123.min.js
 ls -l rans123.js rans123.min.js
-cc -Wall ransenc.c -o ransenc
 dd if=/dev/urandom of=DATA bs=1k count=10
 ./base123enc.js DATA DATA.b123
 
-cat rans123stub.html > OUT.html
-echo -n "X=X(14,\"" >> OUT.html
-cat DATA.b123 >> OUT.html
-echo    "\");" >> OUT.html
-echo "</script>" >> OUT.html
+out=OUT.html
+
+cat rans123stub.html > ${out}
+cat rans123.min.js >> ${out}
+scalebits=14
+echo -n "X=X($scalebits,\"" >> ${out}
+cat DATA.b123 >> ${out}
+echo    "\");" >> ${out}
+echo "</script>" >> ${out}
+
+./txtcompress.js $scalebits js_symbols.json ../player3/build3.js symtab.json symlist.txt
+
+cc -Wall ransenc.c -o ransenc
+./ransenc $scalebits symlist.txt symlist.txt.enc
+ls -l ../player3/build3.js
+
