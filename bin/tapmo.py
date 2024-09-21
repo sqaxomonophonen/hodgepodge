@@ -150,9 +150,9 @@ def main(stdscr):
 	curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_BLUE)
 
 	seq = [2,3,4,5,6]
-	tps = 0.035
+	seq_fps = 28
+	stdscr.timeout(int((1/seq_fps)*1000))
 
-	stdscr.timeout(30)
 	while True:
 		stdscr.erase()
 		h,w = stdscr.getmaxyx()
@@ -176,7 +176,7 @@ def main(stdscr):
 		ly1 = y+len(msg)+1
 
 		if len(times) > 0:
-			i = int((time.time() - times[-1]) / tps)
+			i = int((time.time() - times[-1]) * seq_fps)
 			if i < len(seq):
 				c = seq[i]
 				for dx in range(w):
