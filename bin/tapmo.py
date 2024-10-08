@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import curses,time,sys
+import curses,time
 
 class Font:
 	def __init__(self, s):
