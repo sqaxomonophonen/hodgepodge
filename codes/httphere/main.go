@@ -65,6 +65,12 @@ func main() {
 	fs := http.FileServer(http.Dir(root))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		// these enable "secure-only" features? for instance,
+		// SharedArrayBuffer isn't available on http:// URLs unless
+		// these headers are sent
+		h.Add("Cross-Origin-Embedder-Policy", "require-corp")
+		h.Add("Cross-Origin-Opener-Policy", "same-origin")
 		rws := &ResponseWriterStats{responseWriter: w}
 		fs.ServeHTTP(rws, r)
 		log.Printf("%s %s -> %s", r.Method, r.URL.String(), rws.Stats())
