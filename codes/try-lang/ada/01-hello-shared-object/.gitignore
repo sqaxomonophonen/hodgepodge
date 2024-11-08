@@ -1,0 +1,8 @@
+*.ali
+*.o
+*.so
+*.lexch
+test_so
+*.stderr
+*.stdout
+.*swp
