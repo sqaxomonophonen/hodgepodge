@@ -28,8 +28,10 @@ int main(int argc, char** argv)
 	void (*adainit)(void) = must_dlsym(dh,  "adainit");
 	adainit();
 
+	printf("calling hello_world() in Ada...\n");
 	void (*hello_world)(void) = must_dlsym(dh,  "hello_world");
 	hello_world();
+	printf("done!\n");
 
 	return 0;
 }
