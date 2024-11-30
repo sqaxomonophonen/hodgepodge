@@ -1,0 +1,3 @@
+Ada is both wonderfully and frustratingly silent about how tasking /really/
+works, so this stuff sets out to explore all that. Setting thread priority and
+scheduling policies seems rather straightforward.

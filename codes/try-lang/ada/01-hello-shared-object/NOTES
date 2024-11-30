@@ -1,0 +1,36 @@
+Building a .so-file from Ada code that can be loaded from non-Ada code.
+
+  ./run.sh
+
+I'm not using gprbuild to build the Ada code (even though everybody says you
+should) because it feels like shoddy software (ironic, no?); I've only been
+playing with Ada for a week, and I've already twice witnessed gprbuild silently
+ignoring directives it doesn't understand:
+
+ - In my attempt to make a gnat-llvm docker image, it ignored a statement in
+   gnat_llvm.gpr:
+      for Executable ("gcc_wrapper.adb") use "llvm-gcc";
+   It took hours to figure this out, because it just silently defaults to the
+   standard gcc. I had to compile a new gprbuild to fix this, which was a shot
+   in the dark. Awful.
+
+ - In this project, it ignored my wish to pass "-n" to gnatbind, which again
+   leads to "cryptic errors down the road" instead of failing where the error
+   actually occurs.
+
+Given that none of these problems would likely have happened with "just a small
+build script" (because scripting languages don't tend to skip lines silently)
+it just reinforces my belief that scripts are superior to build systems. Also,
+my build script is simply:
+  gnatgcc -c -fPIC so.adb
+  gnatbind -n so.ali
+  gnatlink so.ali -shared -o so.so
+To paraphrase an old joke, "10 hours of writing .gpr files can save you 5
+minutes of bash-scripting".
+
+About "gnatbind -n": the "-n" option is central to how this works; it adds an
+"adainit()" function that you must call before calling any other Ada code in
+the .so-file. This initialization process also seems to be referred to as
+"elaboration" in Ada literature. adainit() both does obvious things, like
+opening stdout so "hello world" works, but also more subtle things like
+initializing the secondary stack which is unique to Ada.
