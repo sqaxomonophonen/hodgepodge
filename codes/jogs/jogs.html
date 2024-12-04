@@ -719,6 +719,8 @@ async function init() {
 			const W = canvas.width  = canvas.offsetWidth;
 			const H = canvas.height = canvas.offsetHeight;
 			const in_cheat_mode = $("scope_cheat").checked;
+			const cursor_x = in_cheat_mode ? W/2 : W*0.9;
+
 			ctx.clearRect(0, 0, W, H);
 
 			{
@@ -728,7 +730,7 @@ async function init() {
 				ctx.rect(0, H/4-m/2, W, m);
 				ctx.fill();
 				ctx.beginPath();
-				ctx.rect(0, 3*H/4-m/2, W/2, m);
+				ctx.rect(0, 3*H/4-m/2, cursor_x, m);
 				ctx.fill();
 			}
 
@@ -740,8 +742,7 @@ async function init() {
 				} else {
 					song_pos_seconds = g_i32vars.read_song_position() / g_samplerate;
 				}
-				const xmid = W/2;
-				const x1 = in_cheat_mode ? W : xmid;
+				const x1 = in_cheat_mode ? W : cursor_x;
 				const imax = g_song_data.length;
 				const left = g_song_data.getChannelData(0);
 				const right = g_song_data.getChannelData(1);
@@ -750,7 +751,7 @@ async function init() {
 				const seconds_per_pixel = range / W;
 				const samples_per_pixel = seconds_per_pixel * g_song_data.sampleRate;
 				for (let x = 0; x < x1; x++) {
-					const p0 = song_pos_seconds + (x - xmid) * seconds_per_pixel
+					const p0 = song_pos_seconds + (x - cursor_x) * seconds_per_pixel
 					const ps0 = Math.floor(p0 * g_song_data.sampleRate);
 					let sum = 0;
 					for (let i = 0; i < samples_per_pixel; i++) {
@@ -771,7 +772,7 @@ async function init() {
 				// add "blinds" when not in DJ/cheat mode
 				ctx.fillStyle = "#511";
 				ctx.beginPath();
-				ctx.rect(W/2, 0, W/2, H/2);
+				ctx.rect(cursor_x, 0, W-cursor_x, H/2);
 				ctx.fill();
 			}
 
@@ -779,7 +780,7 @@ async function init() {
 				// mandatory "blinds" for step sequencer track
 				ctx.fillStyle = "#333";
 				ctx.beginPath();
-				ctx.rect(W/2, H/2, W/2, H/2);
+				ctx.rect(cursor_x, H/2, W-cursor_x, H/2);
 				ctx.fill();
 			}
 
@@ -787,7 +788,7 @@ async function init() {
 				const m = 2;
 				ctx.fillStyle = "#fff";
 				ctx.beginPath();
-				ctx.rect(W/2-m/2, 0, m, H);
+				ctx.rect(cursor_x-m/2, 0, m, H);
 				ctx.fill();
 			}
 
