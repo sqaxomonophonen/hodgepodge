@@ -1,0 +1,913 @@
+<!doctype HTML>
+<html>
+<head>
+<script>
+const AUTO_LOAD_SONG_SRC = "510356641.mpga";
+//const AUTO_LOAD_SONG_SRC = null
+</script>
+
+<style>
+body {
+	background: black;
+	color: white;
+	font-family: serif;
+	margin: 0;
+}
+
+error {
+	border: 1px solid red;
+	padding: 0.3em;
+	color: red;
+	font-family: monospace;
+	font-size: 1.5em;
+}
+
+button:disabled, button[disabled] {
+	color: #000;
+}
+
+input:disabled, input[disabled] {
+	color: #000;
+}
+
+#main_container {
+	height: 100%;
+	display: flex;
+}
+
+#left_container {
+	flex: 0 1 0;
+}
+
+#tempo_slider {
+	writing-mode: vertical-lr;
+	height: 100%;
+	margin-left: 50px;
+	margin-right: 80px;
+}
+
+#tempo_slider::-moz-range-thumb {
+	background-color: #000;
+	width: 100px;
+	height: 40px;
+	border-color: white;
+	border-width: 3px;
+}
+
+#tempo_slider::-moz-range-track {
+	background-color: #000;
+}
+
+/* TODO webkit hacks for #tempo_slider ; they have their own ::-webkit-* stuff */
+
+#right_container {
+	flex: 1 1 0;
+	display: flex;
+	flex-direction: column;
+}
+
+#audio_worklet_is_running {
+	color: #0f0;
+}
+
+#audio_worklet_is_stopped {
+	color: #f00;
+}
+
+#tap_in {
+	width: 100%;
+	/*border: 1px solid red;*/
+	text-align: center;
+}
+
+.tap_in_icon {
+	display: inline-block;
+}
+
+.tap_in_icon {
+	fill: #333;
+}
+
+.tap_in_icon_lead polygon {
+	fill: #0f0;
+}
+
+.tap_in_icon_bang polygon {
+	fill: #ff0;
+}
+
+.flash_none {
+	background-color: #111;
+}
+
+.flash_armed {
+	animation: armination 0.4s linear infinite;
+}
+
+@keyframes armination {
+	  0% { background-color: #faf; }
+	 40% { background-color: #faf; }
+	 50% { background-color: #000; }
+	 90% { background-color: #000; }
+	100% { background-color: #faf; }
+}
+
+.flash_tap {
+	background-color: #111;
+	animation: flash_tap 0.7s;
+}
+
+@keyframes flash_tap {
+	  0% { background-color: #9c9; }
+	100% { background-color: #111; }
+}
+
+.flash_abort {
+	background-color: black;
+	animation: flash_abort 2.0s;
+}
+
+@keyframes flash_abort {
+	  0% { background-color: #f00; }
+	100% { background-color: #111; }
+}
+
+.flash_bang {
+	background-color: #141;
+	animation: flash_bang 2.0s;
+}
+
+@keyframes flash_bang {
+	  0% { background-color: #ff0; }
+	100% { background-color: #141; }
+}
+
+#step_sequencer0 {
+	text-align: center;
+}
+
+.seqbox0 {
+	display: inline-block;
+	padding: 8px;
+	background-color: #222;
+	margin: 0px;
+}
+
+.seqbox0.tick {
+	background-color: #556;
+}
+
+.seqbox0.cursor {
+	background-color: #f0f;
+}
+
+.seqbox1 {
+	padding: 0;
+	margin: 0;
+	width: 50px;
+	height: 50px;
+	background-color: black;
+	border: 2px solid black;
+}
+
+.seqbox1.velocity1 {
+	background-color: #ff5;
+	mix-blend-mode: lighten;
+	box-shadow: 0px 0px 40px 40px rgba(100,100,0,0.5);
+}
+
+.seqbox1.velocity2 {
+	background-color: #b82;
+	mix-blend-mode: lighten;
+	box-shadow: 0px 0px 40px 40px rgba(100,30,0,0.4);
+}
+
+#scopes {
+	margin-top: 30px;
+	margin-bottom: 30px;
+	display: flex;
+}
+
+#scopes canvas {
+	border: 1px dashed #333;
+	flex-grow: 1;
+	height: 300px;
+}
+
+</style>
+<script>
+
+function ERROR(msg) {
+	if (!msg) msg = "ERROR";
+	document.body.innerHTML = "<error>" + msg + "</error>";
+	throw new Error(msg); // stop program flow and give file:line for error
+}
+
+function ASSERT(p,msg) {
+	if (p) return;
+	ERROR("ASSERTION FAILED" + (msg ? (": " + msg) : ""));
+}
+
+// a bit of a "roundabout way" of declaring a class here, but I need it in 3
+// (!) JS contexts; this one, the audio worklet, and the "seq worker"
+const SHARED_I32_VARS_CLASS_SRC = `(() => {
+const I32VAR_SAMPLE_POSITION = 0;
+const I32VAR_SONG_STATE      = 1;
+const I32VAR_SONG_POSITION   = 2;
+return class {
+	constructor(sab) {
+		this.arr = new Int32Array(sab);
+	}
+	_read(offset) { return Atomics.load(this.arr, offset); }
+	_write(offset, value) { Atomics.store(this.arr, offset, value); }
+	read_sample_position() { return this._read(I32VAR_SAMPLE_POSITION); }
+	write_sample_position(value) { this._write(I32VAR_SAMPLE_POSITION, value); }
+	read_song_state() {  return this._read(I32VAR_SONG_STATE); }
+	write_song_state(value) { this._write(I32VAR_SONG_STATE, value); }
+	read_song_position() {  return this._read(I32VAR_SONG_POSITION); }
+	write_song_position(value) { this._write(I32VAR_SONG_POSITION, value); }
+}
+})();
+`;
+
+const SharedI32VARs = eval(SHARED_I32_VARS_CLASS_SRC);
+
+const WORKLET_SOURCE = `
+
+const SharedI32VARs = ` + SHARED_I32_VARS_CLASS_SRC + `;
+
+const N_CHANNELS = 2;
+registerProcessor("PROCESSOR", class extends AudioWorkletProcessor {
+	constructor() {
+		super();
+		this.f32ringbuf = null;
+		this.i32vars = null;
+		this.port.onmessage = (e) => {
+			e = e.data;
+			if (e.what === "shared") {
+				this.f32ringbuf = e.f32ringbuf;
+				this.i32vars  = new SharedI32VARs(e.i32varbuf);
+			} else if (e.what === "song") {
+				this.song = e.song;
+			} else {
+				console.log("unhandled audio worklet message: " + JSON.stringify(e.data));
+			}
+		}
+	}
+
+	process(_inputs, outputs, parameters) {
+		if (!this.f32ringbuf || !this.i32vars) return true;
+		outputs = outputs[0];
+		const n_frames = outputs[0].length;
+		let song_is_playing = this.i32vars.read_song_state() !== 0;
+		let song_pos = this.i32vars.read_song_position();
+		let song_data = this.song;
+		for (let i0 = 0; i0 < n_frames; i0++) {
+			for (let i1 = 0; i1 < N_CHANNELS; i1++) {
+				let out = 0;
+				if (song_is_playing) {
+					out += song_data[i1][song_pos];
+				}
+				outputs[i1][i0] = out;
+			}
+			if (song_is_playing) song_pos++;
+		}
+		if (song_is_playing) this.i32vars.write_song_position(song_pos);
+		const nv = this.i32vars.read_sample_position() + n_frames;
+		this.i32vars.write_sample_position(nv);
+		return true;
+	}
+});
+`;
+
+let seq_worker;
+const SEQ_WORKER_SOURCE = `
+let f32ringbuf = null;
+let i32varbuf  = null;
+onmessage = (e) => {
+	e = e.data;
+	if (e.what === "shared") {
+		f32ringbuf = e.f32ringbuf;
+		i32varbuf  = e.i32varbuf;
+		// TODO spawn worker callback here? now that we have data
+	} else {
+		console.log("unhandled seq worker message: " + JSON.stringify(e.data));
+	}
+};
+`;
+
+function mk_javascript_data_url(src) {
+	return "data:text/javascript;base64,"+btoa(src);
+}
+
+let g_audio_context;
+let g_worklet_node;
+let g_audio_is_started = false;
+
+let g_shared;
+
+function start_audio() {
+	if (g_audio_is_started) return;
+	g_audio_context.resume().then(x => {
+		if (!g_audio_is_started) {
+			console.log("audio was started");
+			g_audio_is_started = true;
+			display("audio_worklet_is_stopped", false);
+			display("audio_worklet_is_running", true);
+			haaaacks(false);
+		}
+	});
+}
+
+let g_have_hacks = false;
+function haaaacks(want_hacks) {
+	// Browsers might prevent audio from starting unless it thinks the
+	// request comes from a user, so to get around that you install a
+	// handler that reacts to just about any type of user interaction*.
+	// This will of course stop working in 2026 when every browser will
+	// have AI that classifies input events. 2026 will be great :-|
+	// (*pressing escape and modifier keys doesn't seem to count as user
+	// interaction in my current Firefox version, but most (?) other keys
+	// do)
+	if (g_have_hacks !== want_hacks) {
+		const fn = want_hacks ? "addEventListener" : "removeEventListener";
+		//console.log("hacks/"+fn);
+		window[fn]("click", start_audio);
+		window[fn]("keydown", start_audio);
+		g_have_hacks = want_hacks;
+	}
+}
+
+const CC = s=>s.charCodeAt(0);
+const $ = id=>document.getElementById(id);
+
+function any_modifier_key_pressed(ev) {
+	return ev.shiftKey || ev.ctrlKey || ev.altKey;
+}
+
+function set_disabled(id,p) {
+	$(id).disabled = p ? "disabled" : "";
+}
+
+const MAX_TAP_IN = 10;
+const SEQSTATE_STOPPED = 1;
+const SEQSTATE_ARMED   = 2;
+const SEQSTATE_TAP     = 3;
+const SEQSTATE_PLAYING = 4;
+const SEQSTATE_ABORT   = 99; // not really a state but a signal
+let g_seqstate = SEQSTATE_STOPPED;
+let g_tap_in_n = undefined;
+let g_tap_in_key;
+let g_tap_in_remaining;
+
+let g_song_data = null;
+let g_f32ringbuf   = null;
+let g_i32varbuf    = null;
+let g_i32vars;
+
+
+function goto_sequencer_state(new_state, tapn) {
+	let can_play = false;
+	let can_stop = false;
+	let can_arm = false;
+	let show_icons = false;
+	let set_title;
+
+	function set_tap_anim(class_name) {
+		const e = $("tap_in");
+		for (const r of ["flash_none", "flash_armed", "flash_tap","flash_abort","flash_bang"]) {
+			e.classList.remove(r);
+		}
+		// hack to trigger "reflow" so it registers the removed class before
+		// adding it again:
+		e.offsetWidth;  // :-()
+		e.classList.add(class_name);
+	}
+
+	if (new_state === SEQSTATE_TAP) {
+		if (g_seqstate === SEQSTATE_ARMED) {
+			g_tap_in_remaining = g_tap_in_n = tapn;
+		} else if (g_tap_in_n !== tapn) {
+			new_state = SEQSTATE_ABORT;
+		}
+	}
+
+	let did_abort = false;
+	if (new_state === SEQSTATE_ABORT) {
+		set_tap_anim("flash_abort");
+		did_abort = true;
+		new_state = SEQSTATE_STOPPED;
+	}
+
+	if (new_state === SEQSTATE_TAP) {
+		if (g_tap_in_remaining === 0) {
+			new_state = SEQSTATE_PLAYING;
+		}
+	}
+
+	switch (new_state) {
+	case SEQSTATE_STOPPED: {
+		can_play = true;
+		can_arm = true;
+		if (!did_abort) set_tap_anim("flash_none");
+		set_title = "Sequencer is stopped"
+	}	break;
+	case SEQSTATE_ARMED: {
+		can_play = true;
+		can_stop = true;
+		set_tap_anim("flash_armed");
+		show_icons = true;
+		set_title = "Sequencer is armed; tap-in by pressing a number key [N] N+1 times (for N>1) in sync with the beat, e.g. 4,4,4,4,4. During this period, any other key aborts the tap-in; the [0] key counts as 10; on the final key press the step sequencer will start playing at the tap-tempo.";
+		g_tap_in_remaining = -1;
+	}	break;
+	case SEQSTATE_TAP: {
+		can_play = true;
+		can_stop = true;
+		set_tap_anim("flash_tap");
+		show_icons = true;
+		set_title = "Continue tapping the same key (if you're reading this you probably want to start over; press [Stop])";
+		g_tap_in_remaining--;
+	}	break;
+	case SEQSTATE_PLAYING: {
+		can_stop = true;
+		set_tap_anim("flash_bang");
+		set_title = "Sequencer is playing"
+	}	break;
+	default: ERROR("unhandled case");
+	}
+
+	for (let i = 0; i < (MAX_TAP_IN-1); i++) {
+		$("itap"+i).classList.remove("tap_in_icon_lead");
+		if (i >= (MAX_TAP_IN - (g_tap_in_remaining+1))) {
+			$("itap"+i).classList.add("tap_in_icon_lead");
+		}
+	}
+	$("itapx").classList.remove("tap_in_icon_bang");
+	if (new_state === SEQSTATE_TAP) {
+		$("itapx").classList.add("tap_in_icon_bang");
+	}
+
+	g_seqstate = new_state;
+	set_disabled("seqbtn_play", !can_play);
+	set_disabled("seqbtn_stop", !can_stop);
+	set_disabled("seqbtn_arm",  !can_arm);
+	$("tap_in_icons").style.opacity = show_icons ? 1 : 0;
+	$("tap_in").title = set_title;
+}
+
+let g_samplerate;
+
+const SONGSTATE_STOPPED = 1;
+const SONGSTATE_PLAYING = 4;
+let g_song_state = SONGSTATE_STOPPED;
+function goto_song_state(new_state) {
+	let can_play = false;
+	let can_stop = false;
+	switch (new_state) {
+	case SONGSTATE_PLAYING: {
+		g_i32vars.write_song_position(Math.round(g_samplerate * parseFloat($("songctrl_start_position").value)));
+		g_i32vars.write_song_state(1);
+		can_stop = true;
+	}	break;
+	case SONGSTATE_STOPPED: {
+		can_play = true;
+		g_i32vars.write_song_state(0);
+	}	break;
+	}
+	g_song_state = new_state;
+	set_disabled("songbtn_play", !can_play);
+	set_disabled("songbtn_stop", !can_stop);
+	set_disabled("songctrl_start_position", !can_play);
+}
+
+function main(pcm) {
+	ASSERT(pcm.numberOfChannels === 2, "song is not a stereo audio file (only stereo is supported)");
+	display("main_container", true);
+
+	g_song_data = pcm;
+
+	if (g_song_data) {
+		g_worklet_node.port.postMessage({
+			what: "song",
+			song: [
+				g_song_data.getChannelData(0),
+				g_song_data.getChannelData(1),
+			]
+		});
+	}
+
+	function on_tempo_slider_update() {
+		console.log("TODO tempo slider:" + $("tempo_slider").value);
+	}
+
+	$("tempo_slider").addEventListener("input", () => {
+		on_tempo_slider_update();
+	});
+
+	$("tempo_slider").addEventListener("dblclick", () => {
+		event.target.value = 0;
+		on_tempo_slider_update();
+	});
+
+	let pressed = {};
+	window.addEventListener("keydown", () => {
+		const a = document.activeElement;
+		const ignore = (a.tagName==="INPUT" && a.type==="number");
+		const key = event.key;
+		if (!ignore) {
+			if (g_seqstate === SEQSTATE_ARMED || g_seqstate === SEQSTATE_TAP) {
+				let n = undefined;
+				if (key.length === 1 && !any_modifier_key_pressed(event) && (CC("0") <= CC(key) && CC(key) <= CC("9"))) {
+					n = parseInt(key,10);
+					if (n === 0) n = 10;
+				}
+				if (n !== undefined) {
+					goto_sequencer_state(SEQSTATE_TAP, n);
+				} else if (g_seqstate === SEQSTATE_TAP && n === undefined) {
+					goto_sequencer_state(SEQSTATE_ABORT);
+				}
+			}
+		}
+		pressed[key] = true;
+	});
+	window.addEventListener("keyup", () => {
+		pressed[event.key] = false;
+	});
+	let keypoll; keypoll = () => {
+		let tsd = 0; // tempo slider delta
+		const TB = 4;
+		const T0 = TB**3;
+		const T1 = TB**2;
+		const T2 = TB**1;
+		if (pressed.q) tsd -= T0;
+		if (pressed.w) tsd -= T1;
+		if (pressed.e) tsd -= T2;
+		if (pressed.a) tsd += T0;
+		if (pressed.s) tsd += T1;
+		if (pressed.d) tsd += T2;
+		if (tsd !== 0) {
+			const e = $("tempo_slider");
+			e.value = parseInt(e.value)+tsd;
+			on_tempo_slider_update();
+		}
+		setTimeout(keypoll,10);
+	}; keypoll();
+}
+
+async function on_song_select() {
+	display("song_select", false);
+	display("loading", true);
+	const file = $("file_input").files[0];
+	const raw = await file.arrayBuffer();
+	let pcm;
+	try {
+		pcm = await g_audio_context.decodeAudioData(raw);
+	} catch (e) {
+		ERROR(e);
+	}
+	display("loading", false);
+	main(pcm);
+}
+
+function display(id,p) {
+	$(id).style.display = p ? "" : "none";
+}
+
+function svg_from_path(width, height, points) {
+	points = points.join(" ");
+	let src = "";
+	src += `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+	src += `<polygon points="${points}"/>`;
+	src += `</svg>`;
+	const d = document.createElement("div");
+	d.innerHTML = src;
+	return d;
+}
+
+async function init() {
+	g_audio_context = new AudioContext;
+	g_samplerate = g_audio_context.sampleRate;
+	ASSERT(g_samplerate > 1000, "no sample rate?");
+	start_audio();
+	haaaacks(true);
+
+	// DOM setup
+	display("audio_worklet_is_stopped", true);
+	display("audio_worklet_is_running", false);
+	display("main_container", false);
+	display("loading", false);
+	display("song_select", false);
+
+	{
+		const W = 100;
+		const H = 100;
+		const c = $("tap_in_icons");
+		for (let i = 0; i < (MAX_TAP_IN-1); i++) {
+			let e = svg_from_path(W,H,[10,20, 90,20, 90,80, 10,80]);
+			e.className = "tap_in_icon";
+			e.id = "itap"+i;
+			c.appendChild(e);
+		}
+		{
+			const N = 14;
+			let points = [];
+			for (let i = 0; i < N; i++) {
+				const r = (i/N - (1/4)) * Math.PI*2;
+				const s = (i&1) ? 0.5 : 0.9;
+				const x = Math.round(W/2 + (W/2)*Math.cos(r)*s);
+				const y = Math.round(H/2 + (H/2)*Math.sin(r)*s);
+				points.push(x);
+				points.push(y);
+			}
+			let e = svg_from_path(W,H,points);
+			e.className = "tap_in_icon";
+			e.id = "itapx";
+			c.appendChild(e);
+		}
+	}
+
+	{
+		const MAX_STEPS = 16;
+		const INISEQ = {
+			"kick":  "1...1...1...1...",
+			"hihat": "...2..2..2121.12",
+		};
+		const TARGETS = [["kick",1],["hihat",2]];
+		const mk_stepbtn_id = (target,i) => "stepbtn_" + target + "_" + i;
+		for (const [target,nvel] of TARGETS) {
+			const c = $("steps_"+target);
+			c.title = "Step sequencer track (" + target + ")";
+			for (let i = 0; i < MAX_STEPS; i++) {
+				const b0 = document.createElement("div");
+				b0.className = "seqbox0" + ((i%4)===0 ? " tick" : "");
+				//if (i === 0) b0.className += " cursor";
+				b0.id = mk_stepbtn_id(target,i);
+				const b1 = document.createElement("div");
+				b1.className = "seqbox1" + {".":"","1":" velocity1","2":" velocity2"}[INISEQ[target][i]];
+				b0.appendChild(b1);
+				c.appendChild(b0);
+				((nvel) => {
+					b0.addEventListener("click", () => {
+						const e = event.target;
+						const cs = e.classList;
+						if (nvel === 2) {
+							if (cs.contains("velocity1")) {
+								cs.remove("velocity1");
+								cs.add("velocity2");
+							} else if (cs.contains("velocity2")) {
+								cs.remove("velocity2");
+							} else {
+								cs.add("velocity1");
+							}
+						} else if (nvel === 1) {
+							if (cs.contains("velocity1")) {
+								cs.remove("velocity1");
+							} else {
+								cs.add("velocity1");
+							}
+						}
+					});
+				})(nvel);
+			}
+		}
+		const update_nsteps = () => {
+			const n = parseInt($("seq_nsteps").value, 10);
+			for (const [target,_] of TARGETS) {
+				for (let i = 0; i < MAX_STEPS; i++) {
+					const id = mk_stepbtn_id(target,i);
+					display(id, i < n);
+				}
+			}
+		};
+		$("seq_nsteps").addEventListener("change", update_nsteps);
+		update_nsteps();
+	}
+
+	$("seqbtn_play").addEventListener("click", () => goto_sequencer_state(SEQSTATE_PLAYING));
+	$("seqbtn_stop").addEventListener("click", () => goto_sequencer_state(SEQSTATE_STOPPED));
+	$("seqbtn_arm").addEventListener("click", () => goto_sequencer_state(SEQSTATE_ARMED));
+	goto_sequencer_state(SEQSTATE_STOPPED);
+
+	g_f32ringbuf = new SharedArrayBuffer(1<<19);
+	g_i32varbuf  = new SharedArrayBuffer(1<<8);
+	g_i32vars = new SharedI32VARs(g_i32varbuf);
+
+	let shared_msg = {
+		what: "shared",
+		f32ringbuf: g_f32ringbuf,
+		i32varbuf:  g_i32varbuf,
+	};
+
+	g_audio_context.audioWorklet.addModule(mk_javascript_data_url(WORKLET_SOURCE)).then(()=>{
+		g_worklet_node = new AudioWorkletNode(g_audio_context, "PROCESSOR",{numberOfInputs:0, outputChannelCount: [2]});
+		g_worklet_node.connect(g_audio_context.destination);
+		g_worklet_node.port.postMessage(shared_msg);
+		g_worklet_node.port.start();
+	});
+
+	seq_worker = new Worker(mk_javascript_data_url(SEQ_WORKER_SOURCE));
+	seq_worker.postMessage(shared_msg);
+
+	$("songbtn_play").addEventListener("click", () => goto_song_state(SONGSTATE_PLAYING));
+	$("songbtn_stop").addEventListener("click", () => goto_song_state(SONGSTATE_STOPPED));
+	goto_song_state(SONGSTATE_STOPPED);
+
+	{
+		const canvas = $("scopes_canvas")
+		const ctx = canvas.getContext("2d");
+		let render_scopes; render_scopes = () => {
+			const W = canvas.width  = canvas.offsetWidth;
+			const H = canvas.height = canvas.offsetHeight;
+			const in_cheat_mode = $("scope_cheat").checked;
+			ctx.clearRect(0, 0, W, H);
+
+			{
+				const m = 0.5;
+				ctx.fillStyle = "#fff";
+				ctx.beginPath();
+				ctx.rect(0, H/4-m/2, W, m);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.rect(0, 3*H/4-m/2, W/2, m);
+				ctx.fill();
+			}
+
+			if (g_song_data) {
+				ASSERT(g_song_data.numberOfChannels === 2);
+				let song_pos_seconds;
+				if (g_song_state === SONGSTATE_STOPPED) {
+					song_pos_seconds = parseFloat($("songctrl_start_position").value);
+				} else {
+					song_pos_seconds = g_i32vars.read_song_position() / g_samplerate;
+				}
+				const xmid = W/2;
+				const x1 = in_cheat_mode ? W : xmid;
+				const imax = g_song_data.length;
+				const left = g_song_data.getChannelData(0);
+				const right = g_song_data.getChannelData(1);
+				const ymid = H/4;
+				const range = parseFloat($("scope_range").value)
+				const seconds_per_pixel = range / W;
+				const samples_per_pixel = seconds_per_pixel * g_song_data.sampleRate;
+				for (let x = 0; x < x1; x++) {
+					const p0 = song_pos_seconds + (x - xmid) * seconds_per_pixel
+					const ps0 = Math.floor(p0 * g_song_data.sampleRate);
+					let sum = 0;
+					for (let i = 0; i < samples_per_pixel; i++) {
+						const ii = ps0+i;
+						if (!(0 <= ii && ii < imax)) continue;
+						sum += left[ii] ** 2;
+						sum += right[ii] ** 2;
+					}
+					const dy = (H/4)*Math.sqrt(sum / samples_per_pixel);
+					ctx.fillStyle = "#fff";
+					ctx.beginPath();
+					ctx.rect(x,ymid-dy,1,dy*2);
+					ctx.fill();
+				}
+			}
+
+			if (!in_cheat_mode) {
+				// add "blinds" when not in DJ/cheat mode
+				ctx.fillStyle = "#511";
+				ctx.beginPath();
+				ctx.rect(W/2, 0, W/2, H/2);
+				ctx.fill();
+			}
+
+			{
+				// mandatory "blinds" for step sequencer track
+				ctx.fillStyle = "#333";
+				ctx.beginPath();
+				ctx.rect(W/2, H/2, W/2, H/2);
+				ctx.fill();
+			}
+
+			{
+				const m = 2;
+				ctx.fillStyle = "#fff";
+				ctx.beginPath();
+				ctx.rect(W/2-m/2, 0, m, H);
+				ctx.fill();
+			}
+
+
+			window.requestAnimationFrame(render_scopes);
+		}; render_scopes();
+	}
+
+
+	if (AUTO_LOAD_SONG_SRC) {
+		const t0 = Date.now();
+		display("loading", true);
+		const response = await fetch(AUTO_LOAD_SONG_SRC);
+		ASSERT(response.status === 200, "fetch failed: " + AUTO_LOAD_SONG_SRC);
+		const raw = await response.arrayBuffer();
+		const pcm = await g_audio_context.decodeAudioData(raw);
+		const dt = Date.now() - t0;
+		console.log("Audio load+decode took " + dt + "ms");
+		//console.log(pcm);
+		display("loading", false);
+		main(pcm);
+	} else {
+		display("song_select", true);
+	}
+}
+
+window.onload = init;
+</script>
+</head>
+
+<body>
+
+<div id="loading">loading...</div>
+
+<div id="song_select">
+Choose a song file to use:<br/>
+<input type="file" id="file_input" onchange="javascript:on_song_select()"/><br/>
+The file is "uploaded" directly into your browser, not a server.<br/>
+Q: Can it play audio files of type XXX?<br/>
+A: <a target="_new" href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/canPlayType">&hellip;probably, maybe?</a><br/>
+</div>
+
+<div id="main_container">
+
+<div id="left_container">
+<input
+	id="tempo_slider"
+	type="range" min="-10000" max="10000" value="0"
+	title="Tempo fine tune slider; also adjustable with q,w,e and a,s,d; double-click to reset to neutral position"/><br/>
+</div>
+
+<div id="right_container">
+
+<div id="tap_in" class="flash_none" >
+<div id="tap_in_icons">
+</div>
+</div>
+
+<div id="step_sequencer0">
+<span>Step sequencer controls:</span>
+<button id="seqbtn_play" title="Start step sequencer">Play</button>
+<button id="seqbtn_stop" title="Stop step sequencer">Stop</button>
+<button id="seqbtn_arm" title="Prepare for tap-in; the header will start flashing, during which you can mouse-over the header for additional instructions">Arm Tap-in</button>
+<label title="Number of 1/4th note steps in sequencer">
+<input id="seq_nsteps" type="number" min="2" max="16" value="16"/> #steps</label>
+
+<label title="Step sequencer beats-per-minute when the tempo slider is in neutral position">
+<input type="number" min="30" max="300" value="120"/>
+Center BPM</label>
+
+<div id="steps_kick"></div>
+<div id="steps_hihat"></div>
+</div>
+
+<div id="scopes">
+<canvas id="scopes_canvas"/><br/>
+</div>
+<div>
+Scope controls:
+<label title="When enabled you can ''see into the future'' in regards to the song; this wouldn't be available if playing with a live band (hence ''cheat mode''), but if playing against a pre-recorded track it could be made available (''DJ mode'')">
+<input id="scope_cheat" type="checkbox" checked/>
+DJ/cheat mode
+</label>
+<label>
+<input id="scope_range" type="number" min="0.5" max="45" value="8" step="0.1"/>
+Range/width (seconds)
+</label>
+</div>
+
+<hr/>
+
+<label
+	title="The entire purpose of this prototype is to test how latency affects your ''beat matching'' abilities; this input adds latency to the tap-in and tempo slider; tap-in still attempts to compensate for latency so that the step sequencer starts at the final tap without any delay">
+<input
+	type="number" min="0" max="1000" value="0"
+	/> Add latency (ms)</label>
+
+<div>
+Song controls:
+<button id="songbtn_play">Play</button>
+<button id="songbtn_stop">Stop</button>
+<label title="">
+<input id="songctrl_start_position" type="number" value="0" min="-4" max="600" step="0.1">
+Start at position (seconds)
+</label>
+</div>
+
+<div title="audio worklet should start after any user interaction">
+Audio worklet:
+<span id="audio_worklet_is_running">running</span>
+<span id="audio_worklet_is_stopped">stopped</span>
+</div>
+
+<!--
+<hr/>
+<a target="_new" href="jogs_instructions.html">Open instructions in new tab</a>
+-->
+
+</div>
+</div>
+
+</body>
+</html>
