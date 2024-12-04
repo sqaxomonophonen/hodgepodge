@@ -754,16 +754,25 @@ async function init() {
 					const p0 = song_pos_seconds + (x - cursor_x) * seconds_per_pixel
 					const ps0 = Math.floor(p0 * g_song_data.sampleRate);
 					let sum = 0;
+					let max = 0;
 					for (let i = 0; i < samples_per_pixel; i++) {
 						const ii = ps0+i;
 						if (!(0 <= ii && ii < imax)) continue;
 						sum += left[ii] ** 2;
 						sum += right[ii] ** 2;
+						max = Math.max(max, Math.abs(left[ii]), Math.abs(right[ii]));
 					}
-					const dy = (H/4)*Math.sqrt(sum / samples_per_pixel);
+
+					const dy0 = (H/4)*max;
+					ctx.fillStyle = "#876";
+					ctx.beginPath();
+					ctx.rect(x,ymid-dy0,1,dy0*2);
+					ctx.fill();
+
+					const dy1 = (H/4)*Math.sqrt(sum / (2*samples_per_pixel));
 					ctx.fillStyle = "#fff";
 					ctx.beginPath();
-					ctx.rect(x,ymid-dy,1,dy*2);
+					ctx.rect(x,ymid-dy1,1,dy1*2);
 					ctx.fill();
 				}
 			}
