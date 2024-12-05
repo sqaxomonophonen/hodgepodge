@@ -209,6 +209,28 @@ function ASSERT(p,msg) {
 	ERROR("ASSERTION FAILED" + (msg ? (": " + msg) : ""));
 }
 
+// Given an array of timestamps (in seconds), returns:
+//  - timestamps_per_second
+//  - next_timestamp
+// e.g. tap_in_linear_regression([5/2,6/2,7/2,8/2]) => { timestamps_per_second: 2, next_timestamp: 4.5 }
+// e.g. tap_in_linear_regression([1,2,3])           => { timestamps_per_second: 1, next_timestamp: 4 }
+function tap_in_linear_regression(timestamps) {
+	const n = timestamps.length;
+	const sum_x = -((n*(n+1))/2);
+	const sum_xx = (n*(n+1)*(2*n+1))/6;
+	let sum_y=0, sum_xy=0;
+	for (let i=0; i<n; i++) {
+		const x = -n+i;
+		const y = timestamps[i];
+		sum_y += y;
+		sum_xy += x*y;
+	}
+	const seconds_per_timestamp = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - (sum_x ** 2));
+	const next_timestamp = (sum_y - seconds_per_timestamp * sum_x) / n;
+	const timestamps_per_second = 1/seconds_per_timestamp;
+	return { timestamps_per_second, next_timestamp };
+}
+
 // a bit of a "roundabout way" of declaring a class here, but I need it in 3
 // (!) JS contexts; this one, the audio worklet, and the "seq worker"
 const SHARED_I32_VARS_CLASS_SRC = `(() => {
