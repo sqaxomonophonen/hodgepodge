@@ -90,6 +90,7 @@ const ACES_output_transform = [
 	-0.00327 , -0.07276 ,  1.07602,
 ];
 function tonemap(v3) {
+	if (!document.getElementById("tonemap").checked) return v3;
 	v3 = v3_mul_m33(v3, ACES_input_transform);
 	v3 = v3.map(x => (x * (x + 0.0245786) - 0.000090537) / (x * (0.983729 * x + 0.4329510) + 0.238081));
 	v3 = v3_mul_m33(v3, ACES_output_transform);
@@ -244,7 +245,9 @@ window.onload = main;
 <body>
 <div id="canvases"></div>
 <div id="controls">
-<p id="checkboxes"></p>
+<p id="checkboxes">
+<label><input type="checkbox" id="tonemap" checked>tone mapping</label><br/>
+</p>
 <p><a target="_new" href="https://github.com/sqaxomonophonen/hodgepodge/blob/master/codes/fakehdr.html">View source</a></p>
 </div>
 </body>
