@@ -1,0 +1,274 @@
+<!doctype HTML>
+<html>
+<head>
+<script>
+const LAYERS = [
+	{
+		blur            : null,
+		pixel_scale     : 1,
+		line_width      : 3,
+		brightness      : 10*1,
+		blend_mode      : null,
+	},
+
+	{
+		blur            : "7px",
+		pixel_scale     : 0.5,
+		line_width      : 3,
+		brightness      : 10*0.6,
+		blend_mode      : "lighten",
+	},
+
+	{
+		blur            : "14px",
+		pixel_scale     : 0.25,
+		line_width      : 3,
+		brightness      : 10*0.3,
+		blend_mode      : "lighten",
+	},
+
+	{
+		blur            : "38px",
+		pixel_scale     : 0.125,
+		line_width      : 3,
+		brightness      : 10*0.1,
+		blend_mode      : "lighten",
+	},
+];
+</script>
+<style>
+
+body {
+	margin: 0;
+	padding: 0;
+	background: black;
+	color: white;
+}
+
+canvas {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#canvases {
+	padding: 0;
+}
+
+#controls {
+	padding-left: 0.5em;
+	position: absolute;
+	left: 0;
+	top: 0;
+	user-select: none;
+}
+</style>
+<script>
+
+// minimal 3d vector and 3x3 matrix math
+const v3_scale = (v3,s) => [v3[0]*s,v3[1]*s,v3[2]*s];
+const m33i = (a,b) => b+a*3;
+const v3_mul_m33 = (v3,m33) => [
+	v3[0]*m33[m33i(0,0)] + v3[1]*m33[m33i(0,1)] + v3[2]*m33[m33i(0,2)],
+	v3[0]*m33[m33i(1,0)] + v3[1]*m33[m33i(1,1)] + v3[2]*m33[m33i(1,2)],
+	v3[0]*m33[m33i(2,0)] + v3[1]*m33[m33i(2,1)] + v3[2]*m33[m33i(2,2)],
+];
+
+// tonemapping
+// source: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl (MIT licensed)
+const ACES_input_transform = [
+	0.59719 , 0.35458 , 0.04823,
+	0.07600 , 0.90834 , 0.01566,
+	0.02840 , 0.13383 , 0.83777,
+];
+const ACES_output_transform = [
+	 1.60475 , -0.53108 , -0.07367,
+	-0.10208 ,  1.10813 , -0.00605,
+	-0.00327 , -0.07276 ,  1.07602,
+];
+function tonemap(v3) {
+	v3 = v3_mul_m33(v3, ACES_input_transform);
+	v3 = v3.map(x => (x * (x + 0.0245786) - 0.000090537) / (x * (0.983729 * x + 0.4329510) + 0.238081));
+	v3 = v3_mul_m33(v3, ACES_output_transform);
+	v3 = v3.map(x => Math.max(0,Math.min(1,x)));
+	return v3;
+}
+
+
+// color stuff
+const f2h = (f) => {
+	let h = Math.max(0, Math.min(255, Math.floor(f*256))).toString(16);
+	if (h.length === 1) h = "0"+h;
+	return h;
+}
+const v3_to_hex_color = (v3) => "#"+f2h(v3[0])+f2h(v3[1])+f2h(v3[2]);
+
+const hsv_to_rgb = (hsv) => {
+	const [h,s,v] = hsv;
+	const i = Math.floor((h%1)*6);
+	const f = h*6-i;
+	const p = v*(1-s);
+	const q = v*(1-f*s);
+	const t = v*(1-(1-f)*s);
+
+	switch (i%6) {
+	case 0: return [ v, t, p ];
+	case 1: return [ q, v, p ];
+	case 2: return [ p, v, t ];
+	case 3: return [ p, q, v ];
+	case 4: return [ t, p, v ];
+	case 5: return [ v, p, q ];
+	}
+};
+
+function main() {
+	{
+		// setup DOM:
+		//  - canvases + CSS
+		//  - toggle checkboxes
+		// also "exports" canvas+context
+		const canvases = document.getElementById("canvases");
+		const checkboxes = document.getElementById("checkboxes");
+		let i = 1;
+		for (let layer of LAYERS) {
+			const canvas = document.createElement("canvas");
+			layer.canvas = canvas;
+			layer.ctx = canvas.getContext("2d");
+			const canvas_id = "canvas"+i;
+			canvas.id = canvas_id;
+
+			const style = document.createElement("style");
+			let css = "#"+canvas_id+" {\n";
+			if (layer.blend_mode) css += ("mix-blend-mode: " + layer.blend_mode + ";\n");
+			if (layer.blur)       css += ("filter: blur(" + layer.blur + ");\n");
+			css += "}\n";
+			style.appendChild(document.createTextNode(css));
+			document.head.appendChild(style);
+
+			canvases.appendChild(canvas);
+
+			const label = document.createElement("label");
+			label.title = "Toggle layer " + i + ". You can also press [" + i + "]";
+			const checkbox = document.createElement("input");
+			checkbox.id = "checkbox" + i;
+			checkbox.type = "checkbox";
+			checkbox.checked = "checked";
+			((canvas) => {
+				checkbox.onchange = () => {
+					canvas.style.display = event.target.checked ? "" : "none";
+				};
+			})(canvas);
+			label.appendChild(checkbox);
+			label.appendChild(document.createTextNode("show layer " + i));
+			checkboxes.appendChild(label);
+			checkboxes.appendChild(document.createElement("br"));
+
+			i++;
+		}
+
+		window.addEventListener("keydown", () => {
+			const k = event.key;
+			const i = parseInt(k,10);
+			if (k.length === 1 && (1 <= i && i <= LAYERS.length)) {
+				document.getElementById("checkbox"+i).click();
+				event.preventDefault();
+			}
+		});
+	}
+
+	let frame = 0;
+	let render; render = () => {
+		for (const layer of LAYERS) {
+			// resize canvas
+			const { canvas, ctx } = layer;
+			const W = canvas.width  = canvas.offsetWidth * layer.pixel_scale;
+			const H = canvas.height = canvas.offsetHeight * layer.pixel_scale;
+			ctx.clearRect(0, 0, W, H);
+
+			ctx.lineWidth = layer.line_width;
+
+			const line = (p0,p1,color) => {
+				ctx.beginPath();
+				ctx.moveTo(p0[0],p0[1]);
+				ctx.lineTo(p1[0],p1[1]);
+				ctx.strokeStyle = v3_to_hex_color(tonemap(color));
+				ctx.stroke();
+			};
+
+			const N_GRID_CELLS = 8;
+
+			const cr2p = (c,r) => {
+				const S = 0.75;
+				const RS = 0.03;
+				const SS = H*S*0.05;
+				const dx = Math.sin(frame*RS + c * 0.4 + r * 0.45) * SS;
+				const dy = Math.cos(frame*RS + c * 0.55 + r * 0.5) * SS;
+				return [
+					(W/2) + (c/N_GRID_CELLS) * (H*S) - (H*S*0.5) + dx,
+					(H/2) + (r/N_GRID_CELLS) * (H*S) - (H*S*0.5) + dy,
+				]
+			};
+
+			const color_at = (c,r) => {
+				const hsv = [
+					(frame*0.001 + (c*0.1) + (r*0.2)) % 1,
+					0.6 + 0.4*(Math.sin(frame*0.02 + c*0.22 + r*0.11) ** 2),
+					0.02 + 0.98*(Math.sin(frame*0.01 + c*0.13 + r*0.15) ** 2),
+				];
+				const rgb = hsv_to_rgb(hsv);
+				const m = layer.brightness;
+				return v3_scale(rgb, m);
+			};
+
+			for (let row = 0; row <= N_GRID_CELLS; row++) {
+				for (let col = 0; col < N_GRID_CELLS; col++) {
+					line(cr2p(col,row), cr2p(col+1,row), color_at(col+0.5,row));
+				}
+			}
+			for (let col = 0; col <= N_GRID_CELLS; col++) {
+				for (let row = 0; row < N_GRID_CELLS; row++) {
+					line(cr2p(col,row), cr2p(col,row+1), color_at(col,row+0.5));
+				}
+			}
+		}
+		frame++;
+		window.requestAnimationFrame(render);
+	}; render();
+}
+window.onload = main;
+</script>
+</head>
+<body>
+<div id="canvases"></div>
+<div id="controls">
+<p id="checkboxes"></p>
+<p><a target="_new" href="https://github.com/sqaxomonophonen/hodgepodge/blob/master/codes/fakehdr.html">View source</a></p>
+</div>
+</body>
+</html>
+<!--
+LICENSING:
+
+The tonemapping code is MIT licensed (see reference above).
+
+The rest is:
+Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
