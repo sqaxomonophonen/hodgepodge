@@ -1,0 +1,126 @@
+<!doctype HTML>
+<html>
+<head>
+<style>
+body {
+	background: url(mighty-boosh.gif);
+}
+.message {
+	background: rgba(255,255,255,0.9);
+	color: black;
+	width:50%;
+	display: inline-block;
+}
+canvas {
+	width: 256px;
+	height: 256px;
+}
+</style>
+<title>WebGL2 context stress test</title>
+<script>
+
+let num_contexts = 0;
+let num_lost_contexts = 0;
+
+function add_context() {
+	em_num_contexts.innerText = (++num_contexts);
+
+	const canvas = document.createElement("canvas");
+	canvas.addEventListener("webglcontextlost", () => {
+		em_num_lost_contexts.innerText = (++num_lost_contexts);
+	});
+
+	document.body.appendChild(canvas);
+	const gl = canvas.getContext("webgl2");
+	const rand = 0.02 + Math.random()*0.02;
+
+	function compile_shader(type, source) {
+		const shader = gl.createShader(type);
+		gl.shaderSource(shader, source);
+		gl.compileShader(shader);
+		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+			ERROR("compile error: " + gl.getShaderInfoLog(shader))
+			console.error("SHADER SOURCE:\n"+source);
+			gl.deleteShader(shader);
+			throw new Error("shader compile failed");
+		}
+		return shader;
+	}
+
+	const vertex_shader = compile_shader(gl.VERTEX_SHADER, `#version 300 es
+	precision highp float;
+	uniform float u_time;
+	uniform float u_m;
+	void main()
+	{
+		float a = u_m*u_time + float(gl_VertexID) * 2.0943951023931953;
+		float x = sin(a);
+		float y = cos(a);
+		gl_Position = vec4(x,y,0,1);
+	}
+	`);
+	const fragment_shader = compile_shader(gl.FRAGMENT_SHADER, `#version 300 es
+	precision highp float;
+	out vec4 fragment_color;
+	void main()
+	{
+		fragment_color = vec4(1,0,0,0.5);
+	}
+	`);
+
+	const program = gl.createProgram();
+	gl.attachShader(program, vertex_shader);
+	gl.attachShader(program, fragment_shader);
+	gl.linkProgram(program);
+	gl.useProgram(program);
+	const u_time = gl.getUniformLocation(program, "u_time");
+	const u_m = gl.getUniformLocation(program, "u_m");
+
+	let frame_num=0;
+	let frame; frame = () => {
+		gl.clearColor(0,0,1,0.2);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		gl.uniform1f(u_time, frame_num++);
+		gl.uniform1f(u_m, rand);
+		gl.drawArrays(gl.TRIANGLES,0,3);
+		window.requestAnimationFrame(frame);
+	}; frame();
+
+}
+window.onload = () => {
+	for (let i=0; i<3; ++i) add_context();
+};
+</script>
+</head>
+<body>
+<div class="message">
+
+<p>
+The purpose of this test is to see if there are any downsides of having many
+WebGL2 contexts. My current (2024-12-21) findings are:
+<ul>
+
+<li>Chrome starts throwing away contexts when you reach 16 contexts. The only
+way to override this seems to be with the <tt>--max-active-webgl-contexts</tt>
+commnad-line flag. I found a discussion suggesting there's a "why would you
+want to do that?!" attitude amongst Chromium devs. It makes about as much sense
+as suggesting the maximum number of divs per page should be 256.
+
+<li>Firefox seems to allow any number of contexts (I've seen 100+).
+
+<li>I'm not seeing any real slowdowns even with 100+ contexts (Firefox). Yes,
+they're not heavy contexts (spinning triangle shader); I'm trying to observe
+"hidden costs" here, not obvious ones.
+
+</ul>
+</p>
+
+<button onclick="javascript:add_context()">Add one more context</button>
+
+<p>Number of contexts: <span id="em_num_contexts">0</span></p>
+<p>Number of lost contexts: <span id="em_num_lost_contexts">0</span></p>
+
+</div>
+</body>
+</html>
