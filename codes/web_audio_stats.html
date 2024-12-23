@@ -1,0 +1,32 @@
+<!doctype HTML>
+<title>out</title>
+<script>
+
+let ctx;
+window.onload = () => {
+	ctx = new AudioContext({
+		//latencyHint: 0.5,
+	});
+
+	let osc = ctx.createOscillator();
+	osc.connect(ctx.destination);
+
+
+	setInterval(() => {
+		em_sr.innerText = ctx.sampleRate;
+		em_oc.innerText = ctx.destination.maxChannelCount;
+		em_bl.innerText = ctx.baseLatency;
+		em_ol.innerText = ctx.outputLatency;
+	}, 50);
+};
+function start() {
+	ctx.resume();
+}
+</script>
+<div>
+<div>sample rate: <span id="em_sr"></span></div>
+<div>max channel count: <span id="em_oc"></span></div>
+<div>base latency: <span id="em_bl"></span></div>
+<div>(estimated) output latency: <span id="em_ol"></span></div>
+<button onclick="javascript:start()" title="browsers tend to block audio starting automatically...">Start audio</button>
+</div>
