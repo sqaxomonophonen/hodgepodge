@@ -204,9 +204,9 @@ clean:
 
 clobber: clean
 	${RM} -f ${TARGET} *.dSYM
-	@-if [[ -e sandwich ]]; then \
-	    ${RM} -f sandwich; \
-	    echo 'ate sandwich'; \
+	@-if [[ -e prog.wav ]]; then \
+	    ${RM} -f prog.wav; \
+	    echo 'ate prog.wav'; \
 	fi
 
 
