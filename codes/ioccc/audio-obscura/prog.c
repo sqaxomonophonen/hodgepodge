@@ -9,24 +9,23 @@ int static B=
 ,J,I,N
 
 ; unsigned static q0[]={
-  0x0ce97522 ,
-  0xc02972e5 ,
-  0xf7fafefa ,
-  0xf5eaeaae ,
+  0x0ce97522,
+  0xc02972e5,
+  0xf55ffb6d,
+  0xfad7dadb
 }
 
 ; int static q1[]={
--2,0, 7 ,
- 0,3,10 ,
+  -2, 0,  7,
+   0, 3, 10,
 
- -5,0, 0, 2 , 3, 0, 2, 2 ,
- -2, 0, 7, 12, 3, 7, 5, 10,
+  -5, 0, 0,  2, 3, 0, 2,  2,
+  -2, 0, 7, 12, 3, 7, 5, 10,
 
-  0,3, -5,
- -2,3, -5,
- -2,2, -5,
- -2,2 -12,
- -7   +12
+   0, 3, -5,
+  -2, 3, -5,
+  -2, 2, -5,
+ -10,-2,  5
 }
 
 ; char static*q2[]={
@@ -50,7 +49,6 @@ double static* G( int n ) { E+=n; return E                                -n; }
  void  static  W( int l ) {  L( ( short )l);  L((short)(l>>13            >>3) )
                                                                             ; }
 #include  <math.h>
-#include<assert.h>
 #include<stdlib.h>
 #include <stdio.h>
 
@@ -98,8 +96,8 @@ int j,k,l,m ; char*
  px  =P=M  ,    *
 pa         ,    *
 p0        ; FILE*o
-          ;
-  N=(B<<8)+(B<<10); //dur
+           ;
+  N=(B*5)<<8; //dur
 Z(q2[2]) ; W(36+(N<<2));
 Z( q2    [   0 ]   )  ;
  W(16)    ;       L(1);
@@ -231,8 +229,8 @@ Y(.3,k?-1:1,0,0);
 fflush  (    stdout   )        ;
         }             }  pa=P  ;
   Z("opx!fokpz!"      ); p0=P  ;
-  Z("qsph/xbw"        ); assert(
-  o=fopen(p0,"wb")    ); fwrite(
+  Z("qsph/xbw"        );
+  o=fopen(p0,"wb")     ; fwrite(
   px,                 1,       (
 
   unsigned
