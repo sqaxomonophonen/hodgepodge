@@ -1,5 +1,5 @@
 double static F=
-  1.5e-3 
+  1.5e-3
 //C#
 ,t,b,D[1<<20],*E,U[4],X;
 
@@ -89,7 +89,7 @@ double static ap(double x,int n,double f,double d) { C (
   {         C
   ( double u=
   j[c];    o=u-x;
-  j[c ]     =f*u+x; ) 
+  j[c ]     =f*u+x; )
        } int  main
       ( void
        )
@@ -136,14 +136,14 @@ Y(.5,0,.07,.1);
   X=H(X*2);
   l=T(4)%8>6;
   switch (T(8)) {
-  case 0  :         t=H(Q((T(4))%4)); break;
-            case 2 :t=H(Q(2-l));      break;
-  default : case 1 : t=H(Q(1-l));              break;
-  } if (++I>N)                        break;
+            case 0 : t=H(Q((T(4))%4)); break;
+            case 2 : t=H(Q(2-l));      break;
+  default : case 1 : t=H(Q(1-l));      break;
+  } if (++I>N)                         break;
   X*=O(1-t,4)*O(Q(3),2);
   X=H(X*1.4);
   if (!(T(7)&7) || T(10)) X=0;
-Y(1,S(I*1e-5),.16,.2);
+Y(1,S(I*1e-5),.16,.4);
 
 
 //sd
@@ -210,17 +210,17 @@ Y(.3,k?-1:1,0,0);
             A(
             2)
     L        (
-   (     short) 
+   (     short)
   (fmin      (1
   ,fmax     (-1,
    U       [
    j        ]
     )        )*32e3
-     )       ); if 
+     )       ); if
     (   !   (
      I   % (
      B  *  8
-      ) ) ) 
+      ) ) )
        { putchar
         (q2
         [3
