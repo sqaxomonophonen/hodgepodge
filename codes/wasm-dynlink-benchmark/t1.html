@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<title>t1</title>
+<script>
+window.onload = () => {
+	const mem = new WebAssembly.Memory({ initial: 16 });
+	WebAssembly.instantiateStreaming(fetch("./t1.wasm"), {
+		env: {
+			memory: mem,
+		},
+	}).then(t1 => {
+		const N=100000000;
+		for (let t=0; t<5; t++) {
+			const t0=Date.now();
+			console.log(t1.instance.exports.foo(N,1.11));
+			const dt=1e-3*(Date.now()-t0);
+			console.log(N/dt);
+		}
+	});
+};
+</script>

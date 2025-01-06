@@ -1,0 +1,14 @@
+Small test comparing the performance of local calls vs calls to external deps
+provided by another WASM instance.
+
+Findings:
+
+Firefox:
+ - local calls:    926M/s
+ - external calls: 267M/s
+
+Chrome:
+ - local calls:    613M/s
+ - external calls: 177M/s
+
+So there's a ~3.5x penalty for external calls.
