@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-for t in t0foo t0bar t1 ; do
+for t in t0foo t0bar t1 t2foo t2bar ; do
 	clang19 \
 	-O2 \
 	-Wall \

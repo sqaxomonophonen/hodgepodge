@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<title>t2</title>
+<script>
+window.onload = () => {
+	const mem = new WebAssembly.Memory({ initial: 16 });
+	WebAssembly.instantiateStreaming(fetch("./t2bar.wasm"), {
+		env: {
+			memory: mem,
+		},
+	}).then(bar => {
+		WebAssembly.instantiateStreaming(fetch("./t2foo.wasm"), {
+			env: {
+				memory: mem,
+				bar: bar.instance.exports.bar,
+			},
+		}).then(foo => {
+			const N=100000000;
+			for (let t=0; t<5; t++) {
+				const t0=Date.now();
+				console.log(foo.instance.exports.foo(N,1.11));
+				const dt=1e-3*(Date.now()-t0);
+				console.log(N/dt);
+			}
+		});
+	});
+};
+</script>
+

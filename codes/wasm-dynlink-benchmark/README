@@ -12,3 +12,7 @@ Chrome:
  - external calls: 177M/s
 
 So there's a ~3.5x penalty for external calls.
+
+Also there doesn't appear to be additional penalities in the dependency
+instance (see t2 which does all the work in the "bar" dependency and uses a
+pointer provided by "foo" just to show that memory is shared)
