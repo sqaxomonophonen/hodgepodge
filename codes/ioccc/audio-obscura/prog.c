@@ -1,9 +1,9 @@
-double static F=
+ double static F=
   1.5e-3
 //C#
-,t,b,D[1<<20],*E,U[4],X;
+,t,b,D[1<<20],*E,U[4],X
 
-int static B=
+; int static B=
   17e3
 //allegro
 ,J,I,N
@@ -62,8 +62,7 @@ void static Y(double p, double g, double e, double r)
 
 double static eq(double x,double a,double h,double c,double d,double e)
 {
-  double
-       * z=
+  double    *z=
   G(2) , y=a*x+
   z[0] ;
   z[0] = x*h-d*y+
@@ -86,35 +85,38 @@ double static ap(double x,int n,double f,double d) { C (
   f         )
   {         C
   ( double u=
-  j[c];    o=u-x;
+  j [c  ]; o=u-x;
   j[c ]     =f*u+x; )
-       } int  main
-      ( void
-       )
-         {
-int j,k,l,m ; char*
- px  =P=M  ,    *
-pa         ,    *
-p0        ; FILE*o
-           ;
+       }   int
+  main
+    (   void     )
+         { int j  ,
+   k  ,  l ,  m    ;
+   char  *  px   =    P
+   =  M
+         ,
+     *        pa  ,
+       *
+p0        ; FILE
+ *    o    ;
+
 
   N=(B*5)<<8; //dur
 
-Z(q2[2]) ; W(36+(N<<2));
-Z( q2    [   0 ]   )  ;
- W(16)    ;       L(1);
- L(2)    ; W(1<<18)   ;
- W(4<<18 )            ;
- L(4)    ;      L(16);
- Z(q2[1]);          W(N<<2
-        )           ;
-    for(pa=P       ;
-       ;   )      {
-       E   =D      ;  A
-      (     4       ) U
-       [    j       ]=
-                    0
-                   ;
+
+Z ( q2 [ 2 ] )  ;   W 
+( 36 + ( N << 2 ) ) ;
+ Z   (  q2  [  0 ]  )
+ ; W  ( 16     )   ;
+ L (   1  )   ;  L ( 2
+)    ; W (   1 <<   18
+ )   ; W(    4 << 18
+ ) ; L (   4  )   ; L
+( 16   )   ; Z  ( q2
+[1 ]   )    ;  W(N <<
+2) ; for( pa  = P ; ;
+) {  E= D  ;  A ( 4 )
+U [   j ]     = 0   ;
 
 
 
@@ -207,29 +209,24 @@ Y(  .3,k?-1:1,0,0);
 
 
 
-            A(
-            2)
-    L        (
-   (     short)
-  (fmin      (1
-  ,fmax     (-1,
-   U       [
-   j        ]
-    )        )*32e3
-     )       ); if
-    (   !   (
-     I   % (
-     B  *  8
-      ) ) )
-       { putchar
-        (q2
-        [3
-        ]
-   /*{*/[
-     ++J&15
-        ]             )        ;
-fflush  (    stdout   )        ;
-        }             }  pa=P  ;
+   A(
+   2)
+   L             (
+       (           short)
+   (fmin            (1
+   ,fmax            (-1,
+   U                  [
+   j                  ]
+   )                  )    *32e3
+   )   );   if        (        !
+   (   I    %(
+   B   *    8)        )        )
+   { putchar  (q2
+   [3         ]
+         /*{*/[
+   ++J&15     ]       )        ;
+fflush  (   stdout    )        ;
+              }       }  pa=P  ;
   Z("opx!fokpz!"      ); p0=P  ;
   Z("qsph/xbw"        );
   o=fopen(p0,"wb")     ; fwrite(
