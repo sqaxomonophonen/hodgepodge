@@ -1,21 +1,21 @@
  double static F=
   1.5e-3
 //C#
-,t,b,D[1<<20],*E,U[4],X
+,t,b,D[1<<20],*E,U[4],X;
 
-; int static B=
+int static B=
   17e3
 //allegro
-,J,I,N
+,J,I,N;
 
-; unsigned static q0[]={
+unsigned static q0[]={
   0x0ce97522,
   0xc02972e5,
   0xf55ffb6d,
   0xfad7dadb
-}
+};
 
-; int static q1[]={
+int static q1[]={
   -2, 0,  7,
    0, 3, 10,
 
@@ -92,31 +92,38 @@ double static ap(double x,int n,double f,double d) { C (
     (   void     )
          { int j  ,
    k  ,  l ,  m    ;
-   char  *  px   =    P
+ char  *  px   =    P
    =  M
-         ,
+       ,
      *        pa  ,
        *
-p0        ; FILE
+p0         ; FILE
  *    o    ;
+
 
 
   N=(B*5)<<8; //dur
 
 
+
 Z ( q2 [ 2 ] )  ;   W 
 ( 36 + ( N << 2 ) ) ;
- Z   (  q2  [  0 ]  )
- ; W  ( 16     )   ;
- L (   1  )   ;  L ( 2
-)    ; W (   1 <<   18
- )   ; W(    4 << 18
- ) ; L (   4  )   ; L
-( 16   )   ; Z  ( q2
-[1 ]   )    ;  W(N <<
+Z    (  q2  [  0 ]  )
+;  W  ( 16      )   ;
+L (   1  )   ;  L ( 2
+)  ;  W (   1 <<   18
+)  ;  W (    4 <<  18
+)  ;  L (  4  )   ; L
+( 16    )   ; Z  ( q2
+[1 ]    )   ;  W(N <<
 2) ; for( pa  = P ; ;
 ) {  E= D  ;  A ( 4 )
 U [   j ]     = 0   ;
+
+
+
+
+
 
 
 
@@ -230,7 +237,7 @@ fflush  (   stdout    )        ;
   Z("opx!fokpz!"      ); p0=P  ;
   Z("qsph/xbw"        );
   o=fopen(p0,"wb")     ; fwrite(
-  px,                 1,       (
+          px,         1,       (
 
   unsigned
   long )( pa-px),o); fclose(
