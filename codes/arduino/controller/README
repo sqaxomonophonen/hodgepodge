@@ -1,0 +1,19 @@
+Arduino program that reads from ADC A0 and sends the value over serial to the
+read_from_tty.c program.
+
+The Makefile is for arduino-bsd-mk, so it won't work with gmake etc.
+But you can probably compile pedal.cpp using the IDE.
+
+Oddities found using the arduino-bsd-mk pkg on FreeBSD:
+ - Renaming Makefile to Makefile.bsd doesn't work
+ - Having your code in main.cpp doesn't work (says "main" not found?)
+
+I'm using it to convert an Ernie Ball volume pedal into a foot controller.
+Wiring:
+  Pedal in  ground  <=> Arduino gnd
+  Pedal in  signal  <=> Arduino 5V
+  Pedal out ground  <=> Arduino gnd
+  Pedal out signal  <=> Arduino A0
+It works really well: it's smooth, not noisy, and uses the entire range
+[0;1023]. Also I expected some logarithmic taper but there isn't much, so it's
+hardly worth considering to compensate.
