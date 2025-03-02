@@ -1,0 +1,24 @@
+roundtrip latency tests against a public ip, server and client on the same
+network. i found no noticeable difference between accessing a local ip and a
+public ip (relates to all tests except 4G).
+
+just http, no https/tls.
+
+websocket latencies seem better across the board.
+
+desktop, lan:
+  http: ~4ms
+  ws:   ~1ms
+
+desktop, wifi:
+  http: ~6ms
+  ws:   ~3ms
+
+mobile, wifi:
+  http: ~22ms
+  ws:   ~15ms
+
+mobile, 4G:
+  http: ~55ms
+  ws:   ~40ms
+
