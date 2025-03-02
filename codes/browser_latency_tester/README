@@ -6,6 +6,10 @@ just http, no https/tls.
 
 websocket latencies seem better across the board.
 
+the "touch-action: manipulation;" CSS rule on the buttons prevents a 300ms
+"touch delay" on mobile (touch delay allows double-tapping an element before
+firing any event handlers).
+
 desktop, lan:
   http: ~4ms
   ws:   ~1ms
