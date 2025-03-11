@@ -7,6 +7,7 @@ if (typeof window.EditContext === "undefined") {
 } else {
 	const ec = canvas.editContext = new EditContext();
 	ec.addEventListener("textupdate", () => {
+		// no crash occurs if this updateText(...)-call is removed
 		ec.updateText(0, ec.text.length, "");
 	});
 }
