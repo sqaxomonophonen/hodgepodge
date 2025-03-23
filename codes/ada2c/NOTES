@@ -1,0 +1,34 @@
+
+prep.sh
+ - checks ada/ symlink is OK
+ - runs codegens:
+   - gen_il-main: generates "Intermediate Language" stuff
+   - xsnamest: generates snames.adb/ads/h
+
+build.sh
+
+
+gnatmake
+ - handles rebuild analysis (whether or not files must be rebuilt based on
+   modification times)
+ - allows overriding the compiler with --GCC
+ - `-aIfoo` adds "foo" as a source directory. the earliest foo.adb is the one
+   that is chosen, so ada/*.adb files can be overridden
+
+
+Except for rebuild analysis, it's fairly simple to build without gnatmake:
+ - for each source: `gcc -c source.adb`: this generates source.ali and source.o
+ - if program.adb is the main file: `gnatbind -x program.ali`: this generates
+   b~program.adb/ads
+ - gcc -c b~program.adb
+ - (maybe replace *.o) gcc *.o -o hello2 -L./ -L/usr/local/gnat12/lib/gcc/x86_64-portbld-freebsd14.1/12.3.0/adalib/ /usr/local/gnat12/lib/gcc/x86_64-portbld-freebsd14.1/12.3.0/adalib/libgnat.a -static-libgcc
+gnatlink can also be used instead of the `gcc -c b~program.adb` part
+
+So the idea is to replace gcc:
+ - .ali output should be the same?
+ - instead of
+     foo.adb -(gcc)-> foo.o
+   we have
+     foo.adb -(ada2c)-> foo.c -(cc)-> foo.o
+
+
