@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+window.addEventListener("keydown", () => {
+	event.preventDefault();
+	const m = JSON.stringify({
+		key: event.key,
+		code: event.code,
+		alt: event.altKey,
+		ctrl: event.ctrlKey,
+		meta: event.metaKey,
+		shift: event.shiftKey,
+	});
+
+	here.innerText = m + "\n" + here.innerText;
+});
+</script>
+</head>
+<body>
+<tt id="here"></tt>
+</body>
+</html>
