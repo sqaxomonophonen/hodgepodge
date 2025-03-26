@@ -184,11 +184,7 @@ everything: all alt
 # suggested way(s) to run the program
 #
 try: ${PROG} ${DATA}
-	@# remove these comments
-	@# notice how we do not assume that . is a component of the $PATH environment variable
-	@# you may use the try.sh script if you have one
-	@# change this next line as needed
-	./${PROG} some arguments
+	./${PROG}
 
 
 ###############
