@@ -1,0 +1,11 @@
+
+valgrind says:
+
+==555253== Conditional jump or move depends on uninitialised value(s)
+==555253==    at 0x116990: stbir__encode_uint8_linear (stb_image_resize2.h:8630)
+==555253==    by 0x166DEC: stbir__encode_scanline (stb_image_resize2.h:6170)
+==555253==    by 0x167209: stbir__resample_vertical_gather (stb_image_resize2.h:6245)
+==555253==    by 0x16750E: stbir__vertical_gather_loop (stb_image_resize2.h:6324)
+==555253==    by 0x1695A0: stbir__perform_resize (stb_image_resize2.h:7292)
+==555253==    by 0x16AF2A: stbir_resize_extended (stb_image_resize2.h:7916)
+==555253==    by 0x16B8CC: main (test0.c:53)
